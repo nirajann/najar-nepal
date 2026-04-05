@@ -1,435 +1,379 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { allLeaders } from "../data/leaders/allLeaders";
 import { api } from "../services/api";
 
-type FilterType =
-  | "All"
-  | "Prime Minister"
-  | "Minister"
-  | "MP"
-  | "National Assembly Member";
+type LeaderDistrict =
+  | string
+  | {
+      _id?: string;
+      districtId?: string;
+      name?: string;
+      province?: string;
+    };
 
-type SortType = "popularity" | "rating" | "likes" | "votes";
+type Leader = {
+  _id?: string;
+  leaderId: string;
+  name: string;
+  role: string;
+  party?: string;
+  district?: LeaderDistrict;
+  province?: string;
+  currentStatus?: string;
+  photo?: string;
+  badge?: string;
+  verified?: boolean;
+  startYear?: string;
+  endYear?: string;
+};
 
-type LeaderStatsMap = Record<
-  string,
-  {
-    likes: number;
-    dislikes: number;
-    averageRating: number;
-    ratingCount: number;
-    totalReactions: number;
-  }
->;
+type LeaderStats = {
+  likes?: number;
+  dislikes?: number;
+  votes?: number;
+  comments?: number;
+  rating?: number;
+  engagementScore?: number;
+};
 
-function getPopularityScore(stats: {
-  likes: number;
-  dislikes: number;
-  averageRating: number;
-  ratingCount: number;
-}) {
-  return stats.likes * 2 + stats.averageRating * 20 + stats.ratingCount * 3 - stats.dislikes;
+type SortOption =
+  | "Most Popular"
+  | "Highest Rated"
+  | "Most Discussed"
+  | "Most Liked"
+  | "Lowest Rated";
+
+function roleLabel(role: string) {
+  if (role === "MP") return "Member of Parliament";
+  return role;
 }
 
-function getRankStyle(index: number) {
-  if (index === 0) {
-    return "border-yellow-300 bg-gradient-to-br from-yellow-50 to-amber-100 shadow-[0_10px_40px_rgba(234,179,8,0.20)]";
-  }
-  if (index === 1) {
-    return "border-slate-300 bg-gradient-to-br from-slate-50 to-slate-200 shadow-[0_10px_40px_rgba(148,163,184,0.18)]";
-  }
-  if (index === 2) {
-    return "border-amber-300 bg-gradient-to-br from-amber-50 to-orange-100 shadow-[0_10px_40px_rgba(180,83,9,0.18)]";
-  }
-  return "border-slate-200 bg-slate-50";
+function getDistrictName(district?: LeaderDistrict) {
+  if (!district) return "Unknown district";
+  if (typeof district === "string") return district;
+  return district.name || "Unknown district";
 }
 
-function getTenureText(startYear?: string, endYear?: string) {
-  if (!startYear) return "Tenure not added";
+function getProvinceName(leader: Leader) {
+  if (leader.province) {
+    return leader.province.replace(" PROVINCE", "");
+  }
 
-  const start = Number(startYear);
-  if (Number.isNaN(start)) return `${startYear} - ${endYear || "Present"}`;
+  if (leader.district && typeof leader.district !== "string") {
+    return leader.district.province?.replace(" PROVINCE", "") || "Unknown province";
+  }
 
-  const currentYear = new Date().getFullYear();
-  const finish = endYear && endYear !== "Present" ? Number(endYear) : currentYear;
+  return "Unknown province";
+}
 
-  if (Number.isNaN(finish)) return `${startYear} - ${endYear || "Present"}`;
-
-  const years = Math.max(0, finish - start);
-  return years <= 1 ? "1 year" : `${years} years`;
+function statValue(value?: number) {
+  if (typeof value !== "number") return 0;
+  return Number.isInteger(value) ? value : Number(value.toFixed(1));
 }
 
 function Ranking() {
-  const [filter, setFilter] = useState<FilterType>("All");
-  const [sortBy, setSortBy] = useState<SortType>("popularity");
-  const [statsMap, setStatsMap] = useState<LeaderStatsMap>({});
+  const [leaders, setLeaders] = useState<Leader[]>([]);
+  const [statsMap, setStatsMap] = useState<Record<string, LeaderStats>>({});
   const [loading, setLoading] = useState(true);
+  const [selectedRole, setSelectedRole] = useState("All");
+  const [sortBy, setSortBy] = useState<SortOption>("Most Popular");
+  const [error, setError] = useState("");
 
   useEffect(() => {
-    const loadStats = async () => {
+    const loadRankingData = async () => {
       try {
         setLoading(true);
+        setError("");
 
-        const entries = await Promise.all(
-          allLeaders.map(async (leader) => {
+        const res = await api.getLeaders();
+        const leaderItems = Array.isArray(res) ? res : res?.leaders || [];
+        setLeaders(leaderItems);
+
+        const statEntries = await Promise.all(
+          leaderItems.map(async (leader: Leader) => {
             try {
-              const stats = await api.getLeaderStats(leader.id);
-
+              const stats = await api.getLeaderStats(leader.leaderId);
               return [
-                leader.id,
+                leader.leaderId,
                 {
-                  likes: stats.likes ?? 0,
-                  dislikes: stats.dislikes ?? 0,
-                  averageRating: stats.averageRating ?? 0,
-                  ratingCount: stats.ratingCount ?? 0,
-                  totalReactions: stats.totalReactions ?? 0,
+                  likes: stats?.likes || 0,
+                  dislikes: stats?.dislikes || 0,
+                  votes: stats?.votes || 0,
+                  comments: stats?.comments || 0,
+                  rating: stats?.rating || 0,
+                  engagementScore:
+                    stats?.engagementScore ??
+                    (stats?.likes || 0) +
+                      (stats?.votes || 0) +
+                      (stats?.comments || 0) -
+                      (stats?.dislikes || 0),
                 },
               ] as const;
             } catch {
               return [
-                leader.id,
+                leader.leaderId,
                 {
                   likes: 0,
                   dislikes: 0,
-                  averageRating: 0,
-                  ratingCount: 0,
-                  totalReactions: 0,
+                  votes: 0,
+                  comments: 0,
+                  rating: 0,
+                  engagementScore: 0,
                 },
               ] as const;
             }
           })
         );
 
-        setStatsMap(Object.fromEntries(entries));
+        setStatsMap(Object.fromEntries(statEntries));
+      } catch (err: any) {
+        setError(err.message || "Failed to load ranking data");
       } finally {
         setLoading(false);
       }
     };
 
-    loadStats();
+    loadRankingData();
   }, []);
 
-  const filteredLeaders = useMemo(() => {
-    let result = [...allLeaders];
+  const roleTabs = useMemo(() => {
+    const roles = Array.from(
+      new Set(leaders.map((leader) => leader.role).filter(Boolean))
+    );
+    return ["All", ...roles];
+  }, [leaders]);
 
-    if (filter !== "All") {
-      result = result.filter((leader) => leader.role === filter);
-    }
+  const rankedLeaders = useMemo(() => {
+    const filtered =
+      selectedRole === "All"
+        ? leaders
+        : leaders.filter((leader) => leader.role === selectedRole);
 
-    result.sort((a, b) => {
-      const statsA = statsMap[a.id] || {
-        likes: 0,
-        dislikes: 0,
-        averageRating: 0,
-        ratingCount: 0,
-        totalReactions: 0,
-      };
+    const sorted = [...filtered].sort((a, b) => {
+      const aStats = statsMap[a.leaderId] || {};
+      const bStats = statsMap[b.leaderId] || {};
 
-      const statsB = statsMap[b.id] || {
-        likes: 0,
-        dislikes: 0,
-        averageRating: 0,
-        ratingCount: 0,
-        totalReactions: 0,
-      };
-
-      if (sortBy === "popularity") {
-        return getPopularityScore(statsB) - getPopularityScore(statsA);
+      if (sortBy === "Highest Rated") {
+        return (bStats.rating || 0) - (aStats.rating || 0);
       }
 
-      if (sortBy === "rating") {
-        return statsB.averageRating - statsA.averageRating;
+      if (sortBy === "Lowest Rated") {
+        return (aStats.rating || 0) - (bStats.rating || 0);
       }
 
-      if (sortBy === "likes") {
-        return statsB.likes - statsA.likes;
+      if (sortBy === "Most Discussed") {
+        return (bStats.comments || 0) - (aStats.comments || 0);
       }
 
-      if (sortBy === "votes") {
-        return statsB.ratingCount - statsA.ratingCount;
+      if (sortBy === "Most Liked") {
+        return (bStats.likes || 0) - (aStats.likes || 0);
       }
 
-      return 0;
+      return (bStats.engagementScore || 0) - (aStats.engagementScore || 0);
     });
 
-    return result;
-  }, [filter, sortBy, statsMap]);
-
-  const topThree = filteredLeaders.slice(0, 3);
-  const others = filteredLeaders.slice(3);
+    return sorted;
+  }, [leaders, statsMap, selectedRole, sortBy]);
 
   return (
     <div className="min-h-screen bg-slate-100">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8">
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <main className="mx-auto max-w-[1380px] px-4 py-6 md:px-6">
+        <section className="rounded-[28px] border border-slate-200 bg-white p-6 shadow-sm md:p-10">
+          <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
             <div>
-              <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900">
+              <h1 className="text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
                 Leaders Ranking
               </h1>
-              <p className="text-slate-500 mt-2 text-base md:text-lg">
+              <p className="mt-3 text-lg text-slate-500">
                 Ranked by real public response from your platform
               </p>
             </div>
 
-            <div className="rounded-2xl bg-slate-50 border border-slate-200 px-4 py-3 text-slate-600">
-              Showing{" "}
-              <span className="font-bold text-slate-900">{filteredLeaders.length}</span>{" "}
-              leaders
-            </div>
-          </div>
+            <div className="flex flex-col gap-3 sm:flex-row lg:flex-col">
+              <div className="rounded-3xl border border-slate-200 bg-slate-50 px-5 py-4 text-lg text-slate-700">
+                Showing{" "}
+                <span className="font-bold text-slate-950">
+                  {rankedLeaders.length}
+                </span>{" "}
+                leaders
+              </div>
 
-          <div className="flex flex-col xl:flex-row gap-4 mb-8">
-            <div className="flex flex-wrap gap-3">
-              {(
-                ["All", "Prime Minister", "Minister", "MP", "National Assembly Member"] as FilterType[]
-              ).map((item) => (
-                <button
-                  key={item}
-                  onClick={() => setFilter(item)}
-                  className={`px-5 py-3 rounded-full font-semibold transition ${
-                    filter === item
-                      ? "bg-blue-600 text-white shadow"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  {item}
-                </button>
-              ))}
-            </div>
-
-            <div className="xl:ml-auto">
               <select
                 value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortType)}
-                className="rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                onChange={(e) => setSortBy(e.target.value as SortOption)}
+                className="rounded-3xl border border-slate-300 bg-white px-5 py-4 text-lg outline-none"
               >
-                <option value="popularity">Sort: Most Popular</option>
-                <option value="rating">Sort: Highest Rated</option>
-                <option value="likes">Sort: Most Liked</option>
-                <option value="votes">Sort: Most Votes</option>
+                <option>Most Popular</option>
+                <option>Highest Rated</option>
+                <option>Most Discussed</option>
+                <option>Most Liked</option>
+                <option>Lowest Rated</option>
               </select>
             </div>
           </div>
 
+          <div className="mt-8 flex flex-wrap gap-3">
+            {roleTabs.map((role) => (
+              <button
+                key={role}
+                onClick={() => setSelectedRole(role)}
+                className={`rounded-full px-6 py-4 text-lg font-semibold transition ${
+                  selectedRole === role
+                    ? "bg-blue-600 text-white shadow-md"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                }`}
+              >
+                {role === "All" ? "All" : roleLabel(role)}
+              </button>
+            ))}
+          </div>
+
+          {error ? (
+            <div className="mt-8 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {error}
+            </div>
+          ) : null}
+
           {loading ? (
-            <div className="rounded-3xl border border-slate-200 bg-slate-50 p-8 text-slate-500">
-              Loading ranking data...
+            <div className="mt-10 grid grid-cols-1 gap-6 lg:grid-cols-3">
+              {Array.from({ length: 6 }).map((_, index) => (
+                <div
+                  key={index}
+                  className="h-[460px] animate-pulse rounded-[28px] border border-slate-200 bg-slate-100"
+                />
+              ))}
             </div>
           ) : (
-            <>
-              <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 mb-10">
-                {topThree.map((leader, index) => {
-                  const stats = statsMap[leader.id] || {
-                    likes: 0,
-                    dislikes: 0,
-                    averageRating: 0,
-                    ratingCount: 0,
-                    totalReactions: 0,
-                  };
+            <div className="mt-10 grid grid-cols-1 gap-6 xl:grid-cols-3">
+              {rankedLeaders.map((leader, index) => {
+                const stats = statsMap[leader.leaderId] || {};
+                const score =
+                  sortBy === "Highest Rated" || sortBy === "Lowest Rated"
+                    ? stats.rating || 0
+                    : sortBy === "Most Discussed"
+                    ? stats.comments || 0
+                    : sortBy === "Most Liked"
+                    ? stats.likes || 0
+                    : stats.engagementScore || 0;
 
-                  return (
-                    <div
-                      key={leader.id}
-                      className={`rounded-3xl border p-6 transition duration-300 hover:-translate-y-1 ${getRankStyle(
-                        index
-                      )}`}
-                    >
-                      <div className="flex items-start justify-between gap-3 mb-5">
-                        <div>
-                          <p className="text-sm font-semibold text-slate-500">
-                            Rank #{index + 1}
-                          </p>
-                          <h2 className="text-2xl font-extrabold text-slate-900 mt-2">
-                            {leader.name}
-                          </h2>
-                          <p className="text-blue-600 font-semibold mt-1">
-                            {leader.currentStatus} {leader.role}
-                          </p>
-                          <p className="text-slate-600">{leader.party || "Not added yet"}</p>
-                          <p className="text-slate-500">
-                            {leader.district || "District not added"}
-                            {leader.province ? `, ${leader.province}` : ""}
-                          </p>
-                        </div>
-
-                        <div className="rounded-2xl bg-blue-600 text-white px-4 py-3 text-lg font-bold shadow-md">
-                          {getPopularityScore(stats).toFixed(0)}
-                        </div>
+                return (
+                  <article
+                    key={leader.leaderId}
+                    className={`rounded-[28px] border p-7 shadow-sm ${
+                      index === 0 || index === 2
+                        ? "border-amber-300 bg-amber-50"
+                        : "border-slate-200 bg-slate-50"
+                    }`}
+                  >
+                    <div className="mb-6 flex items-start justify-between gap-4">
+                      <div>
+                        <p className="text-lg text-slate-500">Rank #{index + 1}</p>
+                        <h2 className="mt-3 text-3xl font-extrabold tracking-tight text-slate-950">
+                          {leader.name}
+                        </h2>
+                        <p className="mt-3 text-xl font-semibold text-blue-600">
+                          {leader.currentStatus || "Current"} {roleLabel(leader.role)}
+                        </p>
+                        <p className="mt-2 text-lg text-slate-600">
+                          {leader.party || "No party"}
+                        </p>
+                        <p className="mt-2 text-lg text-slate-500">
+                          {getDistrictName(leader.district)}, {getProvinceName(leader)}
+                        </p>
                       </div>
 
+                      <div className="rounded-[20px] bg-blue-600 px-5 py-4 text-3xl font-bold text-white shadow-md">
+                        {statValue(score)}
+                      </div>
+                    </div>
+
+                    <div className="mb-6">
                       {leader.photo ? (
                         <img
                           src={leader.photo}
                           alt={leader.name}
-                          className="w-24 h-24 rounded-3xl object-cover border border-white shadow-sm mb-5"
+                          className="h-28 w-28 rounded-[24px] object-cover"
                         />
                       ) : (
-                        <div className="w-24 h-24 rounded-3xl bg-slate-200 border border-white shadow-sm mb-5" />
+                        <div className="h-28 w-28 rounded-[24px] bg-slate-200" />
                       )}
+                    </div>
 
-                      <div className="flex flex-wrap gap-2 mb-5">
-                        {leader.badge && (
-                          <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-sm font-semibold">
-                            {leader.badge}
-                          </span>
-                        )}
+                    <div className="mb-6 flex flex-wrap gap-3">
+                      {leader.badge ? (
+                        <span className="rounded-full bg-slate-950 px-4 py-2 text-lg font-semibold text-white">
+                          {leader.badge}
+                        </span>
+                      ) : null}
 
-                        {leader.verified && (
-                          <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
-                            Verified
-                          </span>
-                        )}
+                      {leader.verified ? (
+                        <span className="rounded-full bg-emerald-100 px-4 py-2 text-lg font-semibold text-emerald-700">
+                          Verified
+                        </span>
+                      ) : null}
 
-                        {(leader.startYear || leader.endYear) && (
-                          <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
-                            {leader.startYear || "—"} - {leader.endYear || "Present"}
-                          </span>
-                        )}
+                      {(leader.startYear || leader.endYear) && (
+                        <span className="rounded-full bg-blue-100 px-4 py-2 text-lg font-semibold text-blue-700">
+                          {leader.startYear || "—"} - {leader.endYear || "Present"}
+                        </span>
+                      )}
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-sm text-slate-500">Likes</p>
+                        <p className="mt-1 text-xl font-bold text-slate-950">
+                          {statValue(stats.likes)}
+                        </p>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-3 mb-5">
-                        <StatCard label="Likes" value={stats.likes} />
-                        <StatCard label="Dislikes" value={stats.dislikes} />
-                        <StatCard label="Rating" value={stats.averageRating} />
-                        <StatCard label="Votes" value={stats.ratingCount} />
-                        <StatCard label="Reactions" value={stats.totalReactions} />
-                        <StatCard
-                          label="Tenure"
-                          value={getTenureText(leader.startYear, leader.endYear)}
-                        />
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-sm text-slate-500">Dislikes</p>
+                        <p className="mt-1 text-xl font-bold text-slate-950">
+                          {statValue(stats.dislikes)}
+                        </p>
                       </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-sm text-slate-500">Comments</p>
+                        <p className="mt-1 text-xl font-bold text-slate-950">
+                          {statValue(stats.comments)}
+                        </p>
+                      </div>
+
+                      <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                        <p className="text-sm text-slate-500">Rating</p>
+                        <p className="mt-1 text-xl font-bold text-slate-950">
+                          {statValue(stats.rating)}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap gap-3">
+                      <Link
+                        to={`/leader/${leader.leaderId}`}
+                        className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+                      >
+                        Go to Profile
+                      </Link>
 
                       <Link
-                        to={`/leader/${leader.id}`}
-                        className="inline-flex rounded-2xl bg-slate-900 px-5 py-3 text-white font-semibold hover:bg-slate-700 transition"
+                        to={`/leader/${leader.leaderId}`}
+                        className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                       >
-                        View Profile
+                        View Activity
                       </Link>
                     </div>
-                  );
-                })}
-              </div>
-
-              <div>
-                <h3 className="text-2xl font-bold text-slate-900 mb-5">All Ranked Leaders</h3>
-
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {others.map((leader, index) => {
-                    const stats = statsMap[leader.id] || {
-                      likes: 0,
-                      dislikes: 0,
-                      averageRating: 0,
-                      ratingCount: 0,
-                      totalReactions: 0,
-                    };
-
-                    return (
-                      <div
-                        key={leader.id}
-                        className="rounded-3xl border border-slate-200 bg-slate-50 p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-lg"
-                      >
-                        <div className="flex gap-4 items-start">
-                          {leader.photo ? (
-                            <img
-                              src={leader.photo}
-                              alt={leader.name}
-                              className="w-20 h-20 rounded-2xl object-cover border border-slate-200"
-                            />
-                          ) : (
-                            <div className="w-20 h-20 rounded-2xl bg-slate-200 flex items-center justify-center text-slate-500 font-semibold">
-                              Photo
-                            </div>
-                          )}
-
-                          <div className="flex-1">
-                            <div className="flex items-start justify-between gap-3">
-                              <div>
-                                <p className="text-sm text-slate-500">Rank #{index + 4}</p>
-                                <h2 className="text-2xl font-bold text-slate-900">
-                                  {leader.name}
-                                </h2>
-                                <p className="text-blue-600 font-semibold mt-1">
-                                  {leader.currentStatus} {leader.role}
-                                </p>
-                                <p className="text-slate-600 mt-1">
-                                  {leader.party || "Not added yet"}
-                                </p>
-                                <p className="text-slate-500 mt-1">
-                                  {leader.district || "District not added"}
-                                  {leader.province ? `, ${leader.province}` : ""}
-                                </p>
-                              </div>
-
-                              <div className="rounded-2xl bg-blue-600 text-white px-3 py-2 text-sm font-bold">
-                                {getPopularityScore(stats).toFixed(0)}
-                              </div>
-                            </div>
-
-                            <div className="flex flex-wrap gap-2 mt-4 mb-4">
-                              {leader.badge && (
-                                <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-xs font-semibold">
-                                  {leader.badge}
-                                </span>
-                              )}
-
-                              {(leader.startYear || leader.endYear) && (
-                                <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-xs font-semibold">
-                                  {leader.startYear || "—"} - {leader.endYear || "Present"}
-                                </span>
-                              )}
-
-                              {leader.verified && (
-                                <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-xs font-semibold">
-                                  Verified
-                                </span>
-                              )}
-                            </div>
-
-                            <div className="grid grid-cols-2 md:grid-cols-3 gap-3 mt-5">
-                              <StatCard label="Likes" value={stats.likes} />
-                              <StatCard label="Dislikes" value={stats.dislikes} />
-                              <StatCard label="Rating" value={stats.averageRating} />
-                              <StatCard label="Votes" value={stats.ratingCount} />
-                              <StatCard label="Reactions" value={stats.totalReactions} />
-                              <StatCard
-                                label="Tenure"
-                                value={getTenureText(leader.startYear, leader.endYear)}
-                              />
-                            </div>
-
-                            <div className="mt-5">
-                              <Link
-                                to={`/leader/${leader.id}`}
-                                className="inline-flex rounded-2xl bg-slate-900 px-5 py-3 text-white font-semibold hover:bg-slate-700 transition"
-                              >
-                                View Profile
-                              </Link>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </>
+                  </article>
+                );
+              })}
+            </div>
           )}
-        </div>
+        </section>
       </main>
-    </div>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <p className="text-xs text-slate-500">{label}</p>
-      <p className="text-lg font-bold text-slate-900 mt-1">{value}</p>
     </div>
   );
 }

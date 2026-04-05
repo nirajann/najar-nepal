@@ -1,13 +1,15 @@
-type Municipality = {
-  id: number;
+type LocalLevel = {
   name: string;
+  type?: string;
+  wardCount?: number;
 };
 
 type DistrictInfo = {
-  id: number;
+  _id?: string;
+  districtId: string;
   name: string;
   province: string;
-  municipalities: Municipality[];
+  localLevels: LocalLevel[];
 };
 
 type Props = {
@@ -18,20 +20,20 @@ const defaultAlerts = [
   {
     id: 1,
     type: "Urgent",
-    title: "Transport Disruption Alert",
-    message: "Check for local banda, strike, or road blockage before travel.",
+    title: "Transport Disruption",
+    message: "Check local strike or road blockage",
   },
   {
     id: 2,
     type: "Notice",
     title: "Public Service Advisory",
-    message: "Some local offices may close during holidays, protests, or emergency situations.",
+    message: "Office closures during holidays",
   },
   {
     id: 3,
     type: "Info",
-    title: "District-Level Awareness",
-    message: "Select a district to view leaders, local levels, and public accountability data.",
+    title: "Important district-level updates",
+    message: "Check accountability reports and data",
   },
 ];
 
@@ -42,69 +44,67 @@ function Updates({ district }: Props) {
           id: 1,
           type: "District",
           title: `${district.name} Public Notice`,
-          message: `Selected district: ${district.name}. Province: ${district.province}. Local levels: ${district.municipalities.length}.`,
+          message: `Province: ${district.province} • Local levels: ${district.localLevels.length}`,
         },
         {
           id: 2,
-          type: "Travel",
+          type: "Notice",
           title: "Travel Before You Go",
-          message: `Before traveling in ${district.name}, check for banda, strike, road closure, or transport disruption.`,
+          message: `Check road closure or disruption in ${district.name}`,
         },
         {
           id: 3,
-          type: "Citizen",
-          title: "Citizen Attention",
-          message: `Use this district view to explore MPs, ministers, municipalities, and public ratings.`,
+          type: "Info",
+          title: "Important district-level updates",
+          message: "Check accountability reports and data",
         },
       ]
     : defaultAlerts;
 
   return (
-    <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-      <div className="flex items-center justify-between gap-4 mb-5">
-        <div>
-          <h3 className="text-2xl font-bold text-slate-900">Public Alerts</h3>
-          <p className="text-slate-500 mt-1">
-            Important citizen notices and awareness updates
-          </p>
-        </div>
-
-        {district && (
-          <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
-            {district.name}
-          </span>
-        )}
+    <section className="rounded-[26px] border border-white/70 bg-white/75 p-5 shadow-[0_18px_45px_rgba(15,23,42,0.07)] backdrop-blur-xl">
+      <div className="mb-4">
+        <h3 className="text-[28px] font-extrabold leading-none text-slate-950">
+          Public Alerts
+        </h3>
+        <p className="mt-2 text-sm text-slate-500">
+          Important citizen notices and awareness updates
+        </p>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {districtAlerts.map((alert) => (
           <div
             key={alert.id}
-            className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+            className="flex items-start justify-between gap-3 rounded-2xl border border-slate-200 bg-slate-50 p-4"
           >
-            <div className="flex items-center gap-2 mb-2">
+            <div className="min-w-0">
               <span
-                className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+                className={`inline-flex rounded-full px-2.5 py-1 text-[11px] font-semibold ${
                   alert.type === "Urgent"
                     ? "bg-red-100 text-red-700"
                     : alert.type === "Notice"
                     ? "bg-yellow-100 text-yellow-700"
                     : alert.type === "District"
                     ? "bg-blue-100 text-blue-700"
-                    : alert.type === "Travel"
-                    ? "bg-orange-100 text-orange-700"
                     : "bg-green-100 text-green-700"
                 }`}
               >
                 {alert.type}
               </span>
+
+              <h4 className="mt-3 text-lg font-bold text-slate-900">{alert.title}</h4>
+              <p className="mt-1 text-sm text-slate-500">{alert.message}</p>
             </div>
 
-            <h4 className="text-lg font-bold text-slate-900">{alert.title}</h4>
-            <p className="text-slate-600 mt-2 leading-7">{alert.message}</p>
+            <span className="pt-1 text-slate-400">›</span>
           </div>
         ))}
       </div>
+
+      <button className="mt-4 rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-100">
+        View All Alerts
+      </button>
     </section>
   );
 }

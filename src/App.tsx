@@ -23,60 +23,17 @@ function App() {
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/login" element={<Login />} />
         <Route path="/leader/:id" element={<LeaderProfile />} />
+<Route path="/admin" element={<AdminRoute />}>
+  <Route index element={<AdminDashboard />} />
+  <Route path="leaders" element={<AdminLeaders />} />
+  <Route path="districts" element={<AdminDistricts />} />
+  <Route path="projects" element={<AdminProjects />} />
+  <Route path="complaints" element={<AdminComplaints />} />
+  <Route path="users" element={<AdminUsers />} />
 
-        <Route
-          path="/admin"
-          element={
-            <AdminRoute>
-              <AdminDashboard />
-            </AdminRoute>
-          }
-        />
 
-        <Route
-          path="/admin/leaders"
-          element={
-            <AdminRoute>
-              <AdminLeaders />
-            </AdminRoute>
-          }
-        />
-
-        <Route
-          path="/admin/districts"
-          element={
-            <AdminRoute>
-              <AdminDistricts />
-            </AdminRoute>
-          }
-        />
-
-        <Route
-          path="/admin/projects"
-          element={
-            <AdminRoute>
-              <AdminProjects />
-            </AdminRoute>
-          }
-        />
-
-        <Route
-          path="/admin/complaints"
-          element={
-            <AdminRoute>
-              <AdminComplaints />
-            </AdminRoute>
-          }
-        />
-
-        <Route
-  path="/admin/users"
-  element={
-    <AdminRoute>
-      <AdminUsers />
-    </AdminRoute>
-  }
-/>
+  
+</Route>
       </Routes>
     </BrowserRouter>
   );

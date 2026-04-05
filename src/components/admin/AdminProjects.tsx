@@ -1,179 +1,292 @@
 import { useEffect, useMemo, useState } from "react";
-import AdminLayout from "./AdminLayout";
-import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import AdminPageSection from "./AdminPageSection";
+import AdminToolbar from "./AdminToolbar";
+import AdminFormCard from "./AdminFormCard";
+import AdminDataTable from "./AdminDataTable";
 
-type ProjectItem = {
-  projectId: string;
-  title: string;
-  titleNp?: string;
-  category?: string;
+type ProjectRecord = {
+  _id?: string;
+  projectId?: string;
+  title?: string;
+  name?: string;
   district?: string;
   province?: string;
-  leaderId?: string;
-  status: "Not Started" | "In Progress" | "Completed" | "Broken" | "Stalled";
+  status?: string;
+  category?: string;
+  budget?: number | string;
   progress?: number;
-  deadline?: string;
-  lastUpdated?: string;
-  summary?: string;
-  evidenceText?: string;
-  whatIsThis?: string;
-  impactOnPeople?: string;
-  whyNeeded?: string;
-  sourceName?: string;
-  sourceUrl?: string;
+  description?: string;
+  source?: string;
+  createdAt?: string;
 };
 
-const emptyForm: ProjectItem = {
+type DuplicateProject = {
+  _id?: string;
+  projectId?: string;
+  title?: string;
+  district?: string;
+  province?: string;
+  status?: string;
+};
+
+type DuplicateCheckResponse = {
+  exists: boolean;
+  matches?: DuplicateProject[];
+  message?: string;
+};
+
+type ProjectForm = {
+  projectId: string;
+  title: string;
+  district: string;
+  province: string;
+  category: string;
+  status: string;
+  budget: string;
+  progress: string;
+  description: string;
+  source: string;
+};
+
+const initialForm: ProjectForm = {
   projectId: "",
   title: "",
-  titleNp: "",
-  category: "",
   district: "",
   province: "",
-  leaderId: "",
+  category: "",
   status: "Not Started",
-  progress: 0,
-  deadline: "",
-  lastUpdated: "",
-  summary: "",
-  evidenceText: "",
-  whatIsThis: "",
-  impactOnPeople: "",
-  whyNeeded: "",
-  sourceName: "",
-  sourceUrl: "",
+  budget: "",
+  progress: "0",
+  description: "",
+  source: "",
 };
 
-function slugifyProjectId(title: string) {
-  return title
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-");
+function getProjectTitle(project: ProjectRecord) {
+  return project.title || project.name || "Untitled Project";
 }
 
 function AdminProjects() {
   const { token } = useAuth();
 
-  const [projects, setProjects] = useState<ProjectItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [message, setMessage] = useState("");
+  const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
-  const [form, setForm] = useState<ProjectItem>(emptyForm);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const [searchText, setSearchText] = useState("");
+  const [selectedStatus, setSelectedStatus] = useState("ALL");
+  const [editingProjectId, setEditingProjectId] = useState<string | null>(null);
+  const [form, setForm] = useState<ProjectForm>(initialForm);
+
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResponse | null>(null);
+
+  const debouncedTitle = useDebouncedValue(form.title, 450);
+
+  const statusOptions = [
+    "Not Started",
+    "In Progress",
+    "Completed",
+    "Stalled",
+    "Broken",
+  ];
 
   const loadProjects = async () => {
     try {
       setLoading(true);
-      const data = await api.getAdminProjects({ search });
-      setProjects(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to load projects");
+      setError("");
+
+    if (!token) {
+  setProjects([]);
+  setLoading(false);
+  return;
+}
+
+const res = await api.getAdminProjects(token, {
+  search: searchText || undefined,
+  status: selectedStatus !== "ALL" ? selectedStatus : undefined,
+});
+
+      setProjects(Array.isArray(res) ? res : res?.projects || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to load projects");
+      setProjects([]);
     } finally {
       setLoading(false);
     }
   };
 
-  useEffect(() => {
-    loadProjects();
-  }, []);
+ useEffect(() => {
+  if (!token) return;
+  loadProjects();
+}, [token]);
 
   useEffect(() => {
-    if (!editingId && form.title) {
-      setForm((prev) => ({
-        ...prev,
-        projectId: slugifyProjectId(prev.title),
-      }));
-    }
-  }, [form.title, editingId]);
+    const runDuplicateCheck = async () => {
+      if (editingProjectId) {
+        setDuplicateInfo(null);
+        return;
+      }
+
+      if (!debouncedTitle.trim()) {
+        setDuplicateInfo(null);
+        return;
+      }
+
+      if (!api.checkProjectDuplicate) {
+        setDuplicateInfo(null);
+        return;
+      }
+
+      try {
+        setDuplicateLoading(true);
+
+        const res = await api.checkProjectDuplicate({
+          title: debouncedTitle.trim(),
+          district: form.district || undefined,
+          province: form.province || undefined,
+        });
+
+        setDuplicateInfo(res || null);
+      } catch {
+        setDuplicateInfo(null);
+      } finally {
+        setDuplicateLoading(false);
+      }
+    };
+
+    runDuplicateCheck();
+  }, [debouncedTitle, form.district, form.province, editingProjectId]);
 
   const filteredProjects = useMemo(() => {
-    if (!search.trim()) return projects;
-    const q = search.toLowerCase();
+    return projects.filter((project) => {
+      const q = searchText.trim().toLowerCase();
 
-    return projects.filter(
-      (project) =>
-        project.title.toLowerCase().includes(q) ||
-        (project.category || "").toLowerCase().includes(q) ||
-        (project.district || "").toLowerCase().includes(q) ||
-        (project.province || "").toLowerCase().includes(q) ||
-        (project.status || "").toLowerCase().includes(q)
-    );
-  }, [projects, search]);
+      const title = getProjectTitle(project).toLowerCase();
+      const district = (project.district || "").toLowerCase();
+      const province = (project.province || "").toLowerCase();
+      const category = (project.category || "").toLowerCase();
+      const status = (project.status || "").toLowerCase();
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
+      const matchesSearch =
+        !q ||
+        title.includes(q) ||
+        district.includes(q) ||
+        province.includes(q) ||
+        category.includes(q) ||
+        status.includes(q);
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: name === "progress" ? Number(value) : value,
-    }));
-  };
+      const matchesStatus =
+        selectedStatus === "ALL" || project.status === selectedStatus;
 
-  const handleEdit = (project: ProjectItem) => {
-    setEditingId(project.projectId);
-    setForm({
-      ...emptyForm,
-      ...project,
+      return matchesSearch && matchesStatus;
     });
-    setShowDetails(true);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [projects, searchText, selectedStatus]);
+
+  const handleChange = <K extends keyof ProjectForm>(
+    key: K,
+    value: ProjectForm[K]
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const resetForm = () => {
-    setEditingId(null);
-    setShowDetails(false);
-    setForm(emptyForm);
+    setForm(initialForm);
+    setEditingProjectId(null);
+    setDuplicateInfo(null);
+    setMessage("");
+    setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleEdit = (project: ProjectRecord) => {
+    setEditingProjectId(project.projectId || project._id || null);
+    setDuplicateInfo(null);
+    setMessage("");
+    setError("");
+
+    setForm({
+      projectId: project.projectId || "",
+      title: getProjectTitle(project),
+      district: project.district || "",
+      province: project.province || "",
+      category: project.category || "",
+      status: project.status || "Not Started",
+      budget:
+        project.budget !== undefined && project.budget !== null
+          ? String(project.budget)
+          : "",
+      progress:
+        project.progress !== undefined && project.progress !== null
+          ? String(project.progress)
+          : "0",
+      description: project.description || "",
+      source: project.source || "",
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const buildPayload = () => ({
+    projectId: form.projectId.trim(),
+    title: form.title.trim(),
+    district: form.district.trim(),
+    province: form.province.trim(),
+    category: form.category.trim(),
+    status: form.status,
+    budget: form.budget ? Number(form.budget) : 0,
+    progress: form.progress ? Number(form.progress) : 0,
+    description: form.description.trim(),
+    source: form.source.trim(),
+  });
+
+  const handleSubmit = async () => {
     if (!token) {
-      setMessage("Login required");
+      setError("Please login as admin first.");
+      return;
+    }
+
+    if (!form.title.trim()) {
+      setError("Project title is required.");
+      return;
+    }
+
+    if (!editingProjectId && duplicateInfo?.exists) {
+      setError("A similar project already exists. Check the suggestions before saving.");
       return;
     }
 
     try {
-      const payload = {
-        ...form,
-        titleNp: form.titleNp || undefined,
-        category: form.category || undefined,
-        district: form.district || undefined,
-        province: form.province || undefined,
-        leaderId: form.leaderId || undefined,
-        deadline: form.deadline || undefined,
-        lastUpdated: form.lastUpdated || undefined,
-        summary: form.summary || undefined,
-        evidenceText: form.evidenceText || undefined,
-        whatIsThis: form.whatIsThis || undefined,
-        impactOnPeople: form.impactOnPeople || undefined,
-        whyNeeded: form.whyNeeded || undefined,
-        sourceName: form.sourceName || undefined,
-        sourceUrl: form.sourceUrl || undefined,
-      };
+      setSubmitting(true);
+      setError("");
+      setMessage("");
 
-      if (editingId) {
-        const res = await api.updateAdminProject(token, editingId, payload);
-        setMessage(res.message || "Project updated");
+      const payload = buildPayload();
+
+      if (editingProjectId) {
+        const res = await api.updateAdminProject(token, editingProjectId, payload);
+        setMessage(res.message || "Project updated successfully");
       } else {
         const res = await api.createAdminProject(token, payload);
-        setMessage(res.message || "Project created");
+        setMessage(res.message || "Project created successfully");
       }
 
       resetForm();
       await loadProjects();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to save project");
+    } catch (err: any) {
+      setError(err.message || "Failed to save project");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (projectId: string) => {
     if (!token) {
-      setMessage("Login required");
+      setError("Please login as admin first.");
       return;
     }
 
@@ -182,268 +295,317 @@ function AdminProjects() {
 
     try {
       const res = await api.deleteAdminProject(token, projectId);
-      setMessage(res.message || "Project deleted");
+      setMessage(res.message || "Project deleted successfully");
+
+      if (editingProjectId === projectId) {
+        resetForm();
+      }
+
       await loadProjects();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to delete project");
+    } catch (err: any) {
+      setError(err.message || "Failed to delete project");
     }
   };
 
   return (
-    <AdminLayout
-      title="Projects Management"
-      description="Create and update tracker items more easily"
-    >
-      {message && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-950">Projects</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Track public projects and keep structured project data clean
+        </p>
+      </div>
+
+      {message ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {message}
         </div>
-      )}
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:p-6">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                {editingId ? "Edit Project" : "Quick Create Project"}
-              </h2>
-              <p className="text-slate-500 mt-1">Start with core details first</p>
-            </div>
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
-            <button
-              type="button"
-              onClick={() => setShowDetails((prev) => !prev)}
-              className="rounded-2xl bg-white border border-slate-300 px-4 py-2 font-semibold text-slate-700"
+      <AdminPageSection
+        title="Projects Directory"
+        description="Search project records, filter by status, and manage entries cleanly."
+      >
+        <AdminToolbar
+          searchText={searchText}
+          onSearchChange={setSearchText}
+          searchPlaceholder="Search by title, district, province, category, or status..."
+          primaryActionLabel={editingProjectId ? "Cancel Edit" : "New Entry"}
+          onPrimaryAction={resetForm}
+          secondarySlot={
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
             >
-              {showDetails ? "Hide Details" : "More Details"}
-            </button>
-          </div>
+              <option value="ALL">All Statuses</option>
+              {statusOptions.map((status) => (
+                <option key={status} value={status}>
+                  {status}
+                </option>
+              ))}
+            </select>
+          }
+        />
+      </AdminPageSection>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Title" name="title" value={form.title} onChange={handleChange} />
-            <Input label="Project ID" name="projectId" value={form.projectId} onChange={handleChange} />
-            <Input label="Category" name="category" value={form.category || ""} onChange={handleChange} />
-            <Select
-              label="Status"
-              name="status"
-              value={form.status}
-              onChange={handleChange}
-              options={["Not Started", "In Progress", "Completed", "Broken", "Stalled"]}
-            />
-            <Input label="District" name="district" value={form.district || ""} onChange={handleChange} />
-            <Input label="Province" name="province" value={form.province || ""} onChange={handleChange} />
-            <Input label="Deadline" name="deadline" value={form.deadline || ""} onChange={handleChange} />
-            <Input label="Last Updated" name="lastUpdated" value={form.lastUpdated || ""} onChange={handleChange} />
-            <Input label="Progress %" name="progress" type="number" value={form.progress ?? 0} onChange={handleChange} />
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Summary</label>
-              <textarea
-                name="summary"
-                value={form.summary || ""}
-                onChange={handleChange}
-                rows={4}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          {showDetails && (
-            <div className="mt-6 pt-6 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Input label="Title Nepali" name="titleNp" value={form.titleNp || ""} onChange={handleChange} />
-              <Input label="Leader ID" name="leaderId" value={form.leaderId || ""} onChange={handleChange} />
-
-              <div className="md:col-span-2">
-                <TextArea label="Evidence Text" name="evidenceText" value={form.evidenceText || ""} onChange={handleChange} />
-              </div>
-              <div className="md:col-span-2">
-                <TextArea label="What Is This?" name="whatIsThis" value={form.whatIsThis || ""} onChange={handleChange} />
-              </div>
-              <div className="md:col-span-2">
-                <TextArea label="Impact On People" name="impactOnPeople" value={form.impactOnPeople || ""} onChange={handleChange} />
-              </div>
-              <div className="md:col-span-2">
-                <TextArea label="Why Needed" name="whyNeeded" value={form.whyNeeded || ""} onChange={handleChange} />
-              </div>
-
-              <Input label="Source Name" name="sourceName" value={form.sourceName || ""} onChange={handleChange} />
-              <Input label="Source URL" name="sourceUrl" value={form.sourceUrl || ""} onChange={handleChange} />
-            </div>
-          )}
-
-          <div className="mt-6 flex flex-wrap gap-3">
+      <AdminFormCard
+        title={editingProjectId ? "Edit Project" : "Add Project"}
+        subtitle="Save structured project data to backend and avoid duplicates before submit."
+        actions={
+          <>
             <button
-              type="submit"
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition"
+              onClick={handleSubmit}
+              disabled={submitting || (!editingProjectId && !!duplicateInfo?.exists)}
+              className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
             >
-              {editingId ? "Update Project" : "Create Project"}
+              {submitting
+                ? editingProjectId
+                  ? "Updating..."
+                  : "Saving..."
+                : editingProjectId
+                ? "Update Project"
+                : "Save Project"}
             </button>
 
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-2xl bg-slate-200 px-5 py-3 text-slate-800 font-semibold hover:bg-slate-300 transition"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
             >
               Reset
             </button>
-          </div>
-        </div>
-      </form>
-
-      <div className="mb-5">
-        <input
-          type="text"
-          placeholder="Search projects..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-500">
-          Loading projects...
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-3xl border border-slate-200">
-          <table className="min-w-full bg-white">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-slate-600">
-                <th className="px-4 py-3">Title</th>
-                <th className="px-4 py-3">Category</th>
-                <th className="px-4 py-3">District</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Progress</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredProjects.map((project) => (
-                <tr key={project.projectId} className="border-t border-slate-200">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{project.title}</td>
-                  <td className="px-4 py-3">{project.category || "—"}</td>
-                  <td className="px-4 py-3">{project.district || "—"}</td>
-                  <td className="px-4 py-3">{project.status}</td>
-                  <td className="px-4 py-3">{project.progress ?? 0}%</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(project)}
-                        className="rounded-xl bg-blue-100 px-3 py-2 text-blue-700 font-medium"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(project.projectId)}
-                        className="rounded-xl bg-red-100 px-3 py-2 text-red-700 font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filteredProjects.length === 0 && (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-500">
-                    No projects found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </AdminLayout>
-  );
-}
-
-function Input({
-  label,
-  name,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  name: string;
-  value: string | number;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
-  );
-}
-
-function Select({
-  label,
-  name,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-  options: string[];
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+          </>
+        }
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
-    </div>
-  );
-}
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Project Title</label>
+          <input
+            value={form.title}
+            onChange={(e) => handleChange("title", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Project title"
+          />
+          {duplicateLoading ? (
+            <p className="mt-2 text-xs text-slate-500">Checking similar projects...</p>
+          ) : null}
+        </div>
 
-function TextArea({
-  label,
-  name,
-  value,
-  onChange,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <textarea
-        name={name}
-        value={value}
-        onChange={onChange}
-        rows={4}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Project ID</label>
+          <input
+            value={form.projectId}
+            onChange={(e) => handleChange("projectId", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Optional custom ID"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">District</label>
+          <input
+            value={form.district}
+            onChange={(e) => handleChange("district", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="District"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Province</label>
+          <input
+            value={form.province}
+            onChange={(e) => handleChange("province", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Province"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Category</label>
+          <input
+            value={form.category}
+            onChange={(e) => handleChange("category", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Road, water, education, health..."
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Status</label>
+          <select
+            value={form.status}
+            onChange={(e) => handleChange("status", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          >
+            {statusOptions.map((status) => (
+              <option key={status} value={status}>
+                {status}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Budget</label>
+          <input
+            value={form.budget}
+            onChange={(e) => handleChange("budget", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Budget amount"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Progress (%)</label>
+          <input
+            value={form.progress}
+            onChange={(e) => handleChange("progress", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="0 - 100"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-slate-700">Source / Reference</label>
+          <input
+            value={form.source}
+            onChange={(e) => handleChange("source", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Source link or reference"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-slate-700">Description</label>
+          <textarea
+            value={form.description}
+            onChange={(e) => handleChange("description", e.target.value)}
+            rows={6}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Project description"
+          />
+        </div>
+
+        {!editingProjectId && duplicateInfo?.exists ? (
+          <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-800">
+              Similar project already exists in database
+            </p>
+            <p className="mt-1 text-sm text-amber-700">
+              Check these records before creating a duplicate.
+            </p>
+
+            <div className="mt-3 space-y-2">
+              {(duplicateInfo.matches || []).map((item, index) => (
+                <button
+                  key={item.projectId || item._id || index}
+                  type="button"
+                  onClick={() =>
+                    handleEdit({
+                      projectId: item.projectId,
+                      title: item.title,
+                      district: item.district,
+                      province: item.province,
+                      status: item.status,
+                    })
+                  }
+                  className="block w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-left"
+                >
+                  <p className="font-semibold text-slate-900">
+                    {item.title || "Untitled Project"}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item.district || "No district"} • {item.province || "No province"} •{" "}
+                    {item.status || "No status"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </AdminFormCard>
+
+      <AdminDataTable
+        title="Project Records"
+        subtitle={`Showing ${filteredProjects.length} project records`}
+        rows={filteredProjects}
+        emptyMessage={loading ? "Loading projects..." : "No projects found."}
+        columns={[
+          {
+            key: "title",
+            header: "Project",
+            render: (row) => (
+              <div>
+                <p className="font-semibold text-slate-900">{getProjectTitle(row)}</p>
+                <p className="text-xs text-slate-500">
+                  {row.projectId || row._id || "No ID"}
+                </p>
+              </div>
+            ),
+          },
+          {
+            key: "location",
+            header: "Location",
+            render: (row) => (
+              <div>
+                <p className="font-medium text-slate-900">{row.district || "—"}</p>
+                <p className="text-xs text-slate-500">{row.province || "—"}</p>
+              </div>
+            ),
+          },
+          {
+            key: "status",
+            header: "Status",
+            render: (row) => (
+              <div>
+                <p className="font-medium text-slate-900">{row.status || "—"}</p>
+                <p className="text-xs text-slate-500">
+                  Progress: {row.progress ?? 0}%
+                </p>
+              </div>
+            ),
+          },
+          {
+            key: "budget",
+            header: "Budget / Category",
+            render: (row) => (
+              <div>
+                <p className="font-medium text-slate-900">
+                  {row.budget !== undefined && row.budget !== null ? row.budget : "—"}
+                </p>
+                <p className="text-xs text-slate-500">{row.category || "—"}</p>
+              </div>
+            ),
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (row) => (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleEdit(row)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(row.projectId || row._id || "")}
+                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                  disabled={!row.projectId && !row._id}
+                >
+                  Delete
+                </button>
+              </div>
+            ),
+          },
+        ]}
       />
     </div>
   );

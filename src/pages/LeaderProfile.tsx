@@ -1,9 +1,43 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { allLeaders, type AppLeader } from "../data/leaders/allLeaders";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+
+type LeaderDistrict =
+  | string
+  | {
+      _id?: string;
+      districtId?: string;
+      name?: string;
+      province?: string;
+      localLevels?: any[];
+    };
+
+type Leader = {
+  _id?: string;
+  leaderId: string;
+  name: string;
+  role: string;
+  party?: string;
+  district?: LeaderDistrict;
+  province?: string;
+  currentStatus?: string;
+  photo?: string;
+  badge?: string;
+  verified?: boolean;
+  startYear?: string;
+  endYear?: string;
+  portfolio?: string;
+  age?: number | string;
+  birthPlace?: string;
+  permanentAddress?: string;
+  streak?: number;
+  siteMetrics?: {
+    followers?: number;
+    ratingAverage?: number;
+  };
+};
 
 type CommentItem = {
   _id: string;
@@ -24,14 +58,35 @@ type ComplaintItem = {
   userId: string;
   userName?: string;
   message: string;
+  type?: string;
+  photo?: string;
+  adminNote?: string;
   status?: "pending" | "reviewed" | "resolved";
   createdAt?: string;
 };
+
+function getDistrictName(district?: LeaderDistrict) {
+  if (!district) return "";
+  if (typeof district === "string") return district;
+  return district.name || "";
+}
+
+function getProvinceName(leader?: Leader | null) {
+  if (!leader) return "";
+  if (leader.province) return leader.province;
+  if (leader.district && typeof leader.district !== "string") {
+    return leader.district.province || "";
+  }
+  return "";
+}
 
 function LeaderProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { isAuthenticated, token } = useAuth();
+
+  const [leader, setLeader] = useState<Leader | null>(null);
+  const [leaderLoading, setLeaderLoading] = useState(true);
 
   const [liked, setLiked] = useState<boolean | null>(null);
   const [rating, setRating] = useState(0);
@@ -39,10 +94,10 @@ function LeaderProfile() {
   const [complaint, setComplaint] = useState("");
   const [message, setMessage] = useState("");
   const [complaintMessage, setComplaintMessage] = useState("");
-const [complaintType, setComplaintType] = useState("Other");
-const [complaintPhoto, setComplaintPhoto] = useState("");
-const [complaintLoading, setComplaintLoading] = useState(false);
-const [complaintHistory, setComplaintHistory] = useState<any[]>([]);
+  const [complaintType, setComplaintType] = useState("Other");
+  const [complaintPhoto, setComplaintPhoto] = useState("");
+  const [complaintLoading, setComplaintLoading] = useState(false);
+  const [complaintHistory, setComplaintHistory] = useState<ComplaintItem[]>([]);
 
   const [stats, setStats] = useState({
     likes: 0,
@@ -58,11 +113,6 @@ const [complaintHistory, setComplaintHistory] = useState<any[]>([]);
   const [commentSort, setCommentSort] = useState("newest");
   const [replyText, setReplyText] = useState<Record<string, string>>({});
 
-  const leader: AppLeader | null = useMemo(() => {
-    if (!id) return null;
-    return allLeaders.find((item) => item.id === id) || null;
-  }, [id]);
-
   const ensureLogin = () => {
     if (!isAuthenticated) {
       navigate("/login");
@@ -71,41 +121,62 @@ const [complaintHistory, setComplaintHistory] = useState<any[]>([]);
     return true;
   };
 
+  const loadLeader = async () => {
+    if (!id) return;
+
+    try {
+      setLeaderLoading(true);
+      const data = await api.getLeaderById(id);
+      setLeader(data?.leader || data || null);
+    } catch (error: any) {
+      setLeader(null);
+      setMessage(error.message || "Leader not found");
+    } finally {
+      setLeaderLoading(false);
+    }
+  };
+
   const loadLeaderData = async () => {
     if (!leader) return;
 
     try {
-      const statsData = await api.getLeaderStats(leader.id);
+      const statsData = await api.getLeaderStats(leader.leaderId);
       setStats({
         likes: statsData.likes ?? 0,
         dislikes: statsData.dislikes ?? 0,
         totalReactions: statsData.totalReactions ?? 0,
-        averageRating: statsData.averageRating ?? 0,
+        averageRating: statsData.averageRating ?? statsData.rating ?? 0,
         likePercentage: statsData.likePercentage ?? "0.0",
         dislikePercentage: statsData.dislikePercentage ?? "0.0",
         ratingCount: statsData.ratingCount ?? 0,
       });
 
-      const commentsData = await api.getComments(leader.id, commentSort);
+      const commentsData = await api.getComments(leader.leaderId, commentSort);
       setCommentsList(Array.isArray(commentsData) ? commentsData : []);
     } catch (error) {
       console.error(error);
     }
   };
 
-const loadComplaintHistory = async () => {
-  if (!token || !leader) return;
+  const loadComplaintHistory = async () => {
+    if (!token || !leader) return;
 
-  try {
-    const data = await api.getMyComplaintsByLeader(token, leader.id);
-    setComplaintHistory(Array.isArray(data) ? data : []);
-  } catch (error) {
-    console.error(error);
-  }
-};
+    try {
+      const data = await api.getMyComplaintsByLeader(token, leader.leaderId);
+      setComplaintHistory(Array.isArray(data) ? data : []);
+    } catch (error) {
+      console.error(error);
+    }
+  };
 
   useEffect(() => {
-    loadLeaderData();
+    loadLeader();
+  }, [id]);
+
+  useEffect(() => {
+    if (leader) {
+      loadLeaderData();
+    }
   }, [leader, commentSort]);
 
   useEffect(() => {
@@ -121,10 +192,9 @@ const loadComplaintHistory = async () => {
       setLiked(value);
       const result = await api.submitRating(
         token,
-        leader.id,
+        leader.leaderId,
         rating || 1,
-        value ? "like" : "dislike",
-        ""
+        value ? "like" : "dislike"
       );
       setMessage(result.message || "Reaction saved");
       await loadLeaderData();
@@ -138,13 +208,7 @@ const loadComplaintHistory = async () => {
 
     try {
       setRating(value);
-      const result = await api.submitRating(
-        token,
-        leader.id,
-        value,
-        liked === true ? "like" : liked === false ? "dislike" : "",
-        ""
-      );
+      const result = await api.submitRating(token, leader.leaderId, value);
       setMessage(result.message || "Rating saved");
       await loadLeaderData();
     } catch (error: any) {
@@ -157,7 +221,7 @@ const loadComplaintHistory = async () => {
     if (!ensureLogin() || !token || !leader || !comment.trim()) return;
 
     try {
-      await api.createComment(token, leader.id, comment, rating || 0);
+      await api.createComment(token, leader.leaderId, comment, rating || 0);
       setMessage("Comment posted");
       setComment("");
       await loadLeaderData();
@@ -165,49 +229,45 @@ const loadComplaintHistory = async () => {
       setMessage(error.message || "Failed to post comment");
     }
   };
-const handleComplaintSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
 
-  if (!ensureLogin() || !token || !leader) return;
+  const handleComplaintSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
 
-  if (!complaint.trim()) {
-    setComplaintMessage("Complaint message cannot be empty.");
-    return;
-  }
+    if (!ensureLogin() || !token || !leader) return;
 
-  if (complaint.trim().length < 10) {
-    setComplaintMessage("Complaint must be at least 10 characters.");
-    return;
-  }
+    if (!complaint.trim()) {
+      setComplaintMessage("Complaint message cannot be empty.");
+      return;
+    }
 
-  try {
-    setComplaintLoading(true);
-    setComplaintMessage("");
+    if (complaint.trim().length < 10) {
+      setComplaintMessage("Complaint must be at least 10 characters.");
+      return;
+    }
 
-    const result = await api.submitComplaint(
-      token,
-      leader.id,
-      complaint.trim(),
-      complaintType,
-      complaintPhoto
-    );
+    try {
+      setComplaintLoading(true);
+      setComplaintMessage("");
 
-    setComplaintMessage(result.message || "Complaint submitted successfully.");
-    setComplaint("");
-    setComplaintPhoto("");
-    setComplaintType("Other");
-    await loadComplaintHistory();
-  } catch (error: any) {
-    setComplaintMessage(error.message || "Failed to submit complaint.");
-  } finally {
-    setComplaintLoading(false);
-  }
-};
-useEffect(() => {
-  if (token && leader) {
-    loadComplaintHistory();
-  }
-}, [token, leader]);
+      const result = await api.submitComplaint(
+        token,
+        leader.leaderId,
+        complaint.trim(),
+        complaintType,
+        complaintPhoto
+      );
+
+      setComplaintMessage(result.message || "Complaint submitted successfully.");
+      setComplaint("");
+      setComplaintPhoto("");
+      setComplaintType("Other");
+      await loadComplaintHistory();
+    } catch (error: any) {
+      setComplaintMessage(error.message || "Failed to submit complaint.");
+    } finally {
+      setComplaintLoading(false);
+    }
+  };
 
   const handleLikeComment = async (commentId: string) => {
     if (!ensureLogin() || !token) return;
@@ -233,6 +293,27 @@ useEffect(() => {
     }
   };
 
+  const displayRole = leader?.role || "";
+  const displayRating =
+    stats.averageRating && stats.averageRating > 0
+      ? stats.averageRating
+      : leader?.siteMetrics?.ratingAverage || 0;
+
+  const displayFollowers = leader?.siteMetrics?.followers || 0;
+
+  if (leaderLoading) {
+    return (
+      <div className="min-h-screen bg-slate-100">
+        <Navbar />
+        <main className="max-w-6xl mx-auto px-4 py-8">
+          <div className="bg-white rounded-3xl border border-slate-200 p-6">
+            <h1 className="text-3xl font-bold text-slate-900">Loading leader...</h1>
+          </div>
+        </main>
+      </div>
+    );
+  }
+
   if (!leader) {
     return (
       <div className="min-h-screen bg-slate-100">
@@ -248,14 +329,6 @@ useEffect(() => {
       </div>
     );
   }
-
-  const displayRole = leader.role;
-  const displayRating =
-    stats.averageRating && stats.averageRating > 0
-      ? stats.averageRating
-      : leader.siteMetrics?.ratingAverage || 0;
-
-  const displayFollowers = leader.siteMetrics?.followers || 0;
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -312,14 +385,16 @@ useEffect(() => {
               <p className="text-slate-700 mt-2 text-lg">{leader.party}</p>
 
               <p className="text-slate-500 mt-1">
-                {leader.district ? `District: ${leader.district}` : "District not added yet"}
-                {leader.province ? `, ${leader.province}` : ""}
+                {getDistrictName(leader.district)
+                  ? `District: ${getDistrictName(leader.district)}`
+                  : "District not added yet"}
+                {getProvinceName(leader) ? `, ${getProvinceName(leader)}` : ""}
               </p>
 
               <div className="mt-5 text-slate-600 leading-7">
                 <p>
-                  {leader.name} is currently serving as a {leader.currentStatus.toLowerCase()}{" "}
-                  {displayRole.toLowerCase()} and is publicly tracked on Najar Nepal
+                  {leader.name} is currently serving as a {leader.currentStatus?.toLowerCase() || ""}
+                  {" "}{displayRole.toLowerCase()} and is publicly tracked on Najar Nepal
                   for citizen engagement, accountability, and public feedback.
                 </p>
 
@@ -551,110 +626,110 @@ useEffect(() => {
               </p>
             </section>
 
-          <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-  <h2 className="text-2xl font-bold text-slate-900 mb-4">Submit Complaint</h2>
+            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">Submit Complaint</h2>
 
-  {complaintMessage && (
-    <div className="mb-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
-      {complaintMessage}
-    </div>
-  )}
+              {complaintMessage && (
+                <div className="mb-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
+                  {complaintMessage}
+                </div>
+              )}
 
-  <form onSubmit={handleComplaintSubmit} className="space-y-4">
-    <select
-      value={complaintType}
-      onChange={(e) => setComplaintType(e.target.value)}
-      className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-    >
-      <option value="Other">Other</option>
-      <option value="Corruption">Corruption</option>
-      <option value="Road">Road</option>
-      <option value="Water">Water</option>
-      <option value="Electricity">Electricity</option>
-      <option value="Health">Health</option>
-      <option value="Education">Education</option>
-      <option value="Abuse of Power">Abuse of Power</option>
-      <option value="Delay">Delay</option>
-    </select>
+              <form onSubmit={handleComplaintSubmit} className="space-y-4">
+                <select
+                  value={complaintType}
+                  onChange={(e) => setComplaintType(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="Other">Other</option>
+                  <option value="Corruption">Corruption</option>
+                  <option value="Road">Road</option>
+                  <option value="Water">Water</option>
+                  <option value="Electricity">Electricity</option>
+                  <option value="Health">Health</option>
+                  <option value="Education">Education</option>
+                  <option value="Abuse of Power">Abuse of Power</option>
+                  <option value="Delay">Delay</option>
+                </select>
 
-    <input
-      type="text"
-      value={complaintPhoto}
-      onChange={(e) => setComplaintPhoto(e.target.value)}
-      placeholder="Photo proof URL (optional for now)"
-      className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-    />
+                <input
+                  type="text"
+                  value={complaintPhoto}
+                  onChange={(e) => setComplaintPhoto(e.target.value)}
+                  placeholder="Photo proof URL (optional for now)"
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                />
 
-    <textarea
-      rows={5}
-      value={complaint}
-      onChange={(e) => setComplaint(e.target.value)}
-      placeholder="Write your complaint..."
-      className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-    />
+                <textarea
+                  rows={5}
+                  value={complaint}
+                  onChange={(e) => setComplaint(e.target.value)}
+                  placeholder="Write your complaint..."
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                />
 
-    <button
-      type="submit"
-      disabled={complaintLoading}
-      className="w-full rounded-2xl bg-blue-600 text-white py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-    >
-      {complaintLoading ? "Submitting..." : "Submit Complaint"}
-    </button>
-  </form>
+                <button
+                  type="submit"
+                  disabled={complaintLoading}
+                  className="w-full rounded-2xl bg-blue-600 text-white py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+                >
+                  {complaintLoading ? "Submitting..." : "Submit Complaint"}
+                </button>
+              </form>
 
-  <div className="mt-6 pt-5 border-t border-slate-200">
-    <h3 className="text-lg font-bold text-slate-900 mb-3">Your Complaint History</h3>
+              <div className="mt-6 pt-5 border-t border-slate-200">
+                <h3 className="text-lg font-bold text-slate-900 mb-3">Your Complaint History</h3>
 
-    {complaintHistory.length > 0 ? (
-      <div className="space-y-3">
-        {complaintHistory.map((item) => (
-          <div
-            key={item._id}
-            className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-          >
-            <div className="flex items-center justify-between gap-3 mb-2">
-              <span className="text-sm font-semibold text-blue-700">
-                {item.type || "Other"}
-              </span>
+                {complaintHistory.length > 0 ? (
+                  <div className="space-y-3">
+                    {complaintHistory.map((item) => (
+                      <div
+                        key={item._id}
+                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+                      >
+                        <div className="flex items-center justify-between gap-3 mb-2">
+                          <span className="text-sm font-semibold text-blue-700">
+                            {item.type || "Other"}
+                          </span>
 
-              <span className="text-sm font-semibold text-amber-700 capitalize">
-                {item.status || "pending"}
-              </span>
-            </div>
+                          <span className="text-sm font-semibold text-amber-700 capitalize">
+                            {item.status || "pending"}
+                          </span>
+                        </div>
 
-            <p className="text-slate-700 text-sm leading-6">{item.message}</p>
+                        <p className="text-slate-700 text-sm leading-6">{item.message}</p>
 
-            {item.photo && (
-              <a
-                href={item.photo}
-                target="_blank"
-                rel="noreferrer"
-                className="inline-block mt-3 text-sm font-semibold text-blue-700 hover:underline"
-              >
-                View attached proof
-              </a>
-            )}
+                        {item.photo && (
+                          <a
+                            href={item.photo}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="inline-block mt-3 text-sm font-semibold text-blue-700 hover:underline"
+                          >
+                            View attached proof
+                          </a>
+                        )}
 
-            {item.adminNote && (
-              <div className="mt-3 rounded-xl bg-white border border-slate-200 p-3">
-                <p className="text-xs font-bold text-slate-500 mb-1">Admin Note</p>
-                <p className="text-sm text-slate-700">{item.adminNote}</p>
+                        {item.adminNote && (
+                          <div className="mt-3 rounded-xl bg-white border border-slate-200 p-3">
+                            <p className="text-xs font-bold text-slate-500 mb-1">Admin Note</p>
+                            <p className="text-sm text-slate-700">{item.adminNote}</p>
+                          </div>
+                        )}
+
+                        <p className="text-xs text-slate-500 mt-3">
+                          {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-slate-500 text-sm">
+                    No previous complaints submitted for this leader yet.
+                  </p>
+                )}
               </div>
-            )}
-
-            <p className="text-xs text-slate-500 mt-3">
-              {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
-            </p>
-          </div>
-        ))}
-      </div>
-    ) : (
-      <p className="text-slate-500 text-sm">
-        No previous complaints submitted for this leader yet.
-      </p>
-    )}
-  </div>
-</section>
+            </section>
 
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
               <h2 className="text-2xl font-bold text-slate-900 mb-4">Background</h2>
@@ -670,11 +745,11 @@ useEffect(() => {
                 </p>
                 <p>
                   <span className="font-semibold text-slate-900">District:</span>{" "}
-                  {leader.district || "Not added yet"}
+                  {getDistrictName(leader.district) || "Not added yet"}
                 </p>
                 <p>
                   <span className="font-semibold text-slate-900">Province:</span>{" "}
-                  {leader.province || "Not added yet"}
+                  {getProvinceName(leader) || "Not added yet"}
                 </p>
                 <p>
                   <span className="font-semibold text-slate-900">Service:</span>{" "}

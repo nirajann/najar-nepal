@@ -1,21 +1,37 @@
 import { useEffect, useMemo, useState } from "react";
-import AdminLayout from "../../components/admin/AdminLayout";
-import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import AdminPageSection from "./AdminPageSection";
+import AdminToolbar from "./AdminToolbar";
+import AdminFormCard from "./AdminFormCard";
+import AdminDataTable from "./AdminDataTable";
 
-type LeaderItem = {
+
+
+
+type DistrictOption = {
+  _id?: string;
+  districtId: string;
+  name: string;
+  province: string;
+};
+
+type LeaderRecord = {
   _id?: string;
   leaderId: string;
+  slug?: string;
   name: string;
+  normalizedName?: string;
   role: string;
   chamber?: string;
   portfolio?: string;
   party?: string;
-  district?: string;
+  district?: string | { _id?: string; districtId?: string; name?: string } | null;
   province?: string;
   localLevel?: string;
   ward?: string;
-  currentStatus: string;
+  currentStatus?: string;
   age?: number | null;
   birthPlace?: string;
   permanentAddress?: string;
@@ -29,29 +45,68 @@ type LeaderItem = {
   endYear?: string;
 };
 
-const provinces = [
-  "Koshi",
-  "Madhesh",
-  "Bagmati",
-  "Gandaki",
-  "Lumbini",
-  "Karnali",
-  "Sudurpashchim",
-];
+type DuplicateLeader = {
+  _id?: string;
+  leaderId: string;
+  name: string;
+  role: string;
+  party?: string;
+  province?: string;
+  district?: string;
+};
 
-const commonDistricts = [
-  "Kathmandu",
-  "Lalitpur",
-  "Bhaktapur",
-  "Chitwan",
-  "Kaski",
-  "Tanahun",
-  "Gorkha",
-  "Rupandehi",
-  "Jhapa",
-];
+type DuplicateCheckResponse = {
+  exists: boolean;
+  matches?: DuplicateLeader[];
+  message?: string;
+};
 
-const emptyForm: LeaderItem = {
+type AnalyticsLeader = {
+  leaderId: string;
+  commentCount: number;
+  avgRating: number;
+  voteCount: number;
+  engagementScore: number;
+  likeCount?: number;
+  dislikeCount?: number;
+  complaintCount?: number;
+};
+
+type OverviewResponse = {
+  topPopular?: AnalyticsLeader[];
+  mostDiscussed?: AnalyticsLeader[];
+  highestRated?: AnalyticsLeader[];
+  lowestRated?: AnalyticsLeader[];
+};
+
+type LeaderForm = {
+  leaderId: string;
+  name: string;
+  role: string;
+  chamber: string;
+  portfolio: string;
+  party: string;
+  district: string;
+  province: string;
+  localLevel: string;
+  ward: string;
+  currentStatus: string;
+  age: string;
+  birthPlace: string;
+  permanentAddress: string;
+  gender: string;
+  photo: string;
+  officialSourceUrl: string;
+  electionSourceUrl: string;
+  badge: string;
+  verified: boolean;
+  startYear: string;
+  endYear: string;
+};
+
+
+
+const emptyForm: LeaderForm = {
   leaderId: "",
   name: "",
   role: "MP",
@@ -63,7 +118,7 @@ const emptyForm: LeaderItem = {
   localLevel: "",
   ward: "",
   currentStatus: "Current",
-  age: null,
+  age: "",
   birthPlace: "",
   permanentAddress: "",
   gender: "",
@@ -76,136 +131,330 @@ const emptyForm: LeaderItem = {
   endYear: "Present",
 };
 
-function slugifyLeaderId(name: string, role: string) {
-  const slug = name
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9\s-]/g, "")
-    .replace(/\s+/g, "-");
+function getDistrictName(district: LeaderRecord["district"]): string {
+  if (!district) return "";
+  if (typeof district === "string") return district;
+  return district.name || district.districtId || "";
+}
 
-  const roleMap: Record<string, string> = {
-    "Prime Minister": "prime-minister",
-    Minister: "minister",
-    MP: "mp",
-    "National Assembly Member": "na",
-    Mayor: "mayor",
-    Chairperson: "chairperson",
-  };
-
-  return slug ? `${slug}-${roleMap[role] || "leader"}` : "";
+function getDistrictValue(district: LeaderRecord["district"]): string {
+  if (!district) return "";
+  if (typeof district === "string") return district;
+  return district._id || district.districtId || "";
 }
 
 function AdminLeaders() {
   const { token } = useAuth();
 
-  const [leaders, setLeaders] = useState<LeaderItem[]>([]);
-  const [search, setSearch] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [message, setMessage] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const [form, setForm] = useState<LeaderItem>(emptyForm);
+  const [leaders, setLeaders] = useState<LeaderRecord[]>([]);
+  const [districts, setDistricts] = useState<DistrictOption[]>([]);
+  const [analyticsMap, setAnalyticsMap] = useState<Record<string, AnalyticsLeader>>({});
 
-  const loadLeaders = async () => {
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
+  const [selectedProvince, setSelectedProvince] = useState("ALL");
+const [openSuggestions, setOpenSuggestions] = useState(false);
+
+  const [message, setMessage] = useState("");
+  const [error, setError] = useState("");
+
+  const [searchText, setSearchText] = useState("");
+  const [selectedRole, setSelectedRole] = useState("ALL");
+
+  const [editingLeaderId, setEditingLeaderId] = useState<string | null>(null);
+  const [form, setForm] = useState<LeaderForm>(emptyForm);
+
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResponse | null>(null);
+
+  const debouncedName = useDebouncedValue(form.name, 450);
+
+  const loadData = async () => {
     try {
       setLoading(true);
-      const data = await api.getLeaders({ search });
-      setLeaders(Array.isArray(data) ? data : []);
-    } catch (error: any) {
-  console.error("Leader save error:", error);
-  setMessage(error.message || "Failed to save leader");
-} finally {
+      setError("");
+
+      const requests: Promise<any>[] = [api.getLeaders(), api.getDistricts()];
+
+      if (token && api.getAdminAnalyticsOverview) {
+        requests.push(api.getAdminAnalyticsOverview(token));
+      }
+
+      const results = await Promise.all(requests);
+
+      const leadersRes = results[0];
+      const districtsRes = results[1];
+      const analyticsRes: OverviewResponse | undefined = results[2];
+
+      const loadedLeaders = Array.isArray(leadersRes) ? leadersRes : leadersRes?.leaders || [];
+      const loadedDistricts = Array.isArray(districtsRes)
+        ? districtsRes
+        : districtsRes?.districts || [];
+
+      setLeaders(loadedLeaders);
+      setDistricts(loadedDistricts);
+
+      if (analyticsRes) {
+        const map: Record<string, AnalyticsLeader> = {};
+
+        const mergeList = (items?: AnalyticsLeader[]) => {
+          (items || []).forEach((item) => {
+            const current = map[item.leaderId] || {
+              leaderId: item.leaderId,
+              commentCount: 0,
+              avgRating: 0,
+              voteCount: 0,
+              engagementScore: 0,
+              likeCount: 0,
+              dislikeCount: 0,
+              complaintCount: 0,
+            };
+
+            map[item.leaderId] = {
+              ...current,
+              ...item,
+            };
+          });
+        };
+
+        mergeList(analyticsRes.topPopular);
+        mergeList(analyticsRes.mostDiscussed);
+        mergeList(analyticsRes.highestRated);
+        mergeList(analyticsRes.lowestRated);
+
+        setAnalyticsMap(map);
+      } else {
+        setAnalyticsMap({});
+      }
+    } catch (err: any) {
+      setError(err.message || "Failed to load leaders");
+    } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadLeaders();
-  }, []);
+    loadData();
+  }, [token]);
 
   useEffect(() => {
-    if (!editingId && form.name && form.role) {
-      setForm((prev) => ({
-        ...prev,
-        leaderId: slugifyLeaderId(prev.name, prev.role),
-      }));
-    }
-  }, [form.name, form.role, editingId]);
+    const runDuplicateCheck = async () => {
+      if (editingLeaderId) {
+        setDuplicateInfo(null);
+        return;
+      }
 
-  const filteredLeaders = useMemo(() => {
-    if (!search.trim()) return leaders;
+      if (!debouncedName.trim()) {
+        setDuplicateInfo(null);
+        return;
+      }
 
-    const q = search.toLowerCase();
-    return leaders.filter(
-      (leader) =>
-        leader.name?.toLowerCase().includes(q) ||
-        leader.role?.toLowerCase().includes(q) ||
-        leader.party?.toLowerCase().includes(q) ||
-        leader.district?.toLowerCase().includes(q) ||
-        leader.province?.toLowerCase().includes(q)
+      try {
+        setDuplicateLoading(true);
+
+        const res = await api.checkLeaderDuplicate({
+          name: debouncedName.trim(),
+          role: form.role || undefined,
+          districtId: form.district || undefined,
+        });
+
+        setDuplicateInfo(res || null);
+      } catch {
+        setDuplicateInfo(null);
+      } finally {
+        setDuplicateLoading(false);
+      }
+    };
+
+    runDuplicateCheck();
+  }, [debouncedName, form.role, form.district, editingLeaderId]);
+
+  const provinceOptions = useMemo(() => {
+    const set = new Set<string>();
+    districts.forEach((district) => {
+      if (district.province) set.add(district.province);
+    });
+    return Array.from(set);
+  }, [districts]);
+
+  const filteredDistricts = useMemo(() => {
+    if (!form.province) return districts;
+    return districts.filter((district) => district.province === form.province);
+  }, [districts, form.province]);
+
+  const searchSuggestions = useMemo(() => {
+  const q = searchText.trim().toLowerCase();
+  if (!q) return [];
+
+  return leaders
+    .filter((leader) => (leader.name || "").toLowerCase().includes(q))
+    .slice(0, 8);
+}, [leaders, searchText]);
+
+const filteredLeaders = useMemo(() => {
+  const q = searchText.trim().toLowerCase();
+
+  return leaders
+    .filter((leader) => {
+      const name = (leader.name || "").toLowerCase();
+      const role = (leader.role || "").toLowerCase();
+      const province = (leader.province || "").toLowerCase();
+
+      const searchMatch = !q || name.includes(q);
+      const roleMatch = selectedRole === "ALL" || leader.role === selectedRole;
+      const provinceMatch =
+        selectedProvince === "ALL" ||
+        province === selectedProvince.toLowerCase();
+
+      return searchMatch && roleMatch && provinceMatch;
+    })
+    .sort((a, b) => {
+      const scoreA = analyticsMap[a.leaderId]?.engagementScore || 0;
+      const scoreB = analyticsMap[b.leaderId]?.engagementScore || 0;
+      return scoreB - scoreA;
+    });
+}, [leaders, searchText, selectedRole, selectedProvince, analyticsMap]);
+
+  const handleChange = <K extends keyof LeaderForm>(key: K, value: LeaderForm[K]) => {
+    setForm((prev) => {
+      const next = { ...prev, [key]: value };
+
+      if (key === "province") {
+        next.district = "";
+      }
+
+      return next;
+    });
+  };
+
+  const handleDistrictChange = (value: string) => {
+    const matched = districts.find(
+      (district) => district._id === value || district.districtId === value
     );
-  }, [leaders, search]);
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value, type } = e.target;
 
     setForm((prev) => ({
       ...prev,
-      [name]:
-        type === "checkbox"
-          ? (e.target as HTMLInputElement).checked
-          : name === "age"
-          ? value === ""
-            ? null
-            : Number(value)
-          : value,
+      district: value,
+      province: matched?.province || prev.province,
     }));
   };
 
-  const handleEdit = (leader: LeaderItem) => {
-    setEditingId(leader.leaderId);
+  const handleEdit = (leader: LeaderRecord) => {
+    setEditingLeaderId(leader.leaderId);
+    setDuplicateInfo(null);
+    setMessage("");
+    setError("");
+
     setForm({
-      ...emptyForm,
-      ...leader,
+      leaderId: leader.leaderId || "",
+      name: leader.name || "",
+      role: leader.role || "MP",
+      chamber: leader.chamber || "",
+      portfolio: leader.portfolio || "",
+      party: leader.party || "",
+      district: getDistrictValue(leader.district),
+      province: leader.province || "",
+      localLevel: leader.localLevel || "",
+      ward: leader.ward || "",
+      currentStatus: leader.currentStatus || "Current",
+      age: leader.age != null ? String(leader.age) : "",
+      birthPlace: leader.birthPlace || "",
+      permanentAddress: leader.permanentAddress || "",
+      gender: leader.gender || "",
+      photo: leader.photo || "",
+      officialSourceUrl: leader.officialSourceUrl || "",
+      electionSourceUrl: leader.electionSourceUrl || "",
+      badge: leader.badge || "",
+      verified: !!leader.verified,
+      startYear: leader.startYear || "",
+      endYear: leader.endYear || "Present",
     });
-    setShowAdvanced(true);
+
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const resetForm = () => {
-    setEditingId(null);
+    setEditingLeaderId(null);
     setForm(emptyForm);
-    setShowAdvanced(false);
+    setDuplicateInfo(null);
+    setMessage("");
+    setError("");
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const buildPayload = () => ({
+    leaderId: form.leaderId.trim(),
+    name: form.name.trim(),
+    role: form.role,
+    chamber: form.chamber,
+    portfolio: form.portfolio.trim(),
+    party: form.party.trim(),
+    district: form.district || null,
+    province: form.province.trim(),
+    localLevel: form.localLevel.trim(),
+    ward: form.ward.trim(),
+    currentStatus: form.currentStatus,
+    age: form.age ? Number(form.age) : null,
+    birthPlace: form.birthPlace.trim(),
+    permanentAddress: form.permanentAddress.trim(),
+    gender: form.gender.trim(),
+    photo: form.photo.trim(),
+    officialSourceUrl: form.officialSourceUrl.trim(),
+    electionSourceUrl: form.electionSourceUrl.trim(),
+    badge: form.badge.trim(),
+    verified: form.verified,
+    startYear: form.startYear.trim(),
+    endYear: form.endYear.trim(),
+  });
+
+  const handleSubmit = async () => {
     if (!token) {
-      setMessage("Login required");
+      setError("Please login as admin first.");
+      return;
+    }
+
+    if (!form.name.trim()) {
+      setError("Leader name is required.");
+      return;
+    }
+
+    if (!form.role.trim()) {
+      setError("Role is required.");
+      return;
+    }
+
+    if (!editingLeaderId && duplicateInfo?.exists) {
+      setError("A similar leader already exists. Check the suggestions below before saving.");
       return;
     }
 
     try {
-      if (editingId) {
-        const res = await api.updateLeader(token, editingId, form);
-        setMessage(res.message || "Leader updated");
+      setSubmitting(true);
+      setError("");
+      setMessage("");
+
+      const payload = buildPayload();
+
+      if (editingLeaderId) {
+        const res = await api.updateLeader(token, editingLeaderId, payload);
+        setMessage(res.message || "Leader updated successfully");
       } else {
-        const res = await api.createLeader(token, form);
-        setMessage(res.message || "Leader created");
+        const res = await api.createLeader(token, payload);
+        setMessage(res.message || "Leader created successfully");
       }
 
       resetForm();
-      await loadLeaders();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to save leader");
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || "Failed to save leader");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (leaderId: string) => {
     if (!token) {
-      setMessage("Login required");
+      setError("Please login as admin first.");
       return;
     }
 
@@ -214,296 +463,546 @@ function AdminLeaders() {
 
     try {
       const res = await api.deleteLeader(token, leaderId);
-      setMessage(res.message || "Leader deleted");
-      await loadLeaders();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to delete leader");
+      setMessage(res.message || "Leader deleted successfully");
+
+      if (editingLeaderId === leaderId) {
+        resetForm();
+      }
+
+      await loadData();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete leader");
     }
   };
 
   return (
-    <AdminLayout
-      title="Leaders Management"
-      description="Add and manage representative data more easily"
-    >
-      {message && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-950">Leaders</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          Manage leaders, roles, and public engagement
+        </p>
+      </div>
+
+      {message ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
           {message}
         </div>
-      )}
+      ) : null}
 
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:p-6">
-          <div className="flex items-center justify-between gap-4 mb-5">
-            <div>
-              <h2 className="text-2xl font-bold text-slate-900">
-                {editingId ? "Edit Leader" : "Quick Create Leader"}
-              </h2>
-              <p className="text-slate-500 mt-1">
-                Start with the most important fields first
-              </p>
-            </div>
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
+        </div>
+      ) : null}
 
-            <button
-              type="button"
-              onClick={() => setShowAdvanced((prev) => !prev)}
-              className="rounded-2xl bg-white border border-slate-300 px-4 py-2 font-semibold text-slate-700"
-            >
-              {showAdvanced ? "Hide Details" : "More Details"}
-            </button>
+     <AdminPageSection
+  title="Leaders Directory"
+  description="Search leader records, filter by role and province, and monitor public activity."
+>
+  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+    <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-center">
+      <div className="relative w-full xl:max-w-[460px]">
+        <input
+          type="text"
+          value={searchText}
+          onChange={(e) => {
+            setSearchText(e.target.value);
+            setOpenSuggestions(true);
+          }}
+          onFocus={() => setOpenSuggestions(true)}
+          onBlur={() => {
+            setTimeout(() => setOpenSuggestions(false), 150);
+          }}
+          placeholder="Search leader name..."
+          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-300 focus:bg-white"
+        />
+
+        {openSuggestions && searchText.trim() && (
+          <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white shadow-lg">
+            {searchSuggestions.length > 0 ? (
+              searchSuggestions.map((leader) => (
+                <button
+                  key={leader.leaderId}
+                  type="button"
+                  onMouseDown={() => {
+                    setSearchText(leader.name);
+                    setOpenSuggestions(false);
+                  }}
+                  className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
+                >
+                  <p className="text-sm font-semibold text-slate-900">
+                    {leader.name}
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {leader.role} • {leader.province || "No province"}
+                  </p>
+                </button>
+              ))
+            ) : (
+              <div className="px-4 py-3 text-sm text-slate-500">
+                No matching leader found
+              </div>
+            )}
           </div>
+        )}
+      </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Name" name="name" value={form.name} onChange={handleChange} />
-            <Input label="Leader ID" name="leaderId" value={form.leaderId} onChange={handleChange} />
+      <select
+        value={selectedRole}
+        onChange={(e) => setSelectedRole(e.target.value)}
+        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+      >
+        <option value="ALL">All Roles</option>
+        <option value="Prime Minister">Prime Minister</option>
+        <option value="Minister">Minister</option>
+        <option value="MP">MP</option>
+        <option value="National Assembly Member">National Assembly Member</option>
+        <option value="Mayor">Mayor</option>
+        <option value="Chairperson">Chairperson</option>
+      </select>
 
-            <Select
-              label="Role"
-              name="role"
-              value={form.role}
-              onChange={handleChange}
-              options={[
-                "Prime Minister",
-                "Minister",
-                "MP",
-                "National Assembly Member",
-                "Mayor",
-                "Chairperson",
-              ]}
-            />
+      <select
+        value={selectedProvince}
+        onChange={(e) => setSelectedProvince(e.target.value)}
+        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+      >
+        <option value="ALL">All Provinces</option>
+        {provinceOptions.map((province) => (
+          <option key={province} value={province}>
+            {province}
+          </option>
+        ))}
+      </select>
+    </div>
 
-            <Select
-              label="Current Status"
-              name="currentStatus"
-              value={form.currentStatus}
-              onChange={handleChange}
-              options={["Current", "Former"]}
-            />
+    <button
+      type="button"
+      onClick={resetForm}
+      className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+    >
+      {editingLeaderId ? "Cancel Edit" : "New Entry"}
+    </button>
+  </div>
+</AdminPageSection>
 
-            <Input label="Party" name="party" value={form.party || ""} onChange={handleChange} />
-
-            <Select
-              label="Province"
-              name="province"
-              value={form.province || ""}
-              onChange={handleChange}
-              options={["", ...provinces]}
-            />
-
-            <Select
-              label="District"
-              name="district"
-              value={form.district || ""}
-              onChange={handleChange}
-              options={["", ...commonDistricts]}
-            />
-
-            <Input label="Badge" name="badge" value={form.badge || ""} onChange={handleChange} />
-
-            <Input label="Start Year" name="startYear" value={form.startYear || ""} onChange={handleChange} />
-            <Input label="End Year" name="endYear" value={form.endYear || ""} onChange={handleChange} />
-
-            <Input label="Photo URL" name="photo" value={form.photo || ""} onChange={handleChange} />
-
-            <label className="flex items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3">
-              <input
-                type="checkbox"
-                name="verified"
-                checked={!!form.verified}
-                onChange={handleChange}
-              />
-              <span className="font-medium text-slate-700">Verified</span>
-            </label>
-          </div>
-
-          {showAdvanced && (
-            <div className="mt-6 pt-6 border-t border-slate-200 grid grid-cols-1 md:grid-cols-2 gap-4">
-              {(form.role === "MP" || form.role === "National Assembly Member") && (
-                <Input label="Chamber" name="chamber" value={form.chamber || ""} onChange={handleChange} />
-              )}
-
-              {form.role === "Minister" && (
-                <Input label="Portfolio" name="portfolio" value={form.portfolio || ""} onChange={handleChange} />
-              )}
-
-              {(form.role === "Mayor" || form.role === "Chairperson") && (
-                <Input label="Local Level" name="localLevel" value={form.localLevel || ""} onChange={handleChange} />
-              )}
-
-              <Input label="Ward" name="ward" value={form.ward || ""} onChange={handleChange} />
-              <Input label="Age" name="age" type="number" value={form.age ?? ""} onChange={handleChange} />
-              <Input label="Birth Place" name="birthPlace" value={form.birthPlace || ""} onChange={handleChange} />
-              <Input
-                label="Permanent Address"
-                name="permanentAddress"
-                value={form.permanentAddress || ""}
-                onChange={handleChange}
-              />
-              <Input label="Gender" name="gender" value={form.gender || ""} onChange={handleChange} />
-              <Input
-                label="Official Source URL"
-                name="officialSourceUrl"
-                value={form.officialSourceUrl || ""}
-                onChange={handleChange}
-              />
-              <Input
-                label="Election Source URL"
-                name="electionSourceUrl"
-                value={form.electionSourceUrl || ""}
-                onChange={handleChange}
-              />
-            </div>
-          )}
-
-          <div className="mt-6 flex flex-wrap gap-3">
+      <AdminFormCard
+        title={editingLeaderId ? "Edit Leader" : "Add Leader"}
+        subtitle="Save clean leader data and avoid duplicates before submit."
+        actions={
+          <>
             <button
-              type="submit"
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition"
+              onClick={handleSubmit}
+              disabled={submitting || (!editingLeaderId && !!duplicateInfo?.exists)}
+              className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
             >
-              {editingId ? "Update Leader" : "Create Leader"}
+              {submitting
+                ? editingLeaderId
+                  ? "Updating..."
+                  : "Saving..."
+                : editingLeaderId
+                ? "Update Leader"
+                : "Save Leader"}
             </button>
 
             <button
               type="button"
               onClick={resetForm}
-              className="rounded-2xl bg-slate-200 px-5 py-3 text-slate-800 font-semibold hover:bg-slate-300 transition"
+              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
             >
               Reset
             </button>
-          </div>
-        </div>
-      </form>
-
-      <div className="mb-5">
-        <input
-          type="text"
-          placeholder="Search leaders..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-        />
-      </div>
-
-      {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-500">
-          Loading leaders...
-        </div>
-      ) : (
-        <div className="overflow-x-auto rounded-3xl border border-slate-200">
-          <table className="min-w-full bg-white">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-slate-600">
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">Party</th>
-                <th className="px-4 py-3">District</th>
-                <th className="px-4 py-3">Province</th>
-                <th className="px-4 py-3">Status</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredLeaders.map((leader) => (
-                <tr key={leader.leaderId} className="border-t border-slate-200">
-                  <td className="px-4 py-3 font-semibold text-slate-900">{leader.name}</td>
-                  <td className="px-4 py-3">{leader.role}</td>
-                  <td className="px-4 py-3">{leader.party || "—"}</td>
-                  <td className="px-4 py-3">{leader.district || "—"}</td>
-                  <td className="px-4 py-3">{leader.province || "—"}</td>
-                  <td className="px-4 py-3">{leader.currentStatus}</td>
-                  <td className="px-4 py-3">
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleEdit(leader)}
-                        className="rounded-xl bg-blue-100 px-3 py-2 text-blue-700 font-medium"
-                      >
-                        Edit
-                      </button>
-                      <button
-                        onClick={() => handleDelete(leader.leaderId)}
-                        className="rounded-xl bg-red-100 px-3 py-2 text-red-700 font-medium"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-
-              {filteredLeaders.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                    No leaders found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </AdminLayout>
-  );
-}
-
-function Input({
-  label,
-  name,
-  value,
-  onChange,
-  type = "text",
-}: {
-  label: string;
-  name: string;
-  value: string | number;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-  type?: string;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <input
-        type={type}
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-      />
-    </div>
-  );
-}
-
-function Select({
-  label,
-  name,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-  options: string[];
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+          </>
+        }
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option || "Select"}
-          </option>
-        ))}
-      </select>
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Name</label>
+          <input
+            value={form.name}
+            onChange={(e) => handleChange("name", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Leader name"
+          />
+          {duplicateLoading ? (
+            <p className="mt-2 text-xs text-slate-500">Checking similar names...</p>
+          ) : null}
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Leader ID</label>
+          <input
+            value={form.leaderId}
+            onChange={(e) => handleChange("leaderId", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Optional custom ID"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Role</label>
+          <select
+            value={form.role}
+            onChange={(e) => handleChange("role", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          >
+            <option value="Prime Minister">Prime Minister</option>
+            <option value="Minister">Minister</option>
+            <option value="MP">MP</option>
+            <option value="National Assembly Member">National Assembly Member</option>
+            <option value="Mayor">Mayor</option>
+            <option value="Chairperson">Chairperson</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Current Status</label>
+          <select
+            value={form.currentStatus}
+            onChange={(e) => handleChange("currentStatus", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          >
+            <option value="Current">Current</option>
+            <option value="Former">Former</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Party</label>
+          <input
+            value={form.party}
+            onChange={(e) => handleChange("party", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Party name"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Province</label>
+          <select
+            value={form.province}
+            onChange={(e) => handleChange("province", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          >
+            <option value="">Select province</option>
+            {provinceOptions.map((province) => (
+              <option key={province} value={province}>
+                {province}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">District</label>
+          <select
+            value={form.district}
+            onChange={(e) => handleDistrictChange(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          >
+            <option value="">Select district</option>
+            {filteredDistricts.map((district) => (
+              <option
+                key={district._id || district.districtId}
+                value={district._id || district.districtId}
+              >
+                {district.name}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Chamber</label>
+          <select
+            value={form.chamber}
+            onChange={(e) => handleChange("chamber", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          >
+            <option value="">Select chamber</option>
+            <option value="House of Representatives">House of Representatives</option>
+            <option value="National Assembly">National Assembly</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Portfolio</label>
+          <input
+            value={form.portfolio}
+            onChange={(e) => handleChange("portfolio", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Portfolio / ministry"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Badge</label>
+          <input
+            value={form.badge}
+            onChange={(e) => handleChange("badge", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Badge text"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Start Year</label>
+          <input
+            value={form.startYear}
+            onChange={(e) => handleChange("startYear", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="2026"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">End Year</label>
+          <input
+            value={form.endYear}
+            onChange={(e) => handleChange("endYear", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Present"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Age</label>
+          <input
+            value={form.age}
+            onChange={(e) => handleChange("age", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Optional"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Gender</label>
+          <input
+            value={form.gender}
+            onChange={(e) => handleChange("gender", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Optional"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Local Level</label>
+          <input
+            value={form.localLevel}
+            onChange={(e) => handleChange("localLevel", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Municipality / Rural Municipality"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Ward</label>
+          <input
+            value={form.ward}
+            onChange={(e) => handleChange("ward", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Ward number"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Birth Place</label>
+          <input
+            value={form.birthPlace}
+            onChange={(e) => handleChange("birthPlace", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Birth place"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Permanent Address</label>
+          <input
+            value={form.permanentAddress}
+            onChange={(e) => handleChange("permanentAddress", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Permanent address"
+          />
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-slate-700">Photo URL</label>
+          <input
+            value={form.photo}
+            onChange={(e) => handleChange("photo", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="https://..."
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Official Source URL</label>
+          <input
+            value={form.officialSourceUrl}
+            onChange={(e) => handleChange("officialSourceUrl", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="https://..."
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Election Source URL</label>
+          <input
+            value={form.electionSourceUrl}
+            onChange={(e) => handleChange("electionSourceUrl", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="https://..."
+          />
+        </div>
+
+        <div className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <input
+            id="verified"
+            type="checkbox"
+            checked={form.verified}
+            onChange={(e) => handleChange("verified", e.target.checked)}
+            className="h-4 w-4 rounded"
+          />
+          <label htmlFor="verified" className="text-sm font-medium text-slate-700">
+            Verified leader profile
+          </label>
+        </div>
+
+        {!editingLeaderId && duplicateInfo?.exists ? (
+          <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+            <p className="text-sm font-semibold text-amber-800">
+              Similar leader already exists in database
+            </p>
+            <p className="mt-1 text-sm text-amber-700">
+              Check these records before creating a duplicate.
+            </p>
+
+            <div className="mt-3 space-y-2">
+              {(duplicateInfo.matches || []).map((item) => (
+                <button
+                  key={item.leaderId}
+                  type="button"
+                  onClick={() =>
+                    handleEdit({
+                      leaderId: item.leaderId,
+                      name: item.name,
+                      role: item.role,
+                      party: item.party,
+                      province: item.province,
+                      district: item.district || "",
+                    })
+                  }
+                  className="block w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-left"
+                >
+                  <p className="font-semibold text-slate-900">{item.name}</p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {item.role} • {item.party || "No party"} • {item.district || "No district"}
+                  </p>
+                </button>
+              ))}
+            </div>
+          </div>
+        ) : null}
+      </AdminFormCard>
+
+      <AdminDataTable
+        title="Leader Records"
+        subtitle={`Showing ${filteredLeaders.length} leader records`}
+        rows={filteredLeaders}
+        emptyMessage={loading ? "Loading leaders..." : "No leaders found."}
+        columns={[
+          {
+            key: "leader",
+            header: "Leader",
+            render: (row) => (
+              <div className="flex items-center gap-3">
+                {row.photo ? (
+                  <img
+                    src={row.photo}
+                    alt={row.name}
+                    className="h-10 w-10 rounded-2xl object-cover"
+                  />
+                ) : (
+                  <div className="h-10 w-10 rounded-2xl bg-slate-200" />
+                )}
+
+                <div>
+                  <p className="font-semibold text-slate-900">{row.name}</p>
+                  <p className="text-xs text-slate-500">{row.leaderId}</p>
+                </div>
+              </div>
+            ),
+          },
+          {
+            key: "role",
+            header: "Role",
+            render: (row) => (
+              <div>
+                <p className="font-medium text-slate-900">{row.role}</p>
+                <p className="text-xs text-slate-500">{row.currentStatus || "Current"}</p>
+              </div>
+            ),
+          },
+          {
+            key: "location",
+            header: "Location",
+            render: (row) => (
+              <div>
+                <p className="font-medium text-slate-900">{getDistrictName(row.district) || "—"}</p>
+                <p className="text-xs text-slate-500">{row.province || "—"}</p>
+              </div>
+            ),
+          },
+          {
+            key: "engagement",
+            header: "Performance",
+            render: (row) => {
+              const stats = analyticsMap[row.leaderId];
+
+              return (
+                <div>
+                  <p className="font-semibold text-slate-900">
+                    Score: {stats?.engagementScore ?? 0}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Comments: {stats?.commentCount ?? 0} • Votes: {stats?.voteCount ?? 0} • Rating:{" "}
+                    {stats?.avgRating ?? 0}
+                  </p>
+                </div>
+              );
+            },
+          },
+          {
+            key: "party",
+            header: "Party / Badge",
+            render: (row) => (
+              <div>
+                <p className="font-medium text-slate-900">{row.party || "—"}</p>
+                <p className="text-xs text-slate-500">{row.badge || "—"}</p>
+              </div>
+            ),
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (row) => (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleEdit(row)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(row.leaderId)}
+                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                >
+                  Delete
+                </button>
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

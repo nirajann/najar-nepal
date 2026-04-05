@@ -1,5 +1,6 @@
 const express = require("express");
 const Rating = require("../models/Rating.cjs");
+const Leader = require("../models/Leader.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
 
 const router = express.Router();
@@ -7,6 +8,11 @@ const router = express.Router();
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const { leaderId, value, reaction, comment } = req.body;
+
+    const leader = await Leader.findOne({ leaderId });
+    if (!leader) {
+      return res.status(404).json({ message: "Leader not found" });
+    }
 
     const rating = await Rating.findOneAndUpdate(
       { userId: req.user.id, leaderId },
@@ -32,6 +38,12 @@ router.post("/", authMiddleware, async (req, res) => {
 router.get("/:leaderId/stats", async (req, res) => {
   try {
     const { leaderId } = req.params;
+
+    const leader = await Leader.findOne({ leaderId });
+    if (!leader) {
+      return res.status(404).json({ message: "Leader not found" });
+    }
+
     const ratings = await Rating.find({ leaderId });
 
     const likes = ratings.filter((r) => r.reaction === "like").length;

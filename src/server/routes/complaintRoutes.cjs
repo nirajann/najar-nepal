@@ -5,68 +5,62 @@ const adminMiddleware = require("../middleware/adminMiddleware.cjs");
 
 const router = express.Router();
 
-// submit complaint
-router.post("/", authMiddleware, async (req, res) => {
-  try {
-    const { leaderId, type, message, photo } = req.body;
-
-    if (!leaderId || !message?.trim()) {
-      return res.status(400).json({
-        message: "Leader and complaint message are required",
-      });
-    }
-
-    if (message.trim().length < 10) {
-      return res.status(400).json({
-        message: "Complaint must be at least 10 characters",
-      });
-    }
-
-    const complaint = await Complaint.create({
-      leaderId,
-      userId: req.user.id,
-      userName: req.user.name || "User",
-      userEmail: req.user.email || "",
-      type: type || "Other",
-      message: message.trim(),
-      photo: photo || "",
-      status: "pending",
-    });
-
-    res.status(201).json({
-      message: "Complaint submitted successfully",
-      complaint,
-    });
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to submit complaint",
-      error: error.message,
-    });
-  }
-});
-
-// current user's complaint history for one leader
-router.get("/mine/:leaderId", authMiddleware, async (req, res) => {
-  try {
-    const complaints = await Complaint.find({
-      leaderId: req.params.leaderId,
-      userId: req.user.id,
-    }).sort({ createdAt: -1 });
-
-    res.json(complaints);
-  } catch (error) {
-    res.status(500).json({
-      message: "Failed to fetch complaint history",
-      error: error.message,
-    });
-  }
-});
-
-// admin sees all complaints
 router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
-    const complaints = await Complaint.find().sort({ createdAt: -1 });
-    res.json(complaints);
+    const { search = "", status, complaintType } = req.query;
+
+    const query = {};
+
+    if (status) {
+      query.status = status;
+    }
+
+    if (complaintType) {
+      query.complaintType = complaintType;
+    }
+
+    if (search.trim()) {
+      query.$or = [
+        { text: { $regex: search, $options: "i" } },
+        { complaintType: { $regex: search, $options: "i" } },
+      ];
+    }
+
+    const complaints = await Complaint.find(query)
+      .populate("leaderId", "leaderId name role district province photo")
+      .populate("userId", "name email")
+      .sort({ createdAt: -1 });
+
+    const formatted = complaints.map((item) => ({
+      _id: item._id,
+      complaintId: item.complaintId || String(item._id),
+      text: item.text,
+      complaintType: item.complaintType,
+      complaintPhoto: item.complaintPhoto,
+      status: item.status || "Pending",
+      createdAt: item.createdAt,
+      leaderId: item.leaderId?._id || item.leaderId,
+      leader: item.leaderId
+        ? {
+            _id: item.leaderId._id,
+            leaderId: item.leaderId.leaderId,
+            name: item.leaderId.name,
+            role: item.leaderId.role,
+            district: item.leaderId.district,
+            province: item.leaderId.province,
+            photo: item.leaderId.photo,
+          }
+        : null,
+      user: item.userId
+        ? {
+            _id: item.userId._id,
+            name: item.userId.name,
+            email: item.userId.email,
+          }
+        : null,
+    }));
+
+    res.json({ complaints: formatted });
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch complaints",
@@ -75,7 +69,6 @@ router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   }
 });
 
-// admin updates complaint
 router.put("/:complaintId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { status, adminNote } = req.body;
@@ -83,7 +76,7 @@ router.put("/:complaintId", authMiddleware, adminMiddleware, async (req, res) =>
     const complaint = await Complaint.findByIdAndUpdate(
       req.params.complaintId,
       {
-        ...(status ? { status } : {}),
+        ...(status !== undefined ? { status } : {}),
         ...(adminNote !== undefined ? { adminNote } : {}),
       },
       { new: true }
@@ -100,6 +93,25 @@ router.put("/:complaintId", authMiddleware, adminMiddleware, async (req, res) =>
   } catch (error) {
     res.status(500).json({
       message: "Failed to update complaint",
+      error: error.message,
+    });
+  }
+});
+
+router.delete("/:complaintId", authMiddleware, adminMiddleware, async (req, res) => {
+  try {
+    const complaint = await Complaint.findByIdAndDelete(req.params.complaintId);
+
+    if (!complaint) {
+      return res.status(404).json({ message: "Complaint not found" });
+    }
+
+    res.json({
+      message: "Complaint deleted successfully",
+    });
+  } catch (error) {
+    res.status(500).json({
+      message: "Failed to delete complaint",
       error: error.message,
     });
   }

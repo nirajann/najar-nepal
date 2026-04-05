@@ -20,37 +20,31 @@ function Navbar() {
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <div className="h-20 flex items-center justify-between gap-4">
-          <Link to="/" className="flex items-center gap-3 min-w-0">
-            <div className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-white border border-slate-200 shadow-sm flex items-center justify-center overflow-hidden">
-              <img
-                src={heroLogo}
-                alt="Najar Nepal Logo"
-                className="w-8 h-8 md:w-9 md:h-9 object-contain"
-              />
+    <header className="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur-sm">
+      <div className="mx-auto max-w-[1480px] px-3 md:px-5">
+        <div className="flex h-[58px] items-center justify-between gap-3 md:h-[62px]">
+          <Link to="/" className="flex min-w-0 items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white">
+              <img src={heroLogo} alt="Najar Nepal Logo" className="h-5 w-5 object-contain" />
             </div>
 
             <div className="min-w-0">
-              <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-950 leading-none">
+              <h1 className="truncate text-[24px] font-extrabold leading-none tracking-tight text-slate-950 md:text-[26px]">
                 Najar Nepal
               </h1>
-              <p className="text-[11px] md:text-xs text-red-500 font-medium mt-1">
-                जनताको नजर
-              </p>
+              <p className="mt-0.5 text-[9px] font-medium text-red-500">जनताको नजर</p>
             </div>
           </Link>
 
-          <nav className="hidden md:flex items-center gap-2">
+          <nav className="hidden items-center gap-1 md:flex">
             {navLinks.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
-                className={`px-4 lg:px-5 py-2.5 rounded-full text-sm lg:text-base font-semibold transition-all duration-200 ${
+                className={`rounded-full px-3.5 py-1.5 text-sm font-semibold transition ${
                   isActive(item.to)
-                    ? "bg-slate-950 text-white shadow-sm"
-                    : "text-slate-600 hover:text-slate-950 hover:bg-slate-100"
+                    ? "bg-slate-950 text-white"
+                    : "text-slate-600 hover:bg-slate-100 hover:text-slate-950"
                 }`}
               >
                 {item.label}
@@ -58,13 +52,13 @@ function Navbar() {
             ))}
           </nav>
 
-          <div className="hidden md:flex items-center gap-3">
+          <div className="hidden items-center gap-2 md:flex">
             {isAuthenticated ? (
               <>
                 {user?.role === "admin" && (
                   <Link
                     to="/admin"
-                    className="px-4 py-2 rounded-full bg-blue-100 border border-blue-200 text-blue-700 text-sm font-medium hover:bg-blue-50 transition"
+                    className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1 text-sm font-medium text-blue-700"
                   >
                     Admin
                   </Link>
@@ -72,14 +66,14 @@ function Navbar() {
 
                 <Link
                   to="/profile"
-                  className="px-4 py-2 rounded-full bg-slate-100 border border-slate-200 text-slate-700 text-sm font-medium hover:bg-slate-50 hover:text-slate-950 transition"
+                  className="rounded-full border border-slate-200 bg-slate-100 px-3 py-1 text-sm font-medium text-slate-700"
                 >
                   {user?.name || "Profile"}
                 </Link>
 
                 <button
                   onClick={logoutUser}
-                  className="px-5 py-2.5 rounded-2xl bg-slate-950 text-white text-sm md:text-base font-semibold hover:bg-slate-800 transition"
+                  className="rounded-xl bg-slate-950 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-slate-800"
                 >
                   Logout
                 </button>
@@ -87,7 +81,7 @@ function Navbar() {
             ) : (
               <Link
                 to="/login"
-                className="px-5 py-2.5 rounded-2xl bg-red-500 text-white text-sm md:text-base font-semibold hover:bg-red-600 transition"
+                className="rounded-xl bg-red-500 px-3.5 py-1.5 text-sm font-semibold text-white transition hover:bg-red-600"
               >
                 Login
               </Link>
@@ -96,91 +90,77 @@ function Navbar() {
 
           <button
             onClick={() => setMobileOpen((prev) => !prev)}
-            className="md:hidden w-10 h-10 rounded-xl border border-slate-200 bg-white shadow-sm flex items-center justify-center"
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-slate-200 bg-white md:hidden"
             aria-label="Toggle menu"
           >
-            <div className="space-y-1.5">
-              <span
-                className={`block h-0.5 w-5 bg-slate-800 transition ${
-                  mobileOpen ? "translate-y-2 rotate-45" : ""
-                }`}
-              />
-              <span
-                className={`block h-0.5 w-5 bg-slate-800 transition ${
-                  mobileOpen ? "opacity-0" : ""
-                }`}
-              />
-              <span
-                className={`block h-0.5 w-5 bg-slate-800 transition ${
-                  mobileOpen ? "-translate-y-2 -rotate-45" : ""
-                }`}
-              />
+            <div className="space-y-1">
+              <span className={`block h-0.5 w-4 bg-slate-800 transition ${mobileOpen ? "translate-y-1.5 rotate-45" : ""}`} />
+              <span className={`block h-0.5 w-4 bg-slate-800 transition ${mobileOpen ? "opacity-0" : ""}`} />
+              <span className={`block h-0.5 w-4 bg-slate-800 transition ${mobileOpen ? "-translate-y-1.5 -rotate-45" : ""}`} />
             </div>
           </button>
         </div>
 
         <div
-          className={`md:hidden overflow-hidden transition-all duration-300 ${
-            mobileOpen ? "max-h-[500px] pb-4" : "max-h-0"
+          className={`overflow-hidden transition-all duration-300 md:hidden ${
+            mobileOpen ? "max-h-[360px] pb-3" : "max-h-0"
           }`}
         >
-          <div className="rounded-3xl border border-slate-200 bg-white shadow-sm p-3 space-y-2">
+          <div className="space-y-2 border-t border-slate-200 pt-3">
             {navLinks.map((item) => (
               <Link
                 key={item.to}
                 to={item.to}
                 onClick={() => setMobileOpen(false)}
-                className={`block rounded-2xl px-4 py-3 font-semibold transition ${
+                className={`block rounded-2xl px-4 py-3 text-sm font-semibold ${
                   isActive(item.to)
                     ? "bg-slate-950 text-white"
-                    : "bg-slate-50 text-slate-700 hover:bg-slate-100"
+                    : "bg-slate-50 text-slate-700"
                 }`}
               >
                 {item.label}
               </Link>
             ))}
 
-            <div className="pt-2 border-t border-slate-200">
-              {isAuthenticated ? (
-                <div className="space-y-2">
-                  {user?.role === "admin" && (
-                    <Link
-                      to="/admin"
-                      onClick={() => setMobileOpen(false)}
-                      className="block rounded-2xl px-4 py-3 bg-blue-50 text-blue-700 font-semibold hover:bg-blue-100 transition"
-                    >
-                      Admin
-                    </Link>
-                  )}
-
+            {isAuthenticated ? (
+              <div className="space-y-2 pt-1">
+                {user?.role === "admin" && (
                   <Link
-                    to="/profile"
+                    to="/admin"
                     onClick={() => setMobileOpen(false)}
-                    className="block rounded-2xl px-4 py-3 bg-slate-50 text-slate-700 font-semibold hover:bg-slate-100 transition"
+                    className="block rounded-2xl bg-blue-50 px-4 py-3 text-sm font-semibold text-blue-700"
                   >
-                    {user?.name || "Profile"}
+                    Admin
                   </Link>
+                )}
 
-                  <button
-                    onClick={() => {
-                      logoutUser();
-                      setMobileOpen(false);
-                    }}
-                    className="w-full rounded-2xl px-4 py-3 bg-slate-950 text-white font-semibold hover:bg-slate-800 transition"
-                  >
-                    Logout
-                  </button>
-                </div>
-              ) : (
                 <Link
-                  to="/login"
+                  to="/profile"
                   onClick={() => setMobileOpen(false)}
-                  className="block rounded-2xl px-4 py-3 bg-red-500 text-white font-semibold text-center hover:bg-red-600 transition"
+                  className="block rounded-2xl bg-slate-50 px-4 py-3 text-sm font-semibold text-slate-700"
                 >
-                  Login
+                  {user?.name || "Profile"}
                 </Link>
-              )}
-            </div>
+
+                <button
+                  onClick={() => {
+                    logoutUser();
+                    setMobileOpen(false);
+                  }}
+                  className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white"
+                >
+                  Logout
+                </button>
+              </div>
+            ) : (
+              <Link
+                to="/login"
+                onClick={() => setMobileOpen(false)}
+                className="block rounded-2xl bg-red-500 px-4 py-3 text-center text-sm font-semibold text-white"
+              >
+                Login
+              </Link>
+            )}
           </div>
         </div>
       </div>

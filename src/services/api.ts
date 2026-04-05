@@ -1,7 +1,19 @@
 const API_BASE_URL = "http://localhost:5000/api";
 
+type UnauthorizedHandler = (() => void) | null;
+
+let unauthorizedHandler: UnauthorizedHandler = null;
+
+export function setUnauthorizedHandler(handler: () => void) {
+  unauthorizedHandler = handler;
+}
+
 async function parseJsonResponse(res: Response) {
   const data = await res.json().catch(() => ({}));
+
+  if (res.status === 401 && unauthorizedHandler) {
+    unauthorizedHandler();
+  }
 
   if (!res.ok) {
     throw new Error(data.message || "Request failed");
@@ -10,133 +22,183 @@ async function parseJsonResponse(res: Response) {
   return data;
 }
 
+function buildUrl(path: string, params?: Record<string, string | undefined>) {
+  const query = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value) query.append(key, value);
+    });
+  }
+
+  return `${API_BASE_URL}${path}${query.toString() ? `?${query.toString()}` : ""}`;
+}
+
+function authHeaders(token?: string, isJson = false) {
+  return {
+    ...(isJson ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
 export const api = {
   register: async (name: string, email: string, password: string) => {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(undefined, true),
       body: JSON.stringify({ name, email, password }),
     });
-
     return parseJsonResponse(res);
   },
 
   login: async (email: string, password: string) => {
     const res = await fetch(`${API_BASE_URL}/auth/login`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: authHeaders(undefined, true),
       body: JSON.stringify({ email, password }),
     });
-
     return parseJsonResponse(res);
   },
 
   updateProfile: async (token: string, profileData: any) => {
     const res = await fetch(`${API_BASE_URL}/auth/profile`, {
       method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(token, true),
       body: JSON.stringify(profileData),
     });
-
     return parseJsonResponse(res);
   },
 
-  submitRating: async (
-    token: string,
-    leaderId: string,
-    value: number,
-    reaction = "",
-    comment = ""
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/ratings`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({ leaderId, value, reaction, comment }),
-    });
-
-    return parseJsonResponse(res);
-  },
-
-  getLeaderStats: async (leaderId: string) => {
-    const res = await fetch(`${API_BASE_URL}/ratings/${leaderId}/stats`);
-    return parseJsonResponse(res);
-  },
-
-  submitComplaint: async (
-  token: string,
-  leaderId: string,
-  message: string,
-  type = "Other",
-  photo = ""
-) => {
-  const res = await fetch("http://localhost:5000/api/complaints", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify({
-      leaderId,
-      type,
-      message,
-      photo,
-    }),
-  });
-
-  return res.json();
-},
-
-getMyComplaintsByLeader: async (token: string, leaderId: string) => {
-  const res = await fetch(`http://localhost:5000/api/complaints/mine/${leaderId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return res.json();
-},
-
-getAdminComplaints: async (token: string) => {
-  const res = await fetch("http://localhost:5000/api/complaints", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return res.json();
-},
-
-updateAdminComplaint: async (
-  token: string,
-  complaintId: string,
-  payload: { status?: string; adminNote?: string }
-) => {
-  const res = await fetch(`http://localhost:5000/api/complaints/${complaintId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return res.json();
-},
-  getComments: async (leaderId: string, sort = "newest") => {
+  getLeaders: async (params?: {
+    role?: string;
+    districtId?: string;
+    province?: string;
+    search?: string;
+  }) => {
     const res = await fetch(
-      `${API_BASE_URL}/comments/${leaderId}?sort=${encodeURIComponent(sort)}`
+      buildUrl("/leaders", {
+        role: params?.role,
+        districtId: params?.districtId,
+        province: params?.province,
+        search: params?.search,
+      })
     );
+    return parseJsonResponse(res);
+  },
 
+  getLeaderById: async (leaderId: string) => {
+    const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`);
+    return parseJsonResponse(res);
+  },
+
+  createLeader: async (token: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/leaders`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  updateLeader: async (token: string, leaderId: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`, {
+      method: "PUT",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  deleteLeader: async (token: string, leaderId: string) => {
+    const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+  getDistricts: async (params?: { province?: string; search?: string }) => {
+    const res = await fetch(
+      buildUrl("/districts", {
+        province: params?.province,
+        search: params?.search,
+      })
+    );
+    return parseJsonResponse(res);
+  },
+
+  getDistrictById: async (districtId: string) => {
+    const res = await fetch(`${API_BASE_URL}/districts/${districtId}`);
+    return parseJsonResponse(res);
+  },
+
+  createDistrict: async (token: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/districts`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  updateDistrict: async (token: string, districtId: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/districts/${districtId}`, {
+      method: "PUT",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  deleteDistrict: async (token: string, districtId: string) => {
+    const res = await fetch(`${API_BASE_URL}/districts/${districtId}`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+  getProjects: async (params?: {
+    status?: string;
+    district?: string;
+    province?: string;
+    search?: string;
+  }) => {
+    const res = await fetch(
+      buildUrl("/projects", {
+        status: params?.status,
+        district: params?.district,
+        province: params?.province,
+        search: params?.search,
+      })
+    );
+    return parseJsonResponse(res);
+  },
+
+  getProjectById: async (projectId: string) => {
+    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`);
+    return parseJsonResponse(res);
+  },
+
+  getComplaints: async (params?: {
+    status?: string;
+    category?: string;
+    search?: string;
+  }) => {
+    const res = await fetch(
+      buildUrl("/complaints", {
+        status: params?.status,
+        category: params?.category,
+        search: params?.search,
+      })
+    );
+    return parseJsonResponse(res);
+  },
+
+  getUsers: async (token: string) => {
+    const res = await fetch(`${API_BASE_URL}/auth/users`, {
+      headers: authHeaders(token),
+    });
     return parseJsonResponse(res);
   },
 
@@ -148,318 +210,286 @@ updateAdminComplaint: async (
   ) => {
     const res = await fetch(`${API_BASE_URL}/comments`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(token, true),
       body: JSON.stringify({ leaderId, text, rating }),
     });
-
     return parseJsonResponse(res);
   },
+
+  getAdminAnalyticsOverview: async (token: string) => {
+    const res = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+  getAdminLeaderAnalytics: async (token: string, leaderId: string) => {
+    const res = await fetch(`${API_BASE_URL}/admin/analytics/leader/${leaderId}`, {
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+ submitRating: async (
+  token: string,
+  leaderId: string,
+  value: number,
+  action?: "like" | "dislike"
+) => {
+  const res = await fetch(`${API_BASE_URL}/ratings`, {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify({
+      leaderId,
+      value,
+      reaction: action, // backend expects reaction, not action
+    }),
+  });
+  return parseJsonResponse(res);
+},
+
+getLeaderStats: async (leaderId: string) => {
+  const res = await fetch(`${API_BASE_URL}/ratings/${leaderId}/stats`);
+  return parseJsonResponse(res);
+},
+
+
+  getComments: async (leaderId: string, sort = "newest") => {
+    const res = await fetch(
+      buildUrl("/comments", {
+        leaderId,
+        sort,
+      })
+    );
+    return parseJsonResponse(res);
+  },
+  submitComplaint: async (
+    token: string,
+    leaderId: string,
+    text: string,
+    complaintType: string,
+    complaintPhoto?: string
+  ) => {
+    const res = await fetch(`${API_BASE_URL}/complaints`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify({
+        leaderId,
+        text,
+        complaintType,
+        complaintPhoto,
+      }),
+    });
+    return parseJsonResponse(res);
+  },
+
+
+
 
   likeComment: async (token: string, commentId: string) => {
     const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(token),
     });
-
     return parseJsonResponse(res);
   },
 
   replyComment: async (token: string, commentId: string, text: string) => {
     const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(token, true),
       body: JSON.stringify({ text }),
     });
-
     return parseJsonResponse(res);
   },
 
-  getProjects: async () => {
-    const res = await fetch(`${API_BASE_URL}/projects`);
+  getMyComplaintsByLeader: async (token: string, leaderId: string) => {
+    const res = await fetch(
+      buildUrl("/complaints/my", {
+        leaderId,
+      }),
+      {
+        headers: authHeaders(token),
+      }
+    );
     return parseJsonResponse(res);
   },
 
-  getProjectDetail: async (projectId: string) => {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`);
-    return parseJsonResponse(res);
-  },
-
-  createProject: async (token: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/projects`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    return parseJsonResponse(res);
-  },
-
-  updateProject: async (token: string, projectId: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`, {
-      method: "PUT",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    return parseJsonResponse(res);
-  },
-
-  addProjectSource: async (
+  getAdminProjects: async (
     token: string,
-    projectId: string,
-    payload: {
-      url: string;
-      title?: string;
-      publishedAt?: string;
-      summary?: string;
-      note?: string;
+    params?: {
+      search?: string;
+      status?: string;
+      district?: string;
+      province?: string;
     }
   ) => {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}/source`, {
+    const res = await fetch(
+      buildUrl("/admin/projects", {
+        search: params?.search,
+        status: params?.status,
+        district: params?.district,
+        province: params?.province,
+      }),
+      {
+        headers: authHeaders(token),
+      }
+    );
+    return parseJsonResponse(res);
+  },
+
+  createAdminProject: async (token: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/admin/projects`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${token}`,
-      },
+      headers: authHeaders(token, true),
       body: JSON.stringify(payload),
     });
-
     return parseJsonResponse(res);
   },
 
-  getProjectSources: async (projectId: string) => {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}/sources`);
+  updateAdminProject: async (token: string, projectId: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/admin/projects/${projectId}`, {
+      method: "PUT",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
     return parseJsonResponse(res);
   },
 
-  approveProjectSource: async (token: string, sourceId: string) => {
+  deleteAdminProject: async (token: string, projectId: string) => {
+    const res = await fetch(`${API_BASE_URL}/admin/projects/${projectId}`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+  getAdminUsers: async (token: string, params?: { search?: string }) => {
     const res = await fetch(
-      `${API_BASE_URL}/projects/sources/${sourceId}/approve`,
+      buildUrl("/auth/users", {
+        search: params?.search,
+      }),
       {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        headers: authHeaders(token),
       }
     );
-
     return parseJsonResponse(res);
   },
 
-  recomputeProjectStatus: async (token: string, projectId: string) => {
+  updateAdminUser: async (token: string, userId: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
+      method: "PUT",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  deleteAdminUser: async (token: string, userId: string) => {
+    const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+  createAdminUser: async (token: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/auth/users`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  checkLeaderDuplicate: async (params: {
+    name: string;
+    role?: string;
+    districtId?: string;
+  }) => {
     const res = await fetch(
-      `${API_BASE_URL}/projects/${projectId}/status-recompute`,
-      {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      }
+      buildUrl("/leaders/check-duplicate", {
+        name: params.name,
+        role: params.role,
+        districtId: params.districtId,
+      })
     );
-
     return parseJsonResponse(res);
   },
-  getLeaders: async (params?: {
-  role?: string;
-  district?: string;
-  province?: string;
-  search?: string;
-}) => {
-  const query = new URLSearchParams();
 
-  if (params?.role) query.append("role", params.role);
-  if (params?.district) query.append("district", params.district);
-  if (params?.province) query.append("province", params.province);
-  if (params?.search) query.append("search", params.search);
+  checkDistrictDuplicate: async (params: {
+    name: string;
+    province?: string;
+  }) => {
+    const res = await fetch(
+      buildUrl("/districts/check-duplicate", {
+        name: params.name,
+        province: params.province,
+      })
+    );
+    return parseJsonResponse(res);
+  },
 
-  const url = `${API_BASE_URL}/leaders${query.toString() ? `?${query.toString()}` : ""}`;
-  const res = await fetch(url);
-  return parseJsonResponse(res);
-},
+  checkProjectDuplicate: async (params: {
+    title: string;
+    district?: string;
+    province?: string;
+  }) => {
+    const res = await fetch(
+      buildUrl("/admin/projects/check-duplicate", {
+        title: params.title,
+        district: params.district,
+        province: params.province,
+      })
+    );
+    return parseJsonResponse(res);
+  },
 
-getLeaderById: async (leaderId: string) => {
-  const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`);
-  return parseJsonResponse(res);
-},
+  checkUserDuplicate: async (params: { email: string }) => {
+    const res = await fetch(
+      buildUrl("/auth/users/check-duplicate", {
+        email: params.email,
+      })
+    );
+    return parseJsonResponse(res);
+  },
 
-createLeader: async (token: string, payload: any) => {
-  const res = await fetch(`${API_BASE_URL}/leaders`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
 
-  return parseJsonResponse(res);
-},
-
-updateLeader: async (token: string, leaderId: string, payload: any) => {
-  const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-
-  return parseJsonResponse(res);
-},
-
-deleteLeader: async (token: string, leaderId: string) => {
-  const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return parseJsonResponse(res);
-},
-getDistricts: async (params?: { province?: string; search?: string }) => {
-  const query = new URLSearchParams();
-
-  if (params?.province) query.append("province", params.province);
-  if (params?.search) query.append("search", params.search);
-
+  getAdminComplaints: async (
+  token: string,
+  params?: {
+    search?: string;
+    status?: string;
+    complaintType?: string;
+  }
+) => {
   const res = await fetch(
-    `http://localhost:5000/api/districts${query.toString() ? `?${query.toString()}` : ""}`
+    buildUrl("/admin/complaints", {
+      search: params?.search,
+      status: params?.status,
+      complaintType: params?.complaintType,
+    }),
+    {
+      headers: authHeaders(token),
+    }
   );
-  return res.json();
+  return parseJsonResponse(res);
 },
 
-createDistrict: async (token: string, payload: any) => {
-  const res = await fetch("http://localhost:5000/api/districts", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  return res.json();
-},
-
-updateDistrict: async (token: string, districtId: string, payload: any) => {
-  const res = await fetch(`http://localhost:5000/api/districts/${districtId}`, {
+updateAdminComplaint: async (token: string, complaintId: string, payload: any) => {
+  const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
     method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
+    headers: authHeaders(token, true),
     body: JSON.stringify(payload),
   });
-  return res.json();
+  return parseJsonResponse(res);
 },
 
-deleteDistrict: async (token: string, districtId: string) => {
-  const res = await fetch(`http://localhost:5000/api/districts/${districtId}`, {
+deleteAdminComplaint: async (token: string, complaintId: string) => {
+  const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
+    headers: authHeaders(token),
   });
-  return res.json();
+  return parseJsonResponse(res);
 },
-getAdminProjects: async (params?: {
-  search?: string;
-  status?: string;
-  district?: string;
-  province?: string;
-}) => {
-  const query = new URLSearchParams();
-
-  if (params?.search) query.append("search", params.search);
-  if (params?.status) query.append("status", params.status);
-  if (params?.district) query.append("district", params.district);
-  if (params?.province) query.append("province", params.province);
-
-  const res = await fetch(
-    `http://localhost:5000/api/admin/projects${query.toString() ? `?${query.toString()}` : ""}`
-  );
-  return res.json();
-},
-
-createAdminProject: async (token: string, payload: any) => {
-  const res = await fetch("http://localhost:5000/api/admin/projects", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  return res.json();
-},
-
-updateAdminProject: async (token: string, projectId: string, payload: any) => {
-  const res = await fetch(`http://localhost:5000/api/admin/projects/${projectId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  return res.json();
-},
-
-deleteAdminProject: async (token: string, projectId: string) => {
-  const res = await fetch(`http://localhost:5000/api/admin/projects/${projectId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return res.json();
-},
-
-
-getAdminUsers: async (token: string) => {
-  const res = await fetch("http://localhost:5000/api/auth/users", {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return res.json();
-},
-
-updateAdminUser: async (token: string, userId: string, payload: any) => {
-  const res = await fetch(`http://localhost:5000/api/auth/users/${userId}`, {
-    method: "PUT",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
-    },
-    body: JSON.stringify(payload),
-  });
-  return res.json();
-},
-
-deleteAdminUser: async (token: string, userId: string) => {
-  const res = await fetch(`http://localhost:5000/api/auth/users/${userId}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-  return res.json();
-},
-
 };

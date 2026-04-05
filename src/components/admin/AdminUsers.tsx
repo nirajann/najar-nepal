@@ -1,165 +1,262 @@
 import { useEffect, useMemo, useState } from "react";
-import AdminLayout from "./AdminLayout";
-import { useAuth } from "../../context/AuthContext";
 import { api } from "../../services/api";
+import { useAuth } from "../../context/AuthContext";
+import { useDebouncedValue } from "../../hooks/useDebouncedValue";
+import AdminPageSection from "./AdminPageSection";
+import AdminToolbar from "./AdminToolbar";
+import AdminFormCard from "./AdminFormCard";
+import AdminDataTable from "./AdminDataTable";
 
-type UserItem = {
+type UserRecord = {
   _id?: string;
-  id?: string;
-  name: string;
-  username?: string;
-  email: string;
-  phone?: string;
-  district?: string;
-  province?: string;
-  birthplace?: string;
-  bio?: string;
-  role: string;
+  name?: string;
+  email?: string;
+  role?: string;
   verificationStatus?: string;
   citizenshipNumber?: string;
   badges?: string[];
+  createdAt?: string;
 };
 
-const emptyForm: UserItem = {
+type DuplicateUser = {
+  _id?: string;
+  name?: string;
+  email?: string;
+  role?: string;
+};
+
+type DuplicateCheckResponse = {
+  exists: boolean;
+  matches?: DuplicateUser[];
+  message?: string;
+};
+
+type UserForm = {
+  name: string;
+  email: string;
+  role: string;
+  verificationStatus: string;
+  citizenshipNumber: string;
+  badgesText: string;
+};
+
+const initialForm: UserForm = {
   name: "",
-  username: "",
   email: "",
-  phone: "",
-  district: "",
-  province: "",
-  birthplace: "",
-  bio: "",
   role: "user",
   verificationStatus: "unverified",
   citizenshipNumber: "",
-  badges: [],
+  badgesText: "",
 };
 
 function AdminUsers() {
   const { token } = useAuth();
 
-  const [users, setUsers] = useState<UserItem[]>([]);
+  const [users, setUsers] = useState<UserRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+
   const [message, setMessage] = useState("");
-  const [search, setSearch] = useState("");
+  const [error, setError] = useState("");
+
+  const [searchText, setSearchText] = useState("");
+  const [selectedRole, setSelectedRole] = useState("ALL");
+  const [selectedVerification, setSelectedVerification] = useState("ALL");
+
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
-  const [form, setForm] = useState<UserItem>(emptyForm);
+  const [form, setForm] = useState<UserForm>(initialForm);
+
+  const [duplicateLoading, setDuplicateLoading] = useState(false);
+  const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResponse | null>(null);
+
+  const debouncedEmail = useDebouncedValue(form.email, 450);
 
   const loadUsers = async () => {
+    if (!token) {
+      setError("Please login as admin first.");
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
+      setError("");
 
-      if (!token) return;
+      const res = await api.getAdminUsers(token, {
+        search: searchText || undefined,
+      });
 
-      const data = await api.getAdminUsers(token);
-
-      if (Array.isArray(data)) {
-        setUsers(data);
-      } else {
-        setMessage(data.message || "Failed to load users");
-      }
-    } catch (error: any) {
-      setMessage(error.message || "Failed to load users");
+      setUsers(Array.isArray(res) ? res : res?.users || []);
+    } catch (err: any) {
+      setError(err.message || "Failed to load users");
+      setUsers([]);
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    if (token) {
-      loadUsers();
-    }
+    loadUsers();
   }, [token]);
 
+  useEffect(() => {
+    const runDuplicateCheck = async () => {
+      if (editingUserId) {
+        setDuplicateInfo(null);
+        return;
+      }
+
+      if (!debouncedEmail.trim()) {
+        setDuplicateInfo(null);
+        return;
+      }
+
+      if (!api.checkUserDuplicate) {
+        setDuplicateInfo(null);
+        return;
+      }
+
+      try {
+        setDuplicateLoading(true);
+
+        const res = await api.checkUserDuplicate({
+          email: debouncedEmail.trim(),
+        });
+
+        setDuplicateInfo(res || null);
+      } catch {
+        setDuplicateInfo(null);
+      } finally {
+        setDuplicateLoading(false);
+      }
+    };
+
+    runDuplicateCheck();
+  }, [debouncedEmail, editingUserId]);
+
   const filteredUsers = useMemo(() => {
-    if (!search.trim()) return users;
-    const q = search.toLowerCase();
+    const q = searchText.trim().toLowerCase();
 
-    return users.filter(
-      (user) =>
-        user.name?.toLowerCase().includes(q) ||
-        user.email?.toLowerCase().includes(q) ||
-        user.role?.toLowerCase().includes(q) ||
-        (user.district || "").toLowerCase().includes(q) ||
-        (user.province || "").toLowerCase().includes(q) ||
-        (user.verificationStatus || "").toLowerCase().includes(q)
-    );
-  }, [users, search]);
+    return users.filter((user) => {
+      const name = (user.name || "").toLowerCase();
+      const email = (user.email || "").toLowerCase();
+      const role = (user.role || "").toLowerCase();
+      const verification = (user.verificationStatus || "").toLowerCase();
 
-  const handleEdit = (user: UserItem) => {
-    setEditingUserId(user._id || user.id || null);
-    setForm({
-      ...emptyForm,
-      ...user,
-      badges: user.badges || [],
+      const searchMatch =
+        !q ||
+        name.includes(q) ||
+        email.includes(q) ||
+        role.includes(q) ||
+        verification.includes(q);
+
+      const roleMatch = selectedRole === "ALL" || user.role === selectedRole;
+      const verificationMatch =
+        selectedVerification === "ALL" ||
+        user.verificationStatus === selectedVerification;
+
+      return searchMatch && roleMatch && verificationMatch;
     });
-    window.scrollTo({ top: 0, behavior: "smooth" });
+  }, [users, searchText, selectedRole, selectedVerification]);
+
+  const handleChange = <K extends keyof UserForm>(
+    key: K,
+    value: UserForm[K]
+  ) => {
+    setForm((prev) => ({ ...prev, [key]: value }));
   };
 
   const resetForm = () => {
     setEditingUserId(null);
-    setForm(emptyForm);
+    setForm(initialForm);
+    setDuplicateInfo(null);
+    setMessage("");
+    setError("");
   };
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
+  const handleEdit = (user: UserRecord) => {
+    setEditingUserId(user._id || null);
+    setDuplicateInfo(null);
+    setMessage("");
+    setError("");
 
-    setForm((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setForm({
+      name: user.name || "",
+      email: user.email || "",
+      role: user.role || "user",
+      verificationStatus: user.verificationStatus || "unverified",
+      citizenshipNumber: user.citizenshipNumber || "",
+      badgesText: (user.badges || []).join(", "),
+    });
+
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
-  const handleBadgesChange = (value: string) => {
-    const badges = value
+  const buildPayload = () => ({
+    name: form.name.trim(),
+    email: form.email.trim(),
+    role: form.role,
+    verificationStatus: form.verificationStatus || "unverified",
+    citizenshipNumber: form.citizenshipNumber.trim(),
+    badges: form.badgesText
       .split(",")
       .map((item) => item.trim())
-      .filter(Boolean);
+      .filter(Boolean),
+  });
 
-    setForm((prev) => ({
-      ...prev,
-      badges,
-    }));
-  };
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault();
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    if (!token) {
+      setError("Please login as admin first.");
+      return;
+    }
 
-    if (!token || !editingUserId) {
-      setMessage("Select a user first");
+    if (!form.name.trim()) {
+      setError("User name is required.");
+      return;
+    }
+
+    if (!form.email.trim()) {
+      setError("Email is required.");
+      return;
+    }
+
+    if (!editingUserId && duplicateInfo?.exists) {
+      setError("A user with the same email already exists. Check the suggestion below.");
       return;
     }
 
     try {
-      const payload = {
-        name: form.name,
-        username: form.username || "",
-        phone: form.phone || "",
-        district: form.district || "",
-        province: form.province || "",
-        birthplace: form.birthplace || "",
-        bio: form.bio || "",
-        role: form.role,
-        verificationStatus: form.verificationStatus || "unverified",
-        citizenshipNumber: form.citizenshipNumber || "",
-        badges: form.badges || [],
-      };
+      setSubmitting(true);
+      setError("");
+      setMessage("");
 
-      const res = await api.updateAdminUser(token, editingUserId, payload);
-      setMessage(res.message || "User updated successfully");
+      const payload = buildPayload();
+
+      if (editingUserId) {
+        const res = await api.updateAdminUser(token, editingUserId, payload);
+        setMessage(res.message || "User updated successfully");
+      } else {
+        if (!api.createAdminUser) {
+          throw new Error("createAdminUser API method is missing");
+        }
+        const res = await api.createAdminUser(token, payload);
+        setMessage(res.message || "User created successfully");
+      }
 
       resetForm();
       await loadUsers();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to update user");
+    } catch (err: any) {
+      setError(err.message || "Failed to save user");
+    } finally {
+      setSubmitting(false);
     }
   };
 
   const handleDelete = async (userId: string) => {
     if (!token) {
-      setMessage("Login required");
+      setError("Please login as admin first.");
       return;
     }
 
@@ -169,245 +266,278 @@ function AdminUsers() {
     try {
       const res = await api.deleteAdminUser(token, userId);
       setMessage(res.message || "User deleted successfully");
+
+      if (editingUserId === userId) {
+        resetForm();
+      }
+
       await loadUsers();
-    } catch (error: any) {
-      setMessage(error.message || "Failed to delete user");
+    } catch (err: any) {
+      setError(err.message || "Failed to delete user");
     }
   };
 
   return (
-    <AdminLayout
-      title="Users Management"
-      description="View and edit registered users, roles, and verification details"
-    >
-      {message && (
-        <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-700">
-          {message}
-        </div>
-      )}
-
-      <form onSubmit={handleSubmit} className="mb-8">
-        <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 md:p-6">
-          <h2 className="text-2xl font-bold text-slate-900 mb-2">
-            {editingUserId ? "Edit User" : "Select a user to edit"}
-          </h2>
-          <p className="text-slate-500 mb-5">
-            Admin can update role, verification status, and profile details
-          </p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <Input label="Name" name="name" value={form.name} onChange={handleChange} />
-            <Input label="Email" name="email" value={form.email} onChange={handleChange} disabled />
-
-            <Input label="Username" name="username" value={form.username || ""} onChange={handleChange} />
-            <Input label="Phone" name="phone" value={form.phone || ""} onChange={handleChange} />
-
-            <Input label="District" name="district" value={form.district || ""} onChange={handleChange} />
-            <Input label="Province" name="province" value={form.province || ""} onChange={handleChange} />
-
-            <Input label="Birthplace" name="birthplace" value={form.birthplace || ""} onChange={handleChange} />
-            <Input
-              label="Citizenship Number"
-              name="citizenshipNumber"
-              value={form.citizenshipNumber || ""}
-              onChange={handleChange}
-            />
-
-            <Select
-              label="Role"
-              name="role"
-              value={form.role}
-              onChange={handleChange}
-              options={["user", "admin"]}
-            />
-
-            <Select
-              label="Verification Status"
-              name="verificationStatus"
-              value={form.verificationStatus || "unverified"}
-              onChange={handleChange}
-              options={["unverified", "pending", "verified", "rejected"]}
-            />
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">Bio</label>
-              <textarea
-                name="bio"
-                value={form.bio || ""}
-                onChange={handleChange}
-                rows={4}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="block text-sm font-semibold text-slate-700 mb-2">
-                Badges (comma separated)
-              </label>
-              <input
-                type="text"
-                value={(form.badges || []).join(", ")}
-                onChange={(e) => handleBadgesChange(e.target.value)}
-                className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-                placeholder="verified citizen, active voter"
-              />
-            </div>
-          </div>
-
-          <div className="mt-6 flex flex-wrap gap-3">
-            <button
-              type="submit"
-              disabled={!editingUserId}
-              className="rounded-2xl bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-50"
-            >
-              Update User
-            </button>
-
-            <button
-              type="button"
-              onClick={resetForm}
-              className="rounded-2xl bg-slate-200 px-5 py-3 text-slate-800 font-semibold hover:bg-slate-300 transition"
-            >
-              Reset
-            </button>
-          </div>
-        </div>
-      </form>
-
-      <div className="mb-5">
-        <input
-          type="text"
-          placeholder="Search users..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-        />
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold tracking-tight text-slate-950">Users</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          View, verify, and manage registered users with cleaner duplicate checks
+        </p>
       </div>
 
-      {loading ? (
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-6 text-slate-500">
-          Loading users...
+      {message ? (
+        <div className="rounded-2xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+          {message}
         </div>
-      ) : (
-        <div className="overflow-x-auto rounded-3xl border border-slate-200">
-          <table className="min-w-full bg-white">
-            <thead className="bg-slate-50">
-              <tr className="text-left text-slate-600">
-                <th className="px-4 py-3">Name</th>
-                <th className="px-4 py-3">Email</th>
-                <th className="px-4 py-3">Role</th>
-                <th className="px-4 py-3">District</th>
-                <th className="px-4 py-3">Province</th>
-                <th className="px-4 py-3">Verification</th>
-                <th className="px-4 py-3">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredUsers.map((user, index) => {
-                const userId = user._id || user.id || "";
-                return (
-                  <tr key={userId || index} className="border-t border-slate-200">
-                    <td className="px-4 py-3 font-semibold text-slate-900">{user.name}</td>
-                    <td className="px-4 py-3">{user.email}</td>
-                    <td className="px-4 py-3">{user.role}</td>
-                    <td className="px-4 py-3">{user.district || "—"}</td>
-                    <td className="px-4 py-3">{user.province || "—"}</td>
-                    <td className="px-4 py-3">{user.verificationStatus || "unverified"}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => handleEdit(user)}
-                          className="rounded-xl bg-blue-100 px-3 py-2 text-blue-700 font-medium"
-                        >
-                          Edit
-                        </button>
-                        <button
-                          onClick={() => handleDelete(userId)}
-                          className="rounded-xl bg-red-100 px-3 py-2 text-red-700 font-medium"
-                        >
-                          Delete
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
+      ) : null}
 
-              {filteredUsers.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
-                    No users found
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+      {error ? (
+        <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
-      )}
-    </AdminLayout>
-  );
-}
+      ) : null}
 
-function Input({
-  label,
-  name,
-  value,
-  onChange,
-  disabled = false,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-  disabled?: boolean;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <input
-        type="text"
-        name={name}
-        value={value}
-        onChange={onChange}
-        disabled={disabled}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500 disabled:bg-slate-100"
-      />
-    </div>
-  );
-}
-
-function Select({
-  label,
-  name,
-  value,
-  onChange,
-  options,
-}: {
-  label: string;
-  name: string;
-  value: string;
-  onChange: (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
-  ) => void;
-  options: string[];
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-semibold text-slate-700 mb-2">{label}</label>
-      <select
-        name={name}
-        value={value}
-        onChange={onChange}
-        className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+      <AdminPageSection
+        title="Users Directory"
+        description="Search users, filter records, and edit verification details."
       >
-        {options.map((option) => (
-          <option key={option} value={option}>
-            {option}
-          </option>
-        ))}
-      </select>
+        <AdminToolbar
+          searchText={searchText}
+          onSearchChange={setSearchText}
+          searchPlaceholder="Search by name, email, role, or verification..."
+          primaryActionLabel={editingUserId ? "Cancel Edit" : "New Entry"}
+          onPrimaryAction={resetForm}
+          secondarySlot={
+            <div className="flex flex-wrap gap-2">
+              <select
+                value={selectedRole}
+                onChange={(e) => setSelectedRole(e.target.value)}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              >
+                <option value="ALL">All Roles</option>
+                <option value="admin">Admin</option>
+                <option value="user">User</option>
+              </select>
+
+              <select
+                value={selectedVerification}
+                onChange={(e) => setSelectedVerification(e.target.value)}
+                className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              >
+                <option value="ALL">All Verification</option>
+                <option value="verified">Verified</option>
+                <option value="unverified">Unverified</option>
+                <option value="pending">Pending</option>
+              </select>
+            </div>
+          }
+        />
+      </AdminPageSection>
+
+      <form onSubmit={handleSubmit}>
+        <AdminFormCard
+          title={editingUserId ? "Edit User" : "Add User"}
+          subtitle="Keep user records clean and avoid email duplicates before saving."
+          actions={
+            <>
+              <button
+                type="submit"
+                disabled={submitting || (!editingUserId && !!duplicateInfo?.exists)}
+                className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
+              >
+                {submitting
+                  ? editingUserId
+                    ? "Updating..."
+                    : "Saving..."
+                  : editingUserId
+                  ? "Update User"
+                  : "Save User"}
+              </button>
+
+              <button
+                type="button"
+                onClick={resetForm}
+                className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700"
+              >
+                Reset
+              </button>
+            </>
+          }
+        >
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Name</label>
+            <input
+              value={form.name}
+              onChange={(e) => handleChange("name", e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              placeholder="User name"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Email</label>
+            <input
+              type="email"
+              value={form.email}
+              onChange={(e) => handleChange("email", e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              placeholder="user@email.com"
+            />
+            {duplicateLoading ? (
+              <p className="mt-2 text-xs text-slate-500">Checking similar email...</p>
+            ) : null}
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Role</label>
+            <select
+              value={form.role}
+              onChange={(e) => handleChange("role", e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            >
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Verification Status
+            </label>
+            <select
+              value={form.verificationStatus}
+              onChange={(e) => handleChange("verificationStatus", e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            >
+              <option value="unverified">Unverified</option>
+              <option value="verified">Verified</option>
+              <option value="pending">Pending</option>
+            </select>
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">
+              Citizenship Number
+            </label>
+            <input
+              value={form.citizenshipNumber}
+              onChange={(e) => handleChange("citizenshipNumber", e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              placeholder="Optional"
+            />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-sm font-medium text-slate-700">Badges</label>
+            <input
+              value={form.badgesText}
+              onChange={(e) => handleChange("badgesText", e.target.value)}
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+              placeholder="verified citizen, contributor, volunteer"
+            />
+          </div>
+
+          {!editingUserId && duplicateInfo?.exists ? (
+            <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
+              <p className="text-sm font-semibold text-amber-800">
+                A user with similar email already exists
+              </p>
+              <p className="mt-1 text-sm text-amber-700">
+                Check this record before creating a duplicate.
+              </p>
+
+              <div className="mt-3 space-y-2">
+                {(duplicateInfo.matches || []).map((item, index) => (
+                  <button
+                    key={item._id || item.email || index}
+                    type="button"
+                    onClick={() =>
+                      handleEdit({
+                        _id: item._id,
+                        name: item.name,
+                        email: item.email,
+                        role: item.role,
+                      })
+                    }
+                    className="block w-full rounded-xl border border-amber-200 bg-white px-4 py-3 text-left"
+                  >
+                    <p className="font-semibold text-slate-900">{item.name || "Unnamed User"}</p>
+                    <p className="mt-1 text-xs text-slate-500">
+                      {item.email || "No email"} • {item.role || "user"}
+                    </p>
+                  </button>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </AdminFormCard>
+      </form>
+
+      <AdminDataTable
+        title="User Records"
+        subtitle={`Showing ${filteredUsers.length} user records`}
+        rows={filteredUsers}
+        emptyMessage={loading ? "Loading users..." : "No users found."}
+        columns={[
+          {
+            key: "user",
+            header: "User",
+            render: (row) => (
+              <div>
+                <p className="font-semibold text-slate-900">{row.name || "Unnamed User"}</p>
+                <p className="text-xs text-slate-500">{row.email || "No email"}</p>
+              </div>
+            ),
+          },
+          {
+            key: "role",
+            header: "Role",
+            render: (row) => (
+              <p className="font-medium text-slate-900">{row.role || "user"}</p>
+            ),
+          },
+          {
+            key: "verification",
+            header: "Verification",
+            render: (row) => (
+              <p className="font-medium text-slate-900">
+                {row.verificationStatus || "unverified"}
+              </p>
+            ),
+          },
+          {
+            key: "badges",
+            header: "Badges",
+            render: (row) => (
+              <p className="text-sm text-slate-700">
+                {row.badges?.length ? row.badges.join(", ") : "—"}
+              </p>
+            ),
+          },
+          {
+            key: "actions",
+            header: "Actions",
+            render: (row) => (
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => handleEdit(row)}
+                  className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={() => handleDelete(row._id || "")}
+                  className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
+                  disabled={!row._id}
+                >
+                  Delete
+                </button>
+              </div>
+            ),
+          },
+        ]}
+      />
     </div>
   );
 }

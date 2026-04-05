@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
 
 function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { loginUser } = useAuth();
 
   const [isRegisterMode, setIsRegisterMode] = useState(false);
@@ -15,57 +16,48 @@ function Login() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setMessage("");
+  const from = (location.state as { from?: string } | null)?.from;
 
-    try {
-      if (isRegisterMode) {
-        const result = await api.register(name, email, password);
+const handleSubmit = async (e: React.FormEvent) => {
+  e.preventDefault();
+  setLoading(true);
+  setMessage("");
 
-        if (result.message === "User registered successfully") {
-          setMessage("Registration successful. Please login now.");
-          setIsRegisterMode(false);
-          setName("");
-          setPassword("");
-        } else {
-          setMessage(result.message || "Registration failed");
-        }
+  try {
+    if (isRegisterMode) {
+      const result = await api.register(name, email, password);
+      setMessage(result.message || "Registration successful. Please login now.");
+      setIsRegisterMode(false);
+      setName("");
+      setPassword("");
+    } else {
+      const result = await loginUser(email, password);
+      setMessage(result.message || "Login successful");
+
+      if (result.user?.role === "admin") {
+        navigate("/admin", { replace: true });
       } else {
-        const result = await api.login(email, password);
-
-        if (result.token && result.user) {
-          loginUser(result.token, result.user);
-          setMessage("Login successful");
-
-          if (result.user.role === "admin") {
-            navigate("/admin");
-          } else {
-            navigate("/");
-          }
-        } else {
-          setMessage(result.message || "Login failed");
-        }
+        navigate("/", { replace: true });
       }
-    } catch (error: any) {
-      setMessage(error.message || "Something went wrong");
-    } finally {
-      setLoading(false);
     }
-  };
+  } catch (error: any) {
+    setMessage(error.message || "Something went wrong");
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <div className="min-h-screen bg-slate-100">
       <Navbar />
 
-      <main className="max-w-md mx-auto px-4 py-10">
-        <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-          <h1 className="text-3xl font-extrabold text-slate-900 mb-2">
+      <main className="mx-auto max-w-md px-4 py-10">
+        <div className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+          <h1 className="mb-2 text-3xl font-extrabold text-slate-900">
             {isRegisterMode ? "Register" : "Login"}
           </h1>
 
-          <p className="text-slate-500 mb-6">
+          <p className="mb-6 text-slate-500">
             Login is required for ratings, comments, complaints, and profile features.
           </p>
 
@@ -108,7 +100,7 @@ function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full rounded-2xl bg-blue-600 text-white py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
+              className="w-full rounded-2xl bg-blue-600 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
             >
               {loading
                 ? "Please wait..."
@@ -123,7 +115,7 @@ function Login() {
               setIsRegisterMode(!isRegisterMode);
               setMessage("");
             }}
-            className="w-full mt-4 text-blue-600 font-medium hover:underline"
+            className="mt-4 w-full font-medium text-blue-600 hover:underline"
           >
             {isRegisterMode
               ? "Already have an account? Login"

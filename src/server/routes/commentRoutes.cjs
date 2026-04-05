@@ -1,14 +1,19 @@
 const express = require("express");
 const Comment = require("../models/Comment.cjs");
+const Leader = require("../models/Leader.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
 
 const router = express.Router();
 
-// Get comments for a leader
 router.get("/:leaderId", async (req, res) => {
   try {
     const { leaderId } = req.params;
     const { sort = "newest" } = req.query;
+
+    const leader = await Leader.findOne({ leaderId });
+    if (!leader) {
+      return res.status(404).json({ message: "Leader not found" });
+    }
 
     let sortOption = { createdAt: -1 };
 
@@ -27,10 +32,14 @@ router.get("/:leaderId", async (req, res) => {
   }
 });
 
-// Create comment
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const { leaderId, text, rating } = req.body;
+
+    const leader = await Leader.findOne({ leaderId });
+    if (!leader) {
+      return res.status(404).json({ message: "Leader not found" });
+    }
 
     const comment = await Comment.create({
       leaderId,
@@ -49,7 +58,6 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-// Like comment
 router.post("/:commentId/like", authMiddleware, async (req, res) => {
   try {
     const comment = await Comment.findByIdAndUpdate(
@@ -71,7 +79,6 @@ router.post("/:commentId/like", authMiddleware, async (req, res) => {
   }
 });
 
-// Reply to comment
 router.post("/:commentId/reply", authMiddleware, async (req, res) => {
   try {
     const { text } = req.body;
