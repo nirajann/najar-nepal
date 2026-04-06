@@ -12,7 +12,7 @@ import AdminDistricts from "./components/admin/AdminDistricts";
 import AdminProjects from "./components/admin/AdminProjects";
 import AdminComplaints from "./components/admin/AdminComplaints";
 import AdminUsers from "./components/admin/AdminUsers";
-
+import Profile from "./pages/Profile";
 
 function App() {
   return (
@@ -23,6 +23,8 @@ function App() {
         <Route path="/ranking" element={<Ranking />} />
         <Route path="/login" element={<Login />} />
         <Route path="/leader/:id" element={<LeaderProfile />} />
+        <Route path="/profile/:id" element={<Profile />} />
+         <Route path="/profile" element={<Profile />} />
 <Route path="/admin" element={<AdminRoute />}>
   <Route index element={<AdminDashboard />} />
   <Route path="leaders" element={<AdminLeaders />} />

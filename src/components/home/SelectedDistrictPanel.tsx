@@ -18,6 +18,7 @@ function LeaderMiniCard({
     role?: string;
     party?: string;
     photo?: string;
+    localLevel?: string;
   } | null;
   onClick?: () => void;
 }) {
@@ -34,15 +35,15 @@ function LeaderMiniCard({
           type="button"
           onClick={onClick}
           disabled={!clickable}
-          className={`flex w-full items-center gap-3 rounded-2xl text-left transition ${
+          className={`flex w-full items-center gap-3 rounded-2xl p-2 text-left transition ${
             clickable ? "hover:bg-white hover:shadow-sm" : ""
-          } p-2`}
+          }`}
         >
           {leader.photo ? (
             <img
               src={leader.photo}
               alt={leader.name}
-              className="h-14 w-14 rounded-2xl object-cover border border-slate-200"
+              className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
             />
           ) : (
             <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 text-sm font-bold text-slate-600">
@@ -59,9 +60,9 @@ function LeaderMiniCard({
               {leader.name}
             </p>
 
-            {leader.role ? (
-              <p className="truncate text-xs text-slate-500">{leader.role}</p>
-            ) : null}
+            <p className="truncate text-xs text-slate-500">
+              {leader.localLevel || leader.role || ""}
+            </p>
 
             {leader.party ? (
               <p className="truncate text-xs text-slate-400">{leader.party}</p>
@@ -146,6 +147,16 @@ function SelectedDistrictPanel({ district }: Props) {
             onClick={
               district.mpLeader?.leaderId
                 ? () => navigate(`/leader/${district.mpLeader?.leaderId}`)
+                : undefined
+            }
+          />
+
+          <LeaderMiniCard
+            label="Mayor"
+            leader={district.mayorLeader}
+            onClick={
+              district.mayorLeader?.leaderId
+                ? () => navigate(`/leader/${district.mayorLeader?.leaderId}`)
                 : undefined
             }
           />

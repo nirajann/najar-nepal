@@ -11,7 +11,9 @@
     "preview": "vite preview",
     "server": "nodemon src/server/server.cjs",
     "migrate:legacy": "node src/server/scripts/migrateLegacyData.cjs",
-    "seed:districts": "node src/server/scripts/seedDistricts.cjs"
+    "seed:districts": "node Src/server/scripts/seedDistricts.cjs",
+    "import:leaders": "node src/server/scripts/importLeaders.cjs"
+    
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

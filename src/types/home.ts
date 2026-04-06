@@ -12,6 +12,7 @@ export type LeaderRef = {
   party?: string;
   portfolio?: string;
   photo?: string;
+  localLevel?: string;
 };
 
 export type DistrictInfo = {
@@ -22,6 +23,7 @@ export type DistrictInfo = {
   localLevels: LocalLevel[];
   mpLeader?: LeaderRef | null;
   ministerLeader?: LeaderRef | null;
+  mayorLeader?: LeaderRef | null;
   naLeaders?: LeaderRef[];
   satisfactionScore?: number;
 };

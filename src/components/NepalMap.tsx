@@ -42,6 +42,37 @@ function normalizeName(name: string) {
     .trim();
 }
 
+function normalizeDistrictAlias(name: string) {
+  return normalizeName(name)
+    .replace("SINDHUPALCHOK", "SINDHUPALCHOWK")
+    .replace("TANAHUN", "TANAHU")
+    .replace("KAVRE", "KAVREPALANCHOK")
+    .replace("NAWALPUR", "NAWALPARASI BARDAGHAT SUSTA EAST")
+    .replace("EAST NAWALPARASI", "NAWALPARASI BARDAGHAT SUSTA EAST")
+    .replace("NAWALPARASI EAST", "NAWALPARASI BARDAGHAT SUSTA EAST")
+    .replace("WEST NAWALPARASI", "NAWALPARASI BARDAGHAT SUSTA WEST")
+    .replace("NAWALPARASI WEST", "NAWALPARASI BARDAGHAT SUSTA WEST")
+    .replace("WESTERN RUKUM", "RUKUM WEST")
+    .replace("WEST RUKUM", "RUKUM WEST")
+    .replace("EASTERN RUKUM", "RUKUM EAST")
+    .replace("EAST RUKUM", "RUKUM EAST");
+}
+
+function getDistrictCandidates(rawName: string, districts: DistrictInfo[]) {
+  const normalized = normalizeDistrictAlias(rawName);
+
+  if (normalized === "RUKUM") {
+    return districts.filter((district) => {
+      const districtName = normalizeDistrictAlias(district.name);
+      return districtName === "RUKUM EAST" || districtName === "RUKUM WEST";
+    });
+  }
+
+  return districts.filter(
+    (district) => normalizeDistrictAlias(district.name) === normalized
+  );
+}
+
 function throttleRaf<T extends (...args: any[]) => void>(fn: T) {
   let ticking = false;
   let lastArgs: Parameters<T> | null = null;
@@ -90,7 +121,7 @@ function NepalMap({
     const map = new Map<string, DistrictInfo>();
 
     districts.forEach((district) => {
-      map.set(normalizeName(district.name), {
+      map.set(normalizeDistrictAlias(district.name), {
         ...district,
         localLevels: Array.isArray(district.localLevels) ? district.localLevels : [],
       });
@@ -123,7 +154,9 @@ function NepalMap({
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
-    svg.attr("viewBox", `0 0 ${width} ${height}`).attr("preserveAspectRatio", "xMidYMid meet");
+    svg
+      .attr("viewBox", `0 0 ${width} ${height}`)
+      .attr("preserveAspectRatio", "xMidYMid meet");
 
     const projection = d3.geoMercator();
     const path = d3.geoPath(projection);
@@ -160,8 +193,8 @@ function NepalMap({
         feature.properties?.NAME_2 ||
         "Unknown";
 
-      const normalizedDistrict = normalizeName(rawName);
-      const matched = districtLookup.get(normalizedDistrict);
+      const matches = getDistrictCandidates(rawName, districts);
+      const matched = matches[0];
 
       setTooltip({
         visible: true,
@@ -187,19 +220,23 @@ function NepalMap({
           feature.properties?.NAME_2 ||
           "";
 
-        const normalizedDistrict = normalizeName(rawName);
-        const matched = districtLookup.get(normalizedDistrict);
+        const matches = getDistrictCandidates(rawName, districts);
+        const matched = matches[0];
+
         const districtKey = (matched?.name || rawName).toUpperCase();
         const score = districtScores[districtKey];
 
+        const normalizedDistrict = normalizeDistrictAlias(rawName);
         const searchMatch =
-          searchText.trim() === "" || normalizedDistrict.includes(normalizeName(searchText));
+          searchText.trim() === "" ||
+          normalizedDistrict.includes(normalizeDistrictAlias(searchText));
 
         const provinceMatch =
           selectedProvince === "ALL" || matched?.province === selectedProvince;
 
         const selectedMatch =
-          selectedDistrict && normalizeName(selectedDistrict.name) === normalizedDistrict;
+          !!selectedDistrict &&
+          normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict;
 
         if (selectedMatch) return "#1d4ed8";
         if (!provinceMatch || !searchMatch) return "#dbeafe";
@@ -217,9 +254,10 @@ function NepalMap({
           feature.properties?.name ||
           feature.properties?.NAME_2 ||
           "";
-        const normalizedDistrict = normalizeName(rawName);
+        const normalizedDistrict = normalizeDistrictAlias(rawName);
 
-        return selectedDistrict && normalizeName(selectedDistrict.name) === normalizedDistrict
+        return selectedDistrict &&
+          normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict
           ? "#1e3a8a"
           : "#64748b";
       })
@@ -230,9 +268,10 @@ function NepalMap({
           feature.properties?.name ||
           feature.properties?.NAME_2 ||
           "";
-        const normalizedDistrict = normalizeName(rawName);
+        const normalizedDistrict = normalizeDistrictAlias(rawName);
 
-        return selectedDistrict && normalizeName(selectedDistrict.name) === normalizedDistrict
+        return selectedDistrict &&
+          normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict
           ? 2.3
           : 0.85;
       })
@@ -254,22 +293,24 @@ function NepalMap({
           feature.properties?.NAME_2 ||
           "";
 
-        const normalizedDistrict = normalizeName(rawName);
-        const matched = districtLookup.get(normalizedDistrict);
+        const matches = getDistrictCandidates(rawName, districts);
 
-        if (matched) {
-          setSelectedDistrict(matched);
+        if (matches.length === 1) {
+          setSelectedDistrict(matches[0]);
+        } else if (matches.length > 1) {
+          setSelectedDistrict(matches[0]);
         } else {
           setSelectedDistrict({
-            districtId: normalizeName(rawName).toLowerCase().replace(/\s+/g, "-"),
+            districtId: normalizeDistrictAlias(rawName).toLowerCase().replace(/\s+/g, "-"),
             name: rawName,
             province: "Unknown Province",
             localLevels: [],
             mpLeader: null,
             ministerLeader: null,
+            mayorLeader: null,
             naLeaders: [],
             satisfactionScore: 0,
-          });
+          } as DistrictInfo);
         }
       });
 
@@ -303,6 +344,7 @@ function NepalMap({
         return boxWidth > 42 && boxHeight > 16 && mapHeight >= 420 ? rawName : "";
       });
   }, [
+    districts,
     districtLookup,
     searchText,
     selectedDistrict,

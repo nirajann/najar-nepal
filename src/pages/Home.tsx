@@ -42,6 +42,34 @@ function LowerSectionSkeleton() {
   );
 }
 
+function normalizeDistrictAlias(name = "") {
+  return name
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\(.*?\)/g, "")
+    .replace("sindhupalchok", "sindhupalchowk")
+    .replace("tanahun", "tanahu")
+    .replace("kavre", "kavrepalanchok")
+    .replace("nawalpur", "nawalparasi bardaghat susta east")
+    .replace("east nawalparasi", "nawalparasi bardaghat susta east")
+    .replace("nawalparasi east", "nawalparasi bardaghat susta east")
+    .replace("nawalparasi west", "nawalparasi bardaghat susta west")
+    .replace("west nawalparasi", "nawalparasi bardaghat susta west")
+    .replace("western rukum", "rukum west")
+    .replace("west rukum", "rukum west")
+    .replace("rukum paschim", "rukum west")
+    .replace("eastern rukum", "rukum east")
+    .replace("east rukum", "rukum east")
+    .replace("rukum purba", "rukum east");
+}
+
+function getLeaderDistrictName(district: any) {
+  if (!district) return "";
+  if (typeof district === "string") return district;
+  return district.name || "";
+}
+
 function Home() {
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictInfo | null>(null);
   const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
@@ -57,36 +85,46 @@ function Home() {
       try {
         setLoadingDistricts(true);
 
-        const cacheKey = "najar_home_districts_cache_v2";
-        const cached = sessionStorage.getItem(cacheKey);
+        const [districtRes, leaderRes] = await Promise.all([
+          api.getDistricts(),
+          api.getLeaders(),
+        ]);
 
-        if (cached) {
-          const parsed = JSON.parse(cached) as DistrictInfo[];
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            setDistricts(parsed);
-            setLoadingDistricts(false);
-            return;
-          }
-        }
+        const districtItems = Array.isArray(districtRes)
+          ? districtRes
+          : districtRes?.districts || [];
 
-        const res = await api.getDistricts();
-        const items = Array.isArray(res) ? res : res?.districts || [];
-        const normalized = items.map((district: DistrictInfo) => ({
-          ...district,
-          localLevels: Array.isArray(district.localLevels) ? district.localLevels : [],
-          mpLeader: district.mpLeader || null,
-          ministerLeader: district.ministerLeader || null,
-          naLeaders: Array.isArray(district.naLeaders) ? district.naLeaders : [],
-          satisfactionScore:
-            typeof district.satisfactionScore === "number"
-              ? district.satisfactionScore
-              : 50,
-        }));
+        const leaderItems = Array.isArray(leaderRes)
+          ? leaderRes
+          : leaderRes?.leaders || [];
+
+        const normalized = districtItems.map((district: DistrictInfo) => {
+          const districtKey = normalizeDistrictAlias(district.name);
+
+          const relatedLeaders = leaderItems.filter((leader: any) => {
+            const leaderDistrictName = getLeaderDistrictName(leader.district);
+            return normalizeDistrictAlias(leaderDistrictName) === districtKey;
+          });
+
+          return {
+            ...district,
+            localLevels: Array.isArray(district.localLevels) ? district.localLevels : [],
+            mpLeader: relatedLeaders.find((l: any) => l.role === "MP") || null,
+            ministerLeader: relatedLeaders.find((l: any) => l.role === "Minister") || null,
+            mayorLeader: relatedLeaders.find((l: any) => l.role === "Mayor") || null,
+            naLeaders: relatedLeaders.filter(
+              (l: any) => l.role === "National Assembly Member"
+            ),
+            satisfactionScore:
+              typeof district.satisfactionScore === "number"
+                ? district.satisfactionScore
+                : 50,
+          };
+        });
 
         setDistricts(normalized);
-        sessionStorage.setItem(cacheKey, JSON.stringify(normalized));
       } catch (error) {
-        console.error("Failed to load districts:", error);
+        console.error("Failed to load districts/leaders:", error);
         setDistricts([]);
       } finally {
         setLoadingDistricts(false);
@@ -106,7 +144,7 @@ function Home() {
     if (freshMatch) {
       setSelectedDistrict(freshMatch);
     }
-  }, [districts]);
+  }, [districts, selectedDistrict]);
 
   const provinceButtons = useMemo(() => {
     const seen = new Set<string>();
