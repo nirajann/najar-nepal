@@ -167,7 +167,6 @@ function Profile() {
   const badges = user?.badges || [];
   const verificationSummary =
     verificationStatus === "verified"
-      ? "Your identity has been verified. Public visitors only see your badge and status."
       ? text.verificationSummaryVerified
       : verificationStatus === "pending"
       ? text.verificationSummaryPending
