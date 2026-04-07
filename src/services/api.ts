@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:5000/api";
+const API_BASE_URL = "http://192.168.0.10:5000/api";
 
 type UnauthorizedHandler = (() => void) | null;
 
@@ -9,17 +9,35 @@ export function setUnauthorizedHandler(handler: () => void) {
 }
 
 async function parseJsonResponse(res: Response) {
-  const data = await res.json().catch(() => ({}));
+  const contentType = res.headers.get("content-type") || "";
+  let data: any = null;
+  let rawText = "";
+
+  try {
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      rawText = await res.text();
+    }
+  } catch (error) {
+    console.error("Failed to parse response body:", error);
+  }
 
   if (res.status === 401 && unauthorizedHandler) {
     unauthorizedHandler();
   }
 
   if (!res.ok) {
-    throw new Error(data.message || "Request failed");
+    const backendMessage =
+      data?.message ||
+      data?.error ||
+      rawText ||
+      `Request failed with status ${res.status}`;
+
+    throw new Error(backendMessage);
   }
 
-  return data;
+  return data ?? rawText;
 }
 
 function buildUrl(path: string, params?: Record<string, string | undefined>) {
@@ -67,6 +85,104 @@ export const api = {
       body: JSON.stringify(profileData),
     });
     return parseJsonResponse(res);
+  },
+    getProfile: async (token: string) => {
+    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
+
+  submitVerification: async (
+    token: string,
+    payload: {
+      citizenshipNumber: string;
+      citizenshipFrontPhoto: string;
+      citizenshipBackPhoto: string;
+      verificationSelfiePhoto?: string;
+      district?: string;
+      province?: string;
+    }
+  ) => {
+    const res = await fetch(`${API_BASE_URL}/auth/verification/submit`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  getUserVerificationDocuments: async (token: string, userId: string) => {
+    const res = await fetch(
+      `${API_BASE_URL}/auth/users/${userId}/verification-documents`,
+      {
+        headers: authHeaders(token),
+      }
+    );
+    return parseJsonResponse(res);
+  },
+
+  getVerificationDocumentBlob: async (
+    token: string,
+    userId: string,
+    documentType: "front" | "back" | "selfie"
+  ) => {
+    const res = await fetch(
+      `${API_BASE_URL}/auth/users/${userId}/verification-documents/${documentType}`,
+      {
+        headers: authHeaders(token),
+      }
+    );
+
+    if (res.status === 401 && unauthorizedHandler) {
+      unauthorizedHandler();
+    }
+
+    if (!res.ok) {
+      let message = `Request failed with status ${res.status}`;
+
+      try {
+        const data = await res.json();
+        message = data?.message || message;
+      } catch {
+        const rawText = await res.text();
+        message = rawText || message;
+      }
+
+      throw new Error(message);
+    }
+
+    return res.blob();
+  },
+
+  reviewUserVerification: async (
+    token: string,
+    userId: string,
+    payload: {
+      verificationStatus: "pending" | "verified" | "rejected";
+      verificationNotes?: string;
+    }
+  ) => {
+    const res = await fetch(
+      `${API_BASE_URL}/auth/users/${userId}/review-verification`,
+      {
+        method: "PUT",
+        headers: authHeaders(token, true),
+        body: JSON.stringify(payload),
+      }
+    );
+    return parseJsonResponse(res);
+  },
+
+  getPendingVerificationUsers: async (token: string) => {
+    const res = await fetch(`${API_BASE_URL}/auth/users`, {
+      headers: authHeaders(token),
+    });
+    const data = await parseJsonResponse(res);
+
+    if (!Array.isArray(data)) return [];
+
+    return data.filter((user: any) => user.verificationStatus === "pending");
   },
 
   getLeaders: async (params?: {
@@ -202,19 +318,44 @@ export const api = {
     return parseJsonResponse(res);
   },
 
-  createComment: async (
-    token: string,
-    leaderId: string,
-    text: string,
-    rating: number
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/comments`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify({ leaderId, text, rating }),
-    });
-    return parseJsonResponse(res);
-  },
+ createComment: async (
+  token: string,
+  leaderId: string,
+  text: string,
+  rating: number
+) => {
+  const res = await fetch(`${API_BASE_URL}/comments`, {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify({ leaderId, text, rating }),
+  });
+
+  return parseJsonResponse(res);
+},
+
+getComments: async (leaderId: string, sort = "newest") => {
+  const res = await fetch(
+    `${API_BASE_URL}/comments/${leaderId}?sort=${encodeURIComponent(sort)}`
+  );
+  return parseJsonResponse(res);
+},
+
+likeComment: async (token: string, commentId: string) => {
+  const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
+    method: "POST",
+    headers: authHeaders(token),
+  });
+  return parseJsonResponse(res);
+},
+
+replyComment: async (token: string, commentId: string, text: string) => {
+  const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+    method: "POST",
+    headers: authHeaders(token, true),
+    body: JSON.stringify({ text }),
+  });
+  return parseJsonResponse(res);
+},
 
   getAdminAnalyticsOverview: async (token: string) => {
     const res = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
@@ -230,39 +371,30 @@ export const api = {
     return parseJsonResponse(res);
   },
 
- submitRating: async (
-  token: string,
-  leaderId: string,
-  value: number,
-  action?: "like" | "dislike"
-) => {
-  const res = await fetch(`${API_BASE_URL}/ratings`, {
-    method: "POST",
-    headers: authHeaders(token, true),
-    body: JSON.stringify({
-      leaderId,
-      value,
-      reaction: action, // backend expects reaction, not action
-    }),
-  });
-  return parseJsonResponse(res);
-},
-
-getLeaderStats: async (leaderId: string) => {
-  const res = await fetch(`${API_BASE_URL}/ratings/${leaderId}/stats`);
-  return parseJsonResponse(res);
-},
-
-
-  getComments: async (leaderId: string, sort = "newest") => {
-    const res = await fetch(
-      buildUrl("/comments", {
+  submitRating: async (
+    token: string,
+    leaderId: string,
+    value: number,
+    action?: "like" | "dislike"
+  ) => {
+    const res = await fetch(`${API_BASE_URL}/ratings`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify({
         leaderId,
-        sort,
-      })
-    );
+        value,
+        reaction: action,
+      }),
+    });
     return parseJsonResponse(res);
   },
+
+  getLeaderStats: async (leaderId: string) => {
+    const res = await fetch(`${API_BASE_URL}/ratings/${leaderId}/stats`);
+    return parseJsonResponse(res);
+  },
+
+
   submitComplaint: async (
     token: string,
     leaderId: string,
@@ -283,25 +415,6 @@ getLeaderStats: async (leaderId: string) => {
     return parseJsonResponse(res);
   },
 
-
-
-
-  likeComment: async (token: string, commentId: string) => {
-    const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
-      method: "POST",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
-
-  replyComment: async (token: string, commentId: string, text: string) => {
-    const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify({ text }),
-    });
-    return parseJsonResponse(res);
-  },
 
   getMyComplaintsByLeader: async (token: string, leaderId: string) => {
     const res = await fetch(
@@ -454,42 +567,76 @@ getLeaderStats: async (leaderId: string) => {
     return parseJsonResponse(res);
   },
 
+    getDistrictFeedbackSummary: async (districtId: string) => {
+    const res = await fetch(`${API_BASE_URL}/district-feedback/${districtId}/summary`);
+    return parseJsonResponse(res);
+  },
+
+  getMyDistrictFeedback: async (token: string, districtId: string) => {
+    const res = await fetch(
+      `${API_BASE_URL}/district-feedback/${districtId}/my-feedback`,
+      {
+        headers: authHeaders(token),
+      }
+    );
+    return parseJsonResponse(res);
+  },
+
+  submitDistrictFeedback: async (
+    token: string,
+    districtId: string,
+    payload: {
+      transportation: number;
+      roads: number;
+      safety: number;
+      cleanliness: number;
+      publicServices: number;
+      scenery: number;
+    }
+  ) => {
+    const res = await fetch(`${API_BASE_URL}/district-feedback/${districtId}`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
 
   getAdminComplaints: async (
-  token: string,
-  params?: {
-    search?: string;
-    status?: string;
-    complaintType?: string;
-  }
-) => {
-  const res = await fetch(
-    buildUrl("/admin/complaints", {
-      search: params?.search,
-      status: params?.status,
-      complaintType: params?.complaintType,
-    }),
-    {
-      headers: authHeaders(token),
+    token: string,
+    params?: {
+      search?: string;
+      status?: string;
+      complaintType?: string;
     }
-  );
-  return parseJsonResponse(res);
-},
+  ) => {
+    const res = await fetch(
+      buildUrl("/admin/complaints", {
+        search: params?.search,
+        status: params?.status,
+        complaintType: params?.complaintType,
+      }),
+      {
+        headers: authHeaders(token),
+      }
+    );
+    return parseJsonResponse(res);
+  },
 
-updateAdminComplaint: async (token: string, complaintId: string, payload: any) => {
-  const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
-    method: "PUT",
-    headers: authHeaders(token, true),
-    body: JSON.stringify(payload),
-  });
-  return parseJsonResponse(res);
-},
+  updateAdminComplaint: async (token: string, complaintId: string, payload: any) => {
+    const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
+      method: "PUT",
+      headers: authHeaders(token, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
 
-deleteAdminComplaint: async (token: string, complaintId: string) => {
-  const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
-    method: "DELETE",
-    headers: authHeaders(token),
-  });
-  return parseJsonResponse(res);
-},
+  deleteAdminComplaint: async (token: string, complaintId: string) => {
+    const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
+      method: "DELETE",
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
 };

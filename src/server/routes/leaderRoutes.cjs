@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const Leader = require("../models/Leader.cjs");
 const District = require("../models/District.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
+const adminMiddleware = require("../middleware/adminMiddleware.cjs");
 
 const router = express.Router();
 
@@ -124,7 +125,7 @@ router.get("/:leaderId", async (req, res) => {
 });
 
 // Create leader
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body };
 
@@ -198,7 +199,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // Update leader
-router.put("/:leaderId", authMiddleware, async (req, res) => {
+router.put("/:leaderId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const existing = await Leader.findOne({ leaderId: req.params.leaderId });
 
@@ -265,7 +266,7 @@ router.put("/:leaderId", authMiddleware, async (req, res) => {
 });
 
 // Delete leader
-router.delete("/:leaderId", authMiddleware, async (req, res) => {
+router.delete("/:leaderId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const leader = await Leader.findOneAndDelete({ leaderId: req.params.leaderId });
 

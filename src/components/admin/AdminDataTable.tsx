@@ -1,7 +1,9 @@
+import type { ReactNode } from "react";
+
 type Column<T> = {
   key: string;
   header: string;
-  render: (row: T) => React.ReactNode;
+  render: (row: T) => ReactNode;
   className?: string;
 };
 
@@ -21,20 +23,22 @@ function AdminDataTable<T>({
   emptyMessage = "No records found.",
 }: Props<T>) {
   return (
-    <section className="rounded-3xl border border-slate-200 bg-white shadow-sm">
-      <div className="border-b border-slate-100 px-5 py-4">
-        <h3 className="text-lg font-semibold tracking-tight text-slate-950">{title}</h3>
+    <section className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-100 px-4 py-4 sm:px-5">
+        <h3 className="text-base font-semibold tracking-tight text-slate-950 sm:text-lg">
+          {title}
+        </h3>
         {subtitle ? <p className="mt-1 text-sm text-slate-500">{subtitle}</p> : null}
       </div>
 
       <div className="overflow-x-auto">
-        <table className="min-w-full">
+        <table className="w-full min-w-[900px]">
           <thead className="bg-slate-50">
             <tr>
               {columns.map((column) => (
                 <th
                   key={column.key}
-                  className={`whitespace-nowrap px-5 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 ${column.className || ""}`}
+                  className={`whitespace-nowrap px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500 sm:px-5 ${column.className || ""}`}
                 >
                   {column.header}
                 </th>
@@ -47,7 +51,7 @@ function AdminDataTable<T>({
               <tr>
                 <td
                   colSpan={columns.length}
-                  className="px-5 py-8 text-center text-sm text-slate-500"
+                  className="px-4 py-8 text-center text-sm text-slate-500 sm:px-5"
                 >
                   {emptyMessage}
                 </td>
@@ -56,12 +60,12 @@ function AdminDataTable<T>({
               rows.map((row, index) => (
                 <tr
                   key={index}
-                  className="border-t border-slate-100 transition hover:bg-slate-50/70"
+                  className="border-t border-slate-100 align-top transition hover:bg-slate-50/70"
                 >
                   {columns.map((column) => (
                     <td
                       key={column.key}
-                      className={`px-5 py-4 text-sm text-slate-700 ${column.className || ""}`}
+                      className={`px-4 py-4 text-sm text-slate-700 sm:px-5 ${column.className || ""}`}
                     >
                       {column.render(row)}
                     </td>

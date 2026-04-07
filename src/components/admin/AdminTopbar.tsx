@@ -34,21 +34,21 @@ function AdminTopbar({
 
   return (
     <header className="sticky top-0 z-30 border-b border-slate-200 bg-slate-50/95 backdrop-blur">
-      <div className="flex min-h-[86px] items-center justify-between gap-4 px-6">
-        <div>
-          <h1 className="text-[18px] font-bold tracking-tight text-slate-950">
+      <div className="flex min-h-[78px] flex-col gap-3 px-3 py-3 sm:px-4 lg:min-h-[86px] lg:flex-row lg:items-center lg:justify-between lg:px-6">
+        <div className="min-w-0">
+          <h1 className="truncate text-[17px] font-bold tracking-tight text-slate-950 sm:text-[18px]">
             {pageTitle}
           </h1>
-          <p className="mt-1 text-sm text-slate-500">{pageSubtitle}</p>
+          <p className="mt-1 line-clamp-2 text-sm text-slate-500">{pageSubtitle}</p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="hidden w-[300px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 lg:flex">
-            <Search className="h-4 w-4 text-slate-400" />
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+          <div className="flex min-w-0 flex-1 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 sm:px-4 sm:py-3 lg:w-[300px] lg:flex-none">
+            <Search className="h-4 w-4 shrink-0 text-slate-400" />
             <input
               type="text"
               placeholder="Search dashboard..."
-              className="w-full bg-transparent text-sm outline-none placeholder:text-slate-400"
+              className="w-full min-w-0 bg-transparent text-sm outline-none placeholder:text-slate-400"
             />
           </div>
 
@@ -67,7 +67,7 @@ function AdminTopbar({
             </button>
 
             {openNotifications && (
-              <div className="absolute right-0 mt-2 w-[360px] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl">
+              <div className="absolute right-0 z-40 mt-2 w-[280px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white p-3 shadow-xl sm:w-[340px]">
                 <div className="mb-2 flex items-center justify-between px-1">
                   <p className="text-sm font-semibold text-slate-900">Notifications</p>
                   <button
@@ -84,7 +84,7 @@ function AdminTopbar({
                     No important alerts right now.
                   </div>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="max-h-[320px] space-y-2 overflow-y-auto">
                     {notifications.map((item) => (
                       <div
                         key={item.id}
@@ -117,12 +117,12 @@ function AdminTopbar({
             <Settings className="h-5 w-5" />
           </button>
 
-          <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 md:flex">
+          <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white px-4 py-3 sm:flex">
             <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-950 text-sm font-bold text-white">
               {user?.name?.[0]?.toUpperCase() || "A"}
             </div>
-            <div>
-              <p className="text-sm font-semibold text-slate-900">
+            <div className="min-w-0">
+              <p className="truncate text-sm font-semibold text-slate-900">
                 {user?.name || "Admin"}
               </p>
               <p className="text-xs text-slate-500">Platform Manager</p>
@@ -132,10 +132,10 @@ function AdminTopbar({
           <button
             type="button"
             onClick={handleLogout}
-            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+            className="inline-flex items-center gap-2 rounded-2xl bg-slate-950 px-3 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 sm:px-4"
           >
             <LogOut className="h-4 w-4" />
-            Logout
+            <span className="hidden sm:inline">Logout</span>
           </button>
         </div>
       </div>

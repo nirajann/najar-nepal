@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function Profile() {
   const { user, token, updateUser } = useAuth();
@@ -16,7 +21,6 @@ function Profile() {
     birthplace: "",
     bio: "",
     profilePhoto: "",
-    citizenshipNumber: "",
   });
 
   const [message, setMessage] = useState("");
@@ -35,7 +39,6 @@ function Profile() {
       birthplace: user.birthplace || "",
       bio: user.bio || "",
       profilePhoto: user.profilePhoto || "",
-      citizenshipNumber: user.citizenshipNumber || "",
     });
   }, [user]);
 
@@ -64,8 +67,8 @@ function Profile() {
       } else {
         setMessage(result.message || "Failed to update profile");
       }
-    } catch (error: any) {
-      setMessage(error.message || "Something went wrong");
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "Something went wrong"));
     } finally {
       setLoading(false);
     }
@@ -73,6 +76,14 @@ function Profile() {
 
   const verificationStatus = user?.verificationStatus || "unverified";
   const badges = user?.badges || [];
+  const verificationSummary =
+    verificationStatus === "verified"
+      ? "Your identity has been verified. Public visitors only see your badge and status."
+      : verificationStatus === "pending"
+      ? "Your documents are safely submitted and waiting for reviewer approval."
+      : verificationStatus === "rejected"
+      ? "Your last verification submission was rejected. You can review the notes and submit updated documents."
+      : "You can submit your nagarikta privately for review. Documents are never shown on your public profile.";
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -225,29 +236,40 @@ function Profile() {
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
               <h2 className="text-2xl font-bold text-slate-900 mb-4">Verification Center</h2>
 
-              <VerificationBadge status={verificationStatus} />
+              <div className="flex items-center gap-3">
+                <VerificationBadge status={verificationStatus} />
+                {verificationStatus === "verified" ? (
+                  <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                    Public badge active
+                  </span>
+                ) : null}
+              </div>
 
               <p className="text-slate-600 mt-4 text-sm leading-6">
-                Submit your citizenship details for verification. Documents should stay
-                private and only be reviewed by platform administrators.
+                {verificationSummary}
               </p>
 
-              <div className="mt-4 space-y-3">
-                <input
-                  name="citizenshipNumber"
-                  value={form.citizenshipNumber}
-                  onChange={handleChange}
-                  placeholder="Citizenship number"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
+                <p className="font-semibold text-slate-900">What is public</p>
+                <p className="mt-2 leading-6">
+                  Only your verification status and badge. Your citizenship number and uploaded
+                  images remain private and are only available to authorized reviewers.
+                </p>
+              </div>
 
-                <button
-                  onClick={handleSave}
-                  disabled={loading}
-                  className="w-full rounded-2xl bg-slate-900 text-white py-3 font-semibold hover:bg-slate-700 transition disabled:opacity-60"
+              <div className="mt-4 space-y-3">
+                <Link
+                  to="/verification"
+                  className="block w-full rounded-2xl bg-slate-900 px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-700"
                 >
-                  Submit For Verification
-                </button>
+                  {verificationStatus === "rejected"
+                    ? "Update Verification Documents"
+                    : verificationStatus === "pending"
+                    ? "View Verification Status"
+                    : verificationStatus === "verified"
+                    ? "Manage Verification"
+                    : "Start Verification"}
+                </Link>
               </div>
             </section>
 
@@ -273,8 +295,9 @@ function Profile() {
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
               <h2 className="text-2xl font-bold text-slate-900 mb-4">Privacy Note</h2>
               <p className="text-slate-600 text-sm leading-6">
-                Citizenship number and future uploaded documents should remain private.
-                Only public profile information should be shown to other users.
+                Verification documents are handled in a separate private review flow. This
+                page only shows profile information and verification status, never the
+                uploaded nagarikta images themselves.
               </p>
             </section>
           </div>

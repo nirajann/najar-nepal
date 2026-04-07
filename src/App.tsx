@@ -13,6 +13,7 @@ import AdminProjects from "./components/admin/AdminProjects";
 import AdminComplaints from "./components/admin/AdminComplaints";
 import AdminUsers from "./components/admin/AdminUsers";
 import Profile from "./pages/Profile";
+import VerificationPage from "./pages/VerificationPage";
 
 function App() {
   return (
@@ -24,18 +25,25 @@ function App() {
         <Route path="/login" element={<Login />} />
         <Route path="/leader/:id" element={<LeaderProfile />} />
         <Route path="/profile/:id" element={<Profile />} />
-         <Route path="/profile" element={<Profile />} />
-<Route path="/admin" element={<AdminRoute />}>
-  <Route index element={<AdminDashboard />} />
-  <Route path="leaders" element={<AdminLeaders />} />
-  <Route path="districts" element={<AdminDistricts />} />
-  <Route path="projects" element={<AdminProjects />} />
-  <Route path="complaints" element={<AdminComplaints />} />
-  <Route path="users" element={<AdminUsers />} />
+        <Route path="/profile" element={<Profile />} />
 
+        <Route
+          path="/verification"
+          element={
+            <ProtectedRoute>
+              <VerificationPage />
+            </ProtectedRoute>
+          }
+        />
 
-  
-</Route>
+        <Route path="/admin" element={<AdminRoute />}>
+          <Route index element={<AdminDashboard />} />
+          <Route path="leaders" element={<AdminLeaders />} />
+          <Route path="districts" element={<AdminDistricts />} />
+          <Route path="projects" element={<AdminProjects />} />
+          <Route path="complaints" element={<AdminComplaints />} />
+          <Route path="users" element={<AdminUsers />} />
+        </Route>
       </Routes>
     </BrowserRouter>
   );

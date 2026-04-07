@@ -20,9 +20,11 @@ type User = {
   birthplace?: string;
   bio?: string;
   profilePhoto?: string;
-  role?: string;
+  role?: "user" | "admin" | "reviewer";
   verificationStatus?: "unverified" | "pending" | "verified" | "rejected";
-  citizenshipNumber?: string;
+  verificationNotes?: string;
+  verificationSubmittedAt?: string;
+  verificationReviewedAt?: string;
   badges?: string[];
 };
 

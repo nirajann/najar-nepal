@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
@@ -13,7 +13,6 @@ type UserRecord = {
   email?: string;
   role?: string;
   verificationStatus?: string;
-  citizenshipNumber?: string;
   badges?: string[];
   createdAt?: string;
 };
@@ -36,7 +35,6 @@ type UserForm = {
   email: string;
   role: string;
   verificationStatus: string;
-  citizenshipNumber: string;
   badgesText: string;
 };
 
@@ -45,9 +43,31 @@ const initialForm: UserForm = {
   email: "",
   role: "user",
   verificationStatus: "unverified",
-  citizenshipNumber: "",
   badgesText: "",
 };
+
+type VerificationDocumentResponse = {
+  id?: string;
+  name?: string;
+  email?: string;
+  verificationStatus?: string;
+  citizenshipNumber?: string;
+  hasCitizenshipFrontPhoto?: boolean;
+  hasCitizenshipBackPhoto?: boolean;
+  hasVerificationSelfiePhoto?: boolean;
+  verificationSubmittedAt?: string;
+  verificationNotes?: string;
+};
+
+type ReviewDocumentUrls = {
+  front: string;
+  back: string;
+  selfie: string;
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function AdminUsers() {
   const { token } = useAuth();
@@ -65,13 +85,32 @@ function AdminUsers() {
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(initialForm);
+  const [selectedReviewUser, setSelectedReviewUser] = useState<UserRecord | null>(null);
+  const [reviewDocuments, setReviewDocuments] = useState<VerificationDocumentResponse | null>(
+    null
+  );
+  const [reviewLoading, setReviewLoading] = useState(false);
+  const [reviewError, setReviewError] = useState("");
+  const [reviewDocumentUrls, setReviewDocumentUrls] = useState<ReviewDocumentUrls>({
+    front: "",
+    back: "",
+    selfie: "",
+  });
 
   const [duplicateLoading, setDuplicateLoading] = useState(false);
   const [duplicateInfo, setDuplicateInfo] = useState<DuplicateCheckResponse | null>(null);
 
   const debouncedEmail = useDebouncedValue(form.email, 450);
 
-  const loadUsers = async () => {
+  useEffect(() => {
+    return () => {
+      Object.values(reviewDocumentUrls).forEach((url) => {
+        if (url) URL.revokeObjectURL(url);
+      });
+    };
+  }, [reviewDocumentUrls]);
+
+  const loadUsers = useCallback(async () => {
     if (!token) {
       setError("Please login as admin first.");
       setLoading(false);
@@ -87,17 +126,17 @@ function AdminUsers() {
       });
 
       setUsers(Array.isArray(res) ? res : res?.users || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load users");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load users"));
       setUsers([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchText, token]);
 
   useEffect(() => {
-    loadUsers();
-  }, [token]);
+    void loadUsers();
+  }, [loadUsers]);
 
   useEffect(() => {
     const runDuplicateCheck = async () => {
@@ -185,7 +224,6 @@ function AdminUsers() {
       email: user.email || "",
       role: user.role || "user",
       verificationStatus: user.verificationStatus || "unverified",
-      citizenshipNumber: user.citizenshipNumber || "",
       badgesText: (user.badges || []).join(", "),
     });
 
@@ -197,12 +235,58 @@ function AdminUsers() {
     email: form.email.trim(),
     role: form.role,
     verificationStatus: form.verificationStatus || "unverified",
-    citizenshipNumber: form.citizenshipNumber.trim(),
     badges: form.badgesText
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean),
   });
+
+  const handleReviewDocuments = async (user: UserRecord) => {
+    if (!token || !user._id) {
+      setReviewError("Unable to load verification documents for this user.");
+      return;
+    }
+
+    try {
+      setSelectedReviewUser(user);
+      setReviewLoading(true);
+      setReviewError("");
+      setReviewDocuments(null);
+      setReviewDocumentUrls((prev) => {
+        Object.values(prev).forEach((url) => {
+          if (url) URL.revokeObjectURL(url);
+        });
+        return { front: "", back: "", selfie: "" };
+      });
+
+      const res = await api.getUserVerificationDocuments(token, user._id);
+      const nextDocuments = res?.user || null;
+      setReviewDocuments(nextDocuments);
+
+      const nextUrls: ReviewDocumentUrls = { front: "", back: "", selfie: "" };
+
+      if (nextDocuments?.hasCitizenshipFrontPhoto) {
+        const blob = await api.getVerificationDocumentBlob(token, user._id, "front");
+        nextUrls.front = URL.createObjectURL(blob);
+      }
+
+      if (nextDocuments?.hasCitizenshipBackPhoto) {
+        const blob = await api.getVerificationDocumentBlob(token, user._id, "back");
+        nextUrls.back = URL.createObjectURL(blob);
+      }
+
+      if (nextDocuments?.hasVerificationSelfiePhoto) {
+        const blob = await api.getVerificationDocumentBlob(token, user._id, "selfie");
+        nextUrls.selfie = URL.createObjectURL(blob);
+      }
+
+      setReviewDocumentUrls(nextUrls);
+    } catch (err: unknown) {
+      setReviewError(getErrorMessage(err, "Failed to load verification documents"));
+    } finally {
+      setReviewLoading(false);
+    }
+  };
 
   const handleSubmit = async (e?: React.FormEvent) => {
     e?.preventDefault();
@@ -247,8 +331,8 @@ function AdminUsers() {
 
       resetForm();
       await loadUsers();
-    } catch (err: any) {
-      setError(err.message || "Failed to save user");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to save user"));
     } finally {
       setSubmitting(false);
     }
@@ -272,8 +356,8 @@ function AdminUsers() {
       }
 
       await loadUsers();
-    } catch (err: any) {
-      setError(err.message || "Failed to delete user");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to delete user"));
     }
   };
 
@@ -317,6 +401,7 @@ function AdminUsers() {
               >
                 <option value="ALL">All Roles</option>
                 <option value="admin">Admin</option>
+                <option value="reviewer">Reviewer</option>
                 <option value="user">User</option>
               </select>
 
@@ -329,6 +414,7 @@ function AdminUsers() {
                 <option value="verified">Verified</option>
                 <option value="unverified">Unverified</option>
                 <option value="pending">Pending</option>
+                <option value="rejected">Rejected</option>
               </select>
             </div>
           }
@@ -398,6 +484,7 @@ function AdminUsers() {
             >
               <option value="user">User</option>
               <option value="admin">Admin</option>
+              <option value="reviewer">Reviewer</option>
             </select>
           </div>
 
@@ -413,19 +500,8 @@ function AdminUsers() {
               <option value="unverified">Unverified</option>
               <option value="verified">Verified</option>
               <option value="pending">Pending</option>
+              <option value="rejected">Rejected</option>
             </select>
-          </div>
-
-          <div>
-            <label className="mb-2 block text-sm font-medium text-slate-700">
-              Citizenship Number
-            </label>
-            <input
-              value={form.citizenshipNumber}
-              onChange={(e) => handleChange("citizenshipNumber", e.target.value)}
-              className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
-              placeholder="Optional"
-            />
           </div>
 
           <div>
@@ -527,6 +603,13 @@ function AdminUsers() {
                   Edit
                 </button>
                 <button
+                  onClick={() => handleReviewDocuments(row)}
+                  className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-700"
+                  disabled={!row._id}
+                >
+                  Review Docs
+                </button>
+                <button
                   onClick={() => handleDelete(row._id || "")}
                   className="rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-600"
                   disabled={!row._id}
@@ -538,6 +621,106 @@ function AdminUsers() {
           },
         ]}
       />
+
+      {selectedReviewUser ? (
+        <AdminPageSection
+          title="Verification Review"
+          description="Private document access for authorized reviewers only."
+        >
+          {reviewError ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              {reviewError}
+            </div>
+          ) : null}
+
+          {reviewLoading ? (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
+              Loading verification documents...
+            </div>
+          ) : reviewDocuments ? (
+            <div className="space-y-4 rounded-3xl border border-slate-200 bg-white p-5">
+              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="text-lg font-bold text-slate-950">
+                    {reviewDocuments.name || selectedReviewUser.name || "User"}
+                  </h3>
+                  <p className="text-sm text-slate-500">
+                    {reviewDocuments.email || selectedReviewUser.email || "No email"}
+                  </p>
+                </div>
+                <div className="rounded-full border border-slate-200 bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700">
+                  {reviewDocuments.verificationStatus || "unverified"}
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Citizenship number
+                  </p>
+                  <p className="mt-2 break-all text-sm font-semibold text-slate-900">
+                    {reviewDocuments.citizenshipNumber || "Not provided"}
+                  </p>
+                </div>
+
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Submitted at
+                  </p>
+                  <p className="mt-2 text-sm font-semibold text-slate-900">
+                    {reviewDocuments.verificationSubmittedAt
+                      ? new Date(reviewDocuments.verificationSubmittedAt).toLocaleString()
+                      : "Not submitted yet"}
+                  </p>
+                </div>
+              </div>
+
+              {reviewDocuments.verificationNotes ? (
+                <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
+                    Review notes
+                  </p>
+                  <p className="mt-2 text-sm leading-6 text-slate-700">
+                    {reviewDocuments.verificationNotes}
+                  </p>
+                </div>
+              ) : null}
+
+              <div className="grid gap-4 lg:grid-cols-3">
+                {[
+                  {
+                    label: "Front document",
+                    src: reviewDocumentUrls.front,
+                  },
+                  {
+                    label: "Back document",
+                    src: reviewDocumentUrls.back,
+                  },
+                  {
+                    label: "Selfie",
+                    src: reviewDocumentUrls.selfie,
+                  },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                    <p className="mb-3 text-sm font-semibold text-slate-800">{item.label}</p>
+                    {item.src ? (
+                      <img
+                        src={item.src}
+                        alt={item.label}
+                        className="h-64 w-full rounded-2xl object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-64 items-center justify-center rounded-2xl border border-dashed border-slate-300 bg-white text-sm text-slate-500">
+                        Not provided
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : null}
+        </AdminPageSection>
+      ) : null}
     </div>
   );
 }

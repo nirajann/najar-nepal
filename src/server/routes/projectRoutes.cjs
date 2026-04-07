@@ -2,6 +2,7 @@ const express = require("express");
 const Project = require("../models/Project.cjs");
 const ProjectSource = require("../models/ProjectSource.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
+const adminMiddleware = require("../middleware/adminMiddleware.cjs");
 const {
   scoreSourceAgainstKeywords,
   computeFinalStatus,
@@ -87,7 +88,7 @@ router.get("/:projectId", async (req, res) => {
   }
 });
 
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const project = await Project.create({
       ...req.body,
@@ -109,7 +110,7 @@ router.post("/", authMiddleware, async (req, res) => {
   }
 });
 
-router.put("/:projectId", authMiddleware, async (req, res) => {
+router.put("/:projectId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const project = await Project.findOneAndUpdate(
       { projectId: req.params.projectId },
@@ -201,7 +202,7 @@ router.get("/:projectId/sources", async (req, res) => {
   }
 });
 
-router.post("/sources/:sourceId/approve", authMiddleware, async (req, res) => {
+router.post("/sources/:sourceId/approve", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const source = await ProjectSource.findByIdAndUpdate(
       req.params.sourceId,
@@ -228,7 +229,7 @@ router.post("/sources/:sourceId/approve", authMiddleware, async (req, res) => {
   }
 });
 
-router.post("/:projectId/status-recompute", authMiddleware, async (req, res) => {
+router.post("/:projectId/status-recompute", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const project = await refreshProjectStatus(req.params.projectId);
     if (!project) {

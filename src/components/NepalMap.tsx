@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import geoData from "../data/nepalGeo.json";
 import type { DistrictInfo } from "../types/home";
+import { useLanguage } from "../context/LanguageContext";
 
 type ProvinceButton = {
   id: number;
@@ -73,22 +74,6 @@ function getDistrictCandidates(rawName: string, districts: DistrictInfo[]) {
   );
 }
 
-function throttleRaf<T extends (...args: any[]) => void>(fn: T) {
-  let ticking = false;
-  let lastArgs: Parameters<T> | null = null;
-
-  return (...args: Parameters<T>) => {
-    lastArgs = args;
-    if (ticking) return;
-
-    ticking = true;
-    requestAnimationFrame(() => {
-      if (lastArgs) fn(...lastArgs);
-      ticking = false;
-    });
-  };
-}
-
 function NepalMap({
   districts,
   districtLoading,
@@ -103,8 +88,60 @@ function NepalMap({
   totalDistricts,
   onReset,
 }: Props) {
+  const { language } = useLanguage();
+
+  const text =
+    language === "ne"
+      ? {
+          title: "नेपाल नेतृत्व अन्वेषक",
+          subtitle:
+            "जिल्ला खोज्नुहोस्, प्रदेश फिल्टर गर्नुहोस्, वा नक्सामा ट्याप गरेर सार्वजनिक जानकारी हेर्नुहोस्।",
+          reset: "रिसेट",
+          districts: "जिल्ला",
+          selected: "चयन गरिएको",
+          loading: "लोड हुँदैछ...",
+          searchPlaceholder: "जिल्ला खोज्नुहोस्...",
+          allProvinces: "सबै प्रदेश",
+          liveMap: "प्रत्यक्ष नक्सा दृश्य",
+          guideTitle: "कसरी प्रयोग गर्ने",
+          guideText:
+            "जिल्लामा ट्याप वा क्लिक गर्नुहोस्। दायाँपट्टि जिल्ला सारांश हेर्नुहोस्। तल विस्तृत प्रतिक्रिया दिनुहोस्।",
+          legendTitle: "सन्तुष्टि संकेत",
+          legendHigh: "उच्च",
+          legendMid: "मध्यम",
+          legendLow: "कम",
+          localLevels: "स्थानीय तह",
+          unknownProvince: "अज्ञात प्रदेश",
+          mobileHint: "मोबाइलमा जिल्लामा ट्याप गर्नुहोस्",
+        }
+      : {
+          title: "Nepal Leader Explorer",
+          subtitle:
+            "Search for a district, filter by province, or tap the map to explore local public information.",
+          reset: "Reset",
+          districts: "Districts",
+          selected: "Selected",
+          loading: "Loading...",
+          searchPlaceholder: "Search district...",
+          allProvinces: "All Provinces",
+          liveMap: "Live map view",
+          guideTitle: "How to use",
+          guideText:
+            "Choose a district from the map, then review the summary on the right.",
+          guideShort:
+            "Search and province filters update the map instantly.",
+          legendTitle: "Satisfaction signal",
+          legendHigh: "High",
+          legendMid: "Medium",
+          legendLow: "Low",
+          localLevels: "Local levels",
+          unknownProvince: "Unknown Province",
+          mobileHint: "Tap districts directly for easier mobile use",
+        };
+
   const svgRef = useRef<SVGSVGElement | null>(null);
   const wrapperRef = useRef<HTMLDivElement | null>(null);
+  const tooltipTimeoutRef = useRef<number | null>(null);
 
   const [tooltip, setTooltip] = useState<TooltipState>({
     visible: false,
@@ -116,6 +153,7 @@ function NepalMap({
   });
 
   const [mapHeight, setMapHeight] = useState(600);
+  const [isMobile, setIsMobile] = useState(false);
 
   const districtLookup = useMemo(() => {
     const map = new Map<string, DistrictInfo>();
@@ -135,7 +173,10 @@ function NepalMap({
       if (!wrapperRef.current) return;
       const width = wrapperRef.current.clientWidth;
 
-      if (width < 640) setMapHeight(360);
+      setIsMobile(width < 768);
+
+      if (width < 480) setMapHeight(320);
+      else if (width < 640) setMapHeight(360);
       else if (width < 900) setMapHeight(430);
       else if (width < 1200) setMapHeight(520);
       else setMapHeight(600);
@@ -143,7 +184,13 @@ function NepalMap({
 
     updateSize();
     window.addEventListener("resize", updateSize);
-    return () => window.removeEventListener("resize", updateSize);
+
+    return () => {
+      window.removeEventListener("resize", updateSize);
+      if (tooltipTimeoutRef.current) {
+        window.clearTimeout(tooltipTimeoutRef.current);
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -151,12 +198,25 @@ function NepalMap({
 
     const width = 1040;
     const height = 680;
+    const clipId = "nepal-map-clip";
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
     svg
       .attr("viewBox", `0 0 ${width} ${height}`)
-      .attr("preserveAspectRatio", "xMidYMid meet");
+      .attr("preserveAspectRatio", "xMidYMid meet")
+      .style("overflow", "hidden");
+
+    const defs = svg.append("defs");
+    defs
+      .append("clipPath")
+      .attr("id", clipId)
+      .append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", width)
+      .attr("height", height)
+      .attr("rx", 18);
 
     const projection = d3.geoMercator();
     const path = d3.geoPath(projection);
@@ -176,16 +236,23 @@ function NepalMap({
       featureCollection
     );
 
-    svg
+    const mapLayer = svg
+      .append("g")
+      .attr("clip-path", `url(#${clipId})`);
+
+    mapLayer
       .append("rect")
       .attr("x", 0)
       .attr("y", 0)
       .attr("width", width)
       .attr("height", height)
       .attr("rx", 18)
-      .attr("fill", "#eef4f8");
+      .attr("fill", "#eef4f8")
+      .style("pointer-events", "none");
 
-    const updateTooltip = throttleRaf((event: MouseEvent, feature: any) => {
+    const showTooltip = (event: any, feature: any) => {
+      if (isMobile) return;
+
       const rawName =
         feature.properties?.DISTRICT ||
         feature.properties?.district ||
@@ -196,17 +263,21 @@ function NepalMap({
       const matches = getDistrictCandidates(rawName, districts);
       const matched = matches[0];
 
+      const bounds = wrapperRef.current?.getBoundingClientRect();
+      const clientX = event.clientX ?? 0;
+      const clientY = event.clientY ?? 0;
+
       setTooltip({
         visible: true,
-        x: event.offsetX + 14,
-        y: event.offsetY - 10,
+        x: bounds ? clientX - bounds.left + 12 : 20,
+        y: bounds ? clientY - bounds.top - 10 : 20,
         districtName: matched?.name || rawName,
-        provinceName: matched?.province || "Unknown Province",
+        provinceName: matched?.province || text.unknownProvince,
         municipalitiesCount: matched?.localLevels?.length || 0,
       });
-    });
+    };
 
-    svg
+    mapLayer
       .selectAll("path")
       .data(features)
       .enter()
@@ -223,8 +294,8 @@ function NepalMap({
         const matches = getDistrictCandidates(rawName, districts);
         const matched = matches[0];
 
-        const districtKey = (matched?.name || rawName).toUpperCase();
-        const score = districtScores[districtKey];
+        const districtKey = normalizeDistrictAlias(matched?.name || rawName);
+        const score = districtScores[districtKey.toUpperCase()];
 
         const normalizedDistrict = normalizeDistrictAlias(rawName);
         const searchMatch =
@@ -272,20 +343,26 @@ function NepalMap({
 
         return selectedDistrict &&
           normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict
-          ? 2.3
+          ? 2.4
+          : isMobile
+          ? 1.05
           : 0.85;
       })
       .style("cursor", "pointer")
+      .style("touch-action", "manipulation")
+      .style("pointer-events", "auto")
       .on("mouseenter", function (event: MouseEvent, feature: any) {
-        updateTooltip(event, feature);
-      })
-      .on("mousemove", function (event: MouseEvent, feature: any) {
-        updateTooltip(event, feature);
+        showTooltip(event, feature);
       })
       .on("mouseleave", function () {
-        setTooltip((prev) => ({ ...prev, visible: false }));
+        if (tooltipTimeoutRef.current) {
+          window.clearTimeout(tooltipTimeoutRef.current);
+        }
+        tooltipTimeoutRef.current = window.setTimeout(() => {
+          setTooltip((prev) => ({ ...prev, visible: false }));
+        }, 40);
       })
-      .on("click", function (_event: MouseEvent, feature: any) {
+      .on("click", function (event: MouseEvent, feature: any) {
         const rawName =
           feature.properties?.DISTRICT ||
           feature.properties?.district ||
@@ -303,7 +380,7 @@ function NepalMap({
           setSelectedDistrict({
             districtId: normalizeDistrictAlias(rawName).toLowerCase().replace(/\s+/g, "-"),
             name: rawName,
-            province: "Unknown Province",
+            province: text.unknownProvince,
             localLevels: [],
             mpLeader: null,
             ministerLeader: null,
@@ -312,37 +389,45 @@ function NepalMap({
             satisfactionScore: 0,
           } as DistrictInfo);
         }
+
+        if (!isMobile) {
+          showTooltip(event, feature);
+        } else {
+          setTooltip((prev) => ({ ...prev, visible: false }));
+        }
       });
 
-    svg
-      .selectAll("text")
-      .data(features)
-      .enter()
-      .append("text")
-      .attr("x", (feature: any) => path.centroid(feature)[0])
-      .attr("y", (feature: any) => path.centroid(feature)[1])
-      .attr("text-anchor", "middle")
-      .attr("font-size", mapHeight < 420 ? "6px" : "8px")
-      .attr("font-weight", "700")
-      .attr("fill", "#102033")
-      .attr("paint-order", "stroke")
-      .attr("stroke", "#f8fafc")
-      .attr("stroke-width", 1.5)
-      .style("pointer-events", "none")
-      .text((feature: any) => {
-        const rawName =
-          feature.properties?.DISTRICT ||
-          feature.properties?.district ||
-          feature.properties?.name ||
-          feature.properties?.NAME_2 ||
-          "";
+    if (!isMobile && mapHeight >= 520) {
+      mapLayer
+        .selectAll("text")
+        .data(features)
+        .enter()
+        .append("text")
+        .attr("x", (feature: any) => path.centroid(feature)[0])
+        .attr("y", (feature: any) => path.centroid(feature)[1])
+        .attr("text-anchor", "middle")
+        .attr("font-size", "7px")
+        .attr("font-weight", "700")
+        .attr("fill", "#102033")
+        .attr("paint-order", "stroke")
+        .attr("stroke", "#f8fafc")
+        .attr("stroke-width", 1.4)
+        .style("pointer-events", "none")
+        .text((feature: any) => {
+          const rawName =
+            feature.properties?.DISTRICT ||
+            feature.properties?.district ||
+            feature.properties?.name ||
+            feature.properties?.NAME_2 ||
+            "";
 
-        const bounds = path.bounds(feature);
-        const boxWidth = bounds[1][0] - bounds[0][0];
-        const boxHeight = bounds[1][1] - bounds[0][1];
+          const bounds = path.bounds(feature);
+          const boxWidth = bounds[1][0] - bounds[0][0];
+          const boxHeight = bounds[1][1] - bounds[0][1];
 
-        return boxWidth > 42 && boxHeight > 16 && mapHeight >= 420 ? rawName : "";
-      });
+          return boxWidth > 46 && boxHeight > 18 ? rawName : "";
+        });
+    }
   }, [
     districts,
     districtLookup,
@@ -352,102 +437,154 @@ function NepalMap({
     setSelectedDistrict,
     mapHeight,
     districtScores,
+    text.unknownProvince,
+    isMobile,
   ]);
 
   return (
-    <section className="relative rounded-[18px] bg-white p-3 shadow-sm md:p-4" ref={wrapperRef}>
-      <div className="mb-3 space-y-3">
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h1 className="text-[24px] font-bold tracking-tight text-slate-950 md:text-[28px]">
-              Nepal Leader Explorer
+    <section
+      className="pointer-events-none relative z-0 isolate overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm [contain:layout_paint] md:p-5"
+      ref={wrapperRef}
+    >
+      <div className="pointer-events-auto mb-5 space-y-5">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+          <div className="max-w-2xl">
+            <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+              {text.liveMap}
+            </div>
+
+            <h1 className="mt-3 text-[24px] font-extrabold tracking-tight text-slate-950 md:text-[32px]">
+              {text.title}
             </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              Search a district or click the map to begin.
+
+            <p className="mt-2 text-sm leading-6 text-slate-600 md:text-base">
+              {text.subtitle}
             </p>
+
+            {isMobile ? (
+              <p className="mt-3 rounded-2xl bg-slate-100 px-4 py-3 text-xs font-medium text-slate-600">
+                {text.mobileHint}
+              </p>
+            ) : null}
           </div>
 
           <button
             onClick={onReset}
-            className="rounded-full px-3 py-1.5 text-sm font-medium text-slate-500 transition hover:bg-slate-100 hover:text-slate-700"
+            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
           >
-            Reset
+            {text.reset}
           </button>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="rounded-full bg-slate-100 px-3 py-1 font-medium text-slate-600">
-            Districts: {totalDistricts}
-          </span>
+        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+          <div className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-3 md:p-4">
+            <div className="flex flex-wrap items-center gap-2 text-xs">
+              <span className="rounded-full bg-slate-100 px-3 py-1.5 font-medium text-slate-600">
+                {text.districts}: {totalDistricts}
+              </span>
 
-          {selectedDistrict && (
-            <span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-700">
-              Selected: {selectedDistrict.name}
+              {selectedDistrict && (
+                <span className="rounded-full bg-blue-100 px-3 py-1.5 font-medium text-blue-700">
+                  {text.selected}: {selectedDistrict.name}
+                </span>
+              )}
+
+              {districtLoading && (
+                <span className="rounded-full bg-amber-100 px-3 py-1.5 font-medium text-amber-700">
+                  {text.loading}
+                </span>
+              )}
+            </div>
+
+            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
+              <input
+                type="text"
+                placeholder={text.searchPlaceholder}
+                value={searchText}
+                onChange={(e) => setSearchText(e.target.value)}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
+              />
+
+              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 lg:max-w-[320px]">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  {text.guideTitle}
+                </p>
+                <p className="mt-2 text-sm leading-6 text-slate-600">{text.guideText}</p>
+                <p className="mt-1 text-xs leading-5 text-slate-500">{text.guideShort}</p>
+              </div>
+            </div>
+
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button
+                onClick={() => setSelectedProvince("ALL")}
+                className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                  selectedProvince === "ALL"
+                    ? "bg-slate-950 text-white"
+                    : "bg-white text-slate-700 hover:bg-slate-100"
+                }`}
+              >
+                {text.allProvinces}
+              </button>
+
+              {provinceButtons.map((province, index) => (
+                <button
+                  key={province.id}
+                  onClick={() => setSelectedProvince(province.rawName)}
+                  className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                    selectedProvince === province.rawName
+                      ? "bg-slate-950 text-white"
+                      : index > 5 && !isMobile
+                      ? "hidden bg-white text-slate-700 hover:bg-slate-100 sm:inline-flex"
+                      : "bg-white text-slate-700 hover:bg-slate-100"
+                  }`}
+                >
+                  {province.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs xl:justify-end">
+            <p className="mr-1 font-semibold uppercase tracking-wide text-slate-500">
+              {text.legendTitle}
+            </p>
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
+              {text.legendHigh}
             </span>
-          )}
-
-          {districtLoading && (
-            <span className="rounded-full bg-amber-100 px-3 py-1 font-medium text-amber-700">
-              Loading...
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+              {text.legendMid}
             </span>
-          )}
-        </div>
-
-        <input
-          type="text"
-          placeholder="Search district..."
-          value={searchText}
-          onChange={(e) => setSearchText(e.target.value)}
-          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base outline-none focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
-        />
-
-        <div className="flex flex-wrap gap-2">
-          <button
-            onClick={() => setSelectedProvince("ALL")}
-            className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
-              selectedProvince === "ALL"
-                ? "bg-slate-950 text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-          >
-            All Provinces
-          </button>
-
-          {provinceButtons.map((province, index) => (
-            <button
-              key={province.id}
-              onClick={() => setSelectedProvince(province.rawName)}
-              className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
-                selectedProvince === province.rawName
-                  ? "bg-slate-950 text-white"
-                  : index > 5
-                  ? "hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex"
-                  : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-              }`}
-            >
-              {province.name}
-            </button>
-          ))}
+            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">
+              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+              {text.legendLow}
+            </span>
+          </div>
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-[18px] bg-slate-100">
+      <div className="pointer-events-auto relative z-0 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100 [contain:layout_paint]">
         {districtLoading ? (
-          <div className="h-[600px] animate-pulse bg-slate-200 md:h-[520px] xl:h-[600px]" />
+          <div className="h-[320px] animate-pulse bg-slate-200 md:h-[520px] xl:h-[600px]" />
         ) : (
-          <svg ref={svgRef} className="w-full" style={{ height: `${mapHeight}px` }} />
+          <svg
+            ref={svgRef}
+            className="relative z-0 block w-full overflow-hidden touch-manipulation select-none"
+            style={{ height: `${mapHeight}px` }}
+          />
         )}
       </div>
 
-      {tooltip.visible && (
+      {!isMobile && tooltip.visible && (
         <div
-          className="pointer-events-none absolute z-20 max-w-xs rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl"
+          className="pointer-events-none absolute z-10 max-w-xs rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
           <p className="text-base font-bold">{tooltip.districtName}</p>
           <p className="text-slate-300">{tooltip.provinceName}</p>
           <p className="mt-1 text-slate-200">
-            Local levels: {tooltip.municipalitiesCount}
+            {text.localLevels}: {tooltip.municipalitiesCount}
           </p>
         </div>
       )}

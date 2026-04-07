@@ -1,11 +1,12 @@
 const express = require("express");
 const Project = require("../models/Project.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
+const adminMiddleware = require("../middleware/adminMiddleware.cjs");
 
 const router = express.Router();
 
 // Get all projects
-router.get("/", async (req, res) => {
+router.get("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const { search, status, district, province } = req.query;
 
@@ -36,7 +37,7 @@ router.get("/", async (req, res) => {
 });
 
 // Create
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const project = await Project.create(req.body);
 
@@ -60,7 +61,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // Update
-router.put("/:projectId", authMiddleware, async (req, res) => {
+router.put("/:projectId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const project = await Project.findOneAndUpdate(
       { projectId: req.params.projectId },
@@ -85,7 +86,7 @@ router.put("/:projectId", authMiddleware, async (req, res) => {
 });
 
 // Delete
-router.delete("/:projectId", authMiddleware, async (req, res) => {
+router.delete("/:projectId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const project = await Project.findOneAndDelete({
       projectId: req.params.projectId,

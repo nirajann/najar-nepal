@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const District = require("../models/District.cjs");
 const Leader = require("../models/Leader.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
+const adminMiddleware = require("../middleware/adminMiddleware.cjs");
 
 const router = express.Router();
 
@@ -139,7 +140,7 @@ router.get("/:districtId", async (req, res) => {
 });
 
 // Create district
-router.post("/", authMiddleware, async (req, res) => {
+router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const payload = { ...req.body };
 
@@ -216,7 +217,7 @@ router.post("/", authMiddleware, async (req, res) => {
 });
 
 // Update district
-router.put("/:districtId", authMiddleware, async (req, res) => {
+router.put("/:districtId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const existing = await District.findOne({ districtId: req.params.districtId });
 
@@ -293,7 +294,7 @@ router.put("/:districtId", authMiddleware, async (req, res) => {
   }
 });
 // Delete district
-router.delete("/:districtId", authMiddleware, async (req, res) => {
+router.delete("/:districtId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
     const district = await District.findOneAndDelete({ districtId: req.params.districtId });
 

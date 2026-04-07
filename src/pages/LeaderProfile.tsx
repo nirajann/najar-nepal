@@ -39,17 +39,20 @@ type Leader = {
   };
 };
 
+type ReplyItem = {
+  userName: string;
+  text: string;
+  createdAt?: string;
+};
+
 type CommentItem = {
   _id: string;
   userName: string;
   text: string;
   rating?: number;
   likes?: number;
-  replies?: {
-    userName: string;
-    text: string;
-    createdAt?: string;
-  }[];
+  createdAt?: string;
+  replies?: ReplyItem[];
 };
 
 type ComplaintItem = {
@@ -64,6 +67,55 @@ type ComplaintItem = {
   status?: "pending" | "reviewed" | "resolved";
   createdAt?: string;
 };
+
+type ValidationResult = {
+  valid: boolean;
+  message: string;
+};
+
+type MistakeType =
+  | "Wrong name"
+  | "Wrong role"
+  | "Wrong district"
+  | "Wrong province"
+  | "Wrong party"
+  | "Wrong term dates"
+  | "Wrong photo"
+  | "Other";
+
+const MISTAKE_OPTIONS: MistakeType[] = [
+  "Wrong name",
+  "Wrong role",
+  "Wrong district",
+  "Wrong province",
+  "Wrong party",
+  "Wrong term dates",
+  "Wrong photo",
+  "Other",
+];
+
+const REPORT_REASONS = [
+  "Abuse",
+  "Spam",
+  "Misinformation",
+  "Hate speech",
+  "Offensive language",
+] as const;
+
+const BLOCKED_WORDS = [
+  "fuck",
+  "fucking",
+  "shit",
+  "bitch",
+  "asshole",
+  "bastard",
+  "dick",
+  "cunt",
+  "motherfucker",
+  "slut",
+  "whore",
+  "retard",
+];
 
 function getDistrictName(district?: LeaderDistrict) {
   if (!district) return "";
@@ -80,6 +132,193 @@ function getProvinceName(leader?: Leader | null) {
   return "";
 }
 
+function normalizeTextInput(value: string) {
+  return value.replace(/\s+/g, " ").trim();
+}
+
+function formatDateTime(value?: string) {
+  if (!value) return "Just now";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Just now";
+  return date.toLocaleString();
+}
+
+function hasBlockedWords(value: string) {
+  const lower = value.toLowerCase();
+  return BLOCKED_WORDS.some((word) => lower.includes(word));
+}
+
+function hasSpamPattern(value: string) {
+  const lower = value.toLowerCase();
+  return /(.)\1{5,}/.test(lower) || /(\b\w+\b)(\s+\1){3,}/i.test(lower);
+}
+
+function isMeaninglessShort(value: string) {
+  const trimmed = normalizeTextInput(value);
+  if (trimmed.length < 6) return true;
+  return /^(ok+|wow+|hmm+|yes+|no+|nice+|lol+)$/i.test(trimmed);
+}
+
+function validateCommentText(value: string): ValidationResult {
+  const trimmed = normalizeTextInput(value);
+
+  if (!trimmed) {
+    return { valid: false, message: "Comment cannot be empty." };
+  }
+
+  if (trimmed.length < 6) {
+    return {
+      valid: false,
+      message: "Comment is too short. Please write something meaningful.",
+    };
+  }
+
+  if (trimmed.length > 300) {
+    return {
+      valid: false,
+      message: "Comment is too long. Please keep it under 300 characters.",
+    };
+  }
+
+  if (isMeaninglessShort(trimmed)) {
+    return {
+      valid: false,
+      message: "Please write a meaningful comment.",
+    };
+  }
+
+  if (hasSpamPattern(trimmed)) {
+    return {
+      valid: false,
+      message: "Your comment looks spammy. Please rewrite it clearly.",
+    };
+  }
+
+  if (hasBlockedWords(trimmed)) {
+    return {
+      valid: false,
+      message: "Please avoid offensive language. Keep discussion respectful.",
+    };
+  }
+
+  return { valid: true, message: "" };
+}
+
+function validateReplyText(value: string): ValidationResult {
+  const trimmed = normalizeTextInput(value);
+
+  if (!trimmed) {
+    return { valid: false, message: "Reply cannot be empty." };
+  }
+
+  if (trimmed.length < 3) {
+    return { valid: false, message: "Reply is too short." };
+  }
+
+  if (trimmed.length > 220) {
+    return {
+      valid: false,
+      message: "Reply is too long. Please keep it under 220 characters.",
+    };
+  }
+
+  if (hasSpamPattern(trimmed)) {
+    return {
+      valid: false,
+      message: "Your reply looks spammy. Please rewrite it clearly.",
+    };
+  }
+
+  if (hasBlockedWords(trimmed)) {
+    return {
+      valid: false,
+      message: "Please avoid offensive language in replies.",
+    };
+  }
+
+  return { valid: true, message: "" };
+}
+
+function getTrustLabel(
+  averageRating: number,
+  commentCount: number,
+  likes: number,
+  dislikes: number
+) {
+  const totalReactions = likes + dislikes;
+  const likeRatio = totalReactions > 0 ? likes / totalReactions : 0;
+
+  if (commentCount >= 12 && averageRating >= 4.2 && likeRatio >= 0.65) {
+    return "Trusted by Community";
+  }
+
+  if (commentCount >= 15) return "Highly Discussed";
+  if (totalReactions >= 10) return "Most Engaged";
+  if (commentCount >= 6 || totalReactions >= 6) return "Rising Interest";
+  return "Needs More Public Feedback";
+}
+
+function getEngagementLevel(commentCount: number, totalReactions: number) {
+  const score = commentCount + totalReactions;
+  if (score >= 30) return "High";
+  if (score >= 12) return "Moderate";
+  return "Early";
+}
+
+function getProfileCompleteness(leader: Leader | null) {
+  if (!leader) return 0;
+
+  let filled = 0;
+  const fields = [
+    leader.name,
+    leader.role,
+    leader.party,
+    getDistrictName(leader.district),
+    getProvinceName(leader),
+    leader.startYear,
+    leader.endYear,
+    leader.photo,
+    leader.portfolio,
+    leader.birthPlace,
+    leader.permanentAddress,
+  ];
+
+  fields.forEach((item) => {
+    if (item && String(item).trim()) filled += 1;
+  });
+
+  return Math.round((filled / fields.length) * 100);
+}
+
+function getTrendText(commentCount: number, totalReactions: number, streak?: number) {
+  if ((streak || 0) >= 8) return "Active public interest";
+  if (commentCount >= 10 || totalReactions >= 12) return "Growing discussion";
+  if (commentCount >= 4 || totalReactions >= 5) return "Steady engagement";
+  return "Early visibility";
+}
+
+function ProgressBar({
+  label,
+  value,
+  colorClass,
+}: {
+  label: string;
+  value: string;
+  colorClass: string;
+}) {
+  return (
+    <div>
+      <div className="mb-1 flex justify-between text-sm text-slate-600">
+        <span>{label}</span>
+        <span>{value}%</span>
+      </div>
+      <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+        <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${value}%` }} />
+      </div>
+    </div>
+  );
+}
+
 function LeaderProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -90,14 +329,12 @@ function LeaderProfile() {
 
   const [liked, setLiked] = useState<boolean | null>(null);
   const [rating, setRating] = useState(0);
+
   const [comment, setComment] = useState("");
-  const [complaint, setComplaint] = useState("");
   const [message, setMessage] = useState("");
-  const [complaintMessage, setComplaintMessage] = useState("");
-  const [complaintType, setComplaintType] = useState("Other");
-  const [complaintPhoto, setComplaintPhoto] = useState("");
-  const [complaintLoading, setComplaintLoading] = useState(false);
-  const [complaintHistory, setComplaintHistory] = useState<ComplaintItem[]>([]);
+
+  const [commentSubmitting, setCommentSubmitting] = useState(false);
+  const [commentCooldownUntil, setCommentCooldownUntil] = useState(0);
 
   const [stats, setStats] = useState({
     likes: 0,
@@ -110,8 +347,28 @@ function LeaderProfile() {
   });
 
   const [commentsList, setCommentsList] = useState<CommentItem[]>([]);
+  const [commentsLoading, setCommentsLoading] = useState(false);
   const [commentSort, setCommentSort] = useState("newest");
+
   const [replyText, setReplyText] = useState<Record<string, string>>({});
+  const [replySubmitting, setReplySubmitting] = useState<Record<string, boolean>>({});
+  const [replyError, setReplyError] = useState<Record<string, string>>({});
+
+  const [reportOpenFor, setReportOpenFor] = useState<string | null>(null);
+  const [reportReason, setReportReason] =
+    useState<(typeof REPORT_REASONS)[number]>("Abuse");
+  const [reportNote, setReportNote] = useState("");
+
+  const [mistakeModalOpen, setMistakeModalOpen] = useState(false);
+  const [mistakeType, setMistakeType] = useState<MistakeType>("Wrong role");
+  const [mistakeText, setMistakeText] = useState("");
+  const [suggestedCorrection, setSuggestedCorrection] = useState("");
+  const [sourceLink, setSourceLink] = useState("");
+  const [contactInfo, setContactInfo] = useState("");
+  const [mistakeMessage, setMistakeMessage] = useState("");
+  const [mistakeSubmitting, setMistakeSubmitting] = useState(false);
+
+  const [complaintHistory, setComplaintHistory] = useState<ComplaintItem[]>([]);
 
   const ensureLogin = () => {
     if (!isAuthenticated) {
@@ -140,6 +397,8 @@ function LeaderProfile() {
     if (!leader) return;
 
     try {
+      setCommentsLoading(true);
+
       const statsData = await api.getLeaderStats(leader.leaderId);
       setStats({
         likes: statsData.likes ?? 0,
@@ -155,6 +414,8 @@ function LeaderProfile() {
       setCommentsList(Array.isArray(commentsData) ? commentsData : []);
     } catch (error) {
       console.error(error);
+    } finally {
+      setCommentsLoading(false);
     }
   };
 
@@ -216,56 +477,33 @@ function LeaderProfile() {
     }
   };
 
+  const commentValidation = useMemo(() => validateCommentText(comment), [comment]);
+
   const handleCommentSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!ensureLogin() || !token || !leader || !comment.trim()) return;
+    if (!ensureLogin() || !token || !leader) return;
+
+    if (Date.now() < commentCooldownUntil) {
+      setMessage("Please wait a few seconds before posting another comment.");
+      return;
+    }
+
+    if (!commentValidation.valid) {
+      setMessage(commentValidation.message);
+      return;
+    }
 
     try {
-      await api.createComment(token, leader.leaderId, comment, rating || 0);
+      setCommentSubmitting(true);
+      await api.createComment(token, leader.leaderId, normalizeTextInput(comment), rating || 0);
       setMessage("Comment posted");
       setComment("");
+      setCommentCooldownUntil(Date.now() + 8000);
       await loadLeaderData();
     } catch (error: any) {
       setMessage(error.message || "Failed to post comment");
-    }
-  };
-
-  const handleComplaintSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-
-    if (!ensureLogin() || !token || !leader) return;
-
-    if (!complaint.trim()) {
-      setComplaintMessage("Complaint message cannot be empty.");
-      return;
-    }
-
-    if (complaint.trim().length < 10) {
-      setComplaintMessage("Complaint must be at least 10 characters.");
-      return;
-    }
-
-    try {
-      setComplaintLoading(true);
-      setComplaintMessage("");
-
-      const result = await api.submitComplaint(
-        token,
-        leader.leaderId,
-        complaint.trim(),
-        complaintType,
-        complaintPhoto
-      );
-
-      setComplaintMessage(result.message || "Complaint submitted successfully.");
-      setComplaint("");
-      setComplaintPhoto("");
-      setComplaintType("Other");
-      await loadComplaintHistory();
-    } catch (error: any) {
-      setComplaintMessage(error.message || "Failed to submit complaint.");
     } finally {
-      setComplaintLoading(false);
+      setCommentSubmitting(false);
     }
   };
 
@@ -282,14 +520,95 @@ function LeaderProfile() {
 
   const handleReplySubmit = async (commentId: string) => {
     if (!ensureLogin() || !token) return;
-    if (!replyText[commentId]?.trim()) return;
+
+    const current = replyText[commentId] || "";
+    const validation = validateReplyText(current);
+
+    if (!validation.valid) {
+      setReplyError((prev) => ({ ...prev, [commentId]: validation.message }));
+      return;
+    }
 
     try {
-      await api.replyComment(token, commentId, replyText[commentId]);
+      setReplySubmitting((prev) => ({ ...prev, [commentId]: true }));
+      setReplyError((prev) => ({ ...prev, [commentId]: "" }));
+
+      await api.replyComment(token, commentId, normalizeTextInput(current));
+
       setReplyText((prev) => ({ ...prev, [commentId]: "" }));
       await loadLeaderData();
     } catch (error: any) {
       setMessage(error.message || "Failed to reply");
+    } finally {
+      setReplySubmitting((prev) => ({ ...prev, [commentId]: false }));
+    }
+  };
+
+  const handleReportComment = (commentId: string) => {
+    const target = commentsList.find((item) => item._id === commentId);
+    if (!target) return;
+
+    const note = normalizeTextInput(reportNote);
+
+    setMessage(
+      `Report noted for "${target.userName}" comment under "${reportReason}"${
+        note ? `: ${note}` : "."
+      }`
+    );
+    setReportOpenFor(null);
+    setReportReason("Abuse");
+    setReportNote("");
+  };
+
+  const handleReportMistakeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!ensureLogin() || !token || !leader) return;
+
+    const cleanedMistake = normalizeTextInput(mistakeText);
+    const cleanedCorrection = normalizeTextInput(suggestedCorrection);
+    const cleanedSource = normalizeTextInput(sourceLink);
+    const cleanedContact = normalizeTextInput(contactInfo);
+
+    if (!cleanedMistake) {
+      setMistakeMessage("Please describe the factual mistake.");
+      return;
+    }
+
+    if (cleanedMistake.length < 8) {
+      setMistakeMessage("Please provide a little more detail about the mistake.");
+      return;
+    }
+
+    try {
+      setMistakeSubmitting(true);
+      setMistakeMessage("");
+
+      const composedMessage = [
+        `Profile Accuracy Report`,
+        `Mistake Type: ${mistakeType}`,
+        `What is the mistake?: ${cleanedMistake}`,
+        `Suggested correction: ${cleanedCorrection || "Not provided"}`,
+        `Source / reference: ${cleanedSource || "Not provided"}`,
+        `Optional contact: ${cleanedContact || "Not provided"}`,
+      ].join("\n");
+
+      const result = await api.submitComplaint(
+        token,
+        leader.leaderId,
+        composedMessage,
+        "Profile Mistake"
+      );
+
+      setMistakeMessage(result.message || "Report submitted successfully.");
+      setMistakeText("");
+      setSuggestedCorrection("");
+      setSourceLink("");
+      setContactInfo("");
+      await loadComplaintHistory();
+    } catch (error: any) {
+      setMistakeMessage(error.message || "Failed to submit report.");
+    } finally {
+      setMistakeSubmitting(false);
     }
   };
 
@@ -300,13 +619,29 @@ function LeaderProfile() {
       : leader?.siteMetrics?.ratingAverage || 0;
 
   const displayFollowers = leader?.siteMetrics?.followers || 0;
+  const profileCompleteness = getProfileCompleteness(leader);
+  const trustLabel = getTrustLabel(
+    Number(displayRating || 0),
+    commentsList.length,
+    stats.likes,
+    stats.dislikes
+  );
+  const engagementLevel = getEngagementLevel(
+    commentsList.length,
+    stats.totalReactions
+  );
+  const trendText = getTrendText(
+    commentsList.length,
+    stats.totalReactions,
+    leader?.streak
+  );
 
   if (leaderLoading) {
     return (
       <div className="min-h-screen bg-slate-100">
         <Navbar />
-        <main className="max-w-6xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6">
+        <main className="mx-auto max-w-6xl px-4 py-8">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <h1 className="text-3xl font-bold text-slate-900">Loading leader...</h1>
           </div>
         </main>
@@ -318,10 +653,10 @@ function LeaderProfile() {
     return (
       <div className="min-h-screen bg-slate-100">
         <Navbar />
-        <main className="max-w-6xl mx-auto px-4 py-8">
-          <div className="bg-white rounded-3xl border border-slate-200 p-6">
+        <main className="mx-auto max-w-6xl px-4 py-8">
+          <div className="rounded-3xl border border-slate-200 bg-white p-6">
             <h1 className="text-3xl font-bold text-slate-900">Leader not found</h1>
-            <p className="text-slate-500 mt-2">
+            <p className="mt-2 text-slate-500">
               This profile is not connected yet in the real leader dataset.
             </p>
           </div>
@@ -334,97 +669,165 @@ function LeaderProfile() {
     <div className="min-h-screen bg-slate-100">
       <Navbar />
 
-      <main className="max-w-7xl mx-auto px-4 md:px-6 py-8 space-y-6">
+      <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6">
         {message && (
-          <div className="rounded-2xl bg-white border border-slate-200 px-5 py-4 text-sm text-slate-700 shadow-sm">
+          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
             {message}
           </div>
         )}
 
-        <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8">
-          <div className="flex flex-col lg:flex-row gap-8">
-            {leader.photo ? (
-              <img
-                src={leader.photo}
-                alt={leader.name}
-                className="w-36 h-36 md:w-44 md:h-44 rounded-3xl object-cover border border-slate-200 shadow-sm"
-              />
-            ) : (
-              <div className="w-36 h-36 md:w-44 md:h-44 rounded-3xl bg-slate-200 border border-slate-200 shadow-sm" />
-            )}
+        <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+          <div className="bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.22),transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_58%,#1d4ed8_100%)] px-6 py-7 text-white md:px-8 md:py-8">
+            <p className="text-sm font-medium text-blue-100">Public civic profile</p>
+            <h1 className="mt-2 text-3xl font-extrabold tracking-tight md:text-5xl">
+              {leader.name}
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-6 text-slate-200 md:text-base">
+              Public-facing profile for civic trust, citizen feedback, and transparent discussion across Nepal.
+            </p>
+          </div>
 
-            <div className="flex-1">
-              <div className="flex flex-wrap gap-2 mb-4">
-                {leader.badge && (
-                  <span className="px-3 py-1 rounded-full bg-slate-900 text-white text-sm font-semibold">
-                    {leader.badge}
-                  </span>
-                )}
-
-                {leader.verified && (
-                  <span className="px-3 py-1 rounded-full bg-green-100 text-green-700 text-sm font-semibold">
-                    Verified
-                  </span>
-                )}
-
-                {(leader.startYear || leader.endYear) && (
-                  <span className="px-3 py-1 rounded-full bg-blue-100 text-blue-700 text-sm font-semibold">
-                    {leader.startYear || "—"} - {leader.endYear || "Present"}
-                  </span>
+          <div className="border-t border-slate-200 bg-white px-6 py-6 md:px-8">
+            <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
+              <div className="-mt-16 shrink-0">
+                {leader.photo ? (
+                  <img
+                    src={leader.photo}
+                    alt={leader.name}
+                    className="h-28 w-28 rounded-[28px] border border-slate-200 object-cover shadow-xl md:h-32 md:w-32"
+                  />
+                ) : (
+                  <div className="space-y-2 text-center">
+                    <div className="flex h-28 w-28 items-center justify-center rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_60%,#2563eb_100%)] text-4xl font-bold text-white shadow-xl md:h-32 md:w-32">
+                      {leader.name?.charAt(0) || "L"}
+                    </div>
+                    <p className="text-xs font-medium text-slate-500">No official photo yet</p>
+                  </div>
                 )}
               </div>
 
-              <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900">
-                {leader.name}
-              </h1>
+              <div className="min-w-0 flex-1">
+                <div className="mb-4 flex flex-wrap gap-2">
+                  {leader.verified && (
+                    <span className="rounded-full border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-sm font-semibold text-emerald-700">
+                      Verified profile
+                    </span>
+                  )}
+                  <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700">
+                    {trustLabel}
+                  </span>
+                  {leader.badge && (
+                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700">
+                      {leader.badge}
+                    </span>
+                  )}
+                </div>
 
-              <p className="text-blue-600 font-semibold mt-3 text-lg md:text-xl">
-                {leader.currentStatus} {displayRole}
-              </p>
+                <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+                  <InfoBlock label="Role" value={`${leader.currentStatus || "Current"} ${displayRole}`.trim()} />
+                  <InfoBlock label="District" value={`${getDistrictName(leader.district) || "Not added yet"}${getProvinceName(leader) ? `, ${getProvinceName(leader)}` : ""}`} />
+                  <InfoBlock label="Party" value={leader.party || "Not added yet"} />
+                  <InfoBlock label="Term" value={`${leader.startYear || "-"} - ${leader.endYear || "Present"}`} />
+                </div>
 
-              <p className="text-slate-700 mt-2 text-lg">{leader.party}</p>
+                <div className="mt-6 rounded-3xl bg-slate-50 p-5">
+                  <p className="text-sm font-semibold text-slate-900">Civic summary</p>
+                  <p className="mt-2 leading-7 text-slate-600">
+                    {leader.name} is currently serving as a{" "}
+                    {leader.currentStatus?.toLowerCase() || ""} {displayRole.toLowerCase()}.
+                    This profile brings together public trust signals, citizen discussion, and factual identity details to support transparency and accountability.
+                  </p>
+                </div>
 
-              <p className="text-slate-500 mt-1">
-                {getDistrictName(leader.district)
-                  ? `District: ${getDistrictName(leader.district)}`
-                  : "District not added yet"}
-                {getProvinceName(leader) ? `, ${getProvinceName(leader)}` : ""}
-              </p>
-
-              <div className="mt-5 text-slate-600 leading-7">
-                <p>
-                  {leader.name} is currently serving as a {leader.currentStatus?.toLowerCase() || ""}
-                  {" "}{displayRole.toLowerCase()} and is publicly tracked on Najar Nepal
-                  for citizen engagement, accountability, and public feedback.
+                <p className="mt-4 text-sm text-slate-500">
+                  {engagementLevel} engagement with {profileCompleteness}% profile completeness.
                 </p>
 
-                <p className="mt-2">
-                  This profile combines official representative identity data with your
-                  platform’s own public interaction system such as ratings, comments,
-                  complaints, likes, and dislikes.
-                </p>
+                <div className="mt-6 flex flex-wrap gap-3">
+                  <button
+                    type="button"
+                    onClick={() => document.getElementById("quick-rate-card")?.scrollIntoView({ behavior: "smooth" })}
+                    className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                  >
+                    Rate Leader
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50"
+                  >
+                    Follow
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setMistakeModalOpen(true)}
+                    className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-100"
+                  >
+                    Report Mistake
+                  </button>
+                </div>
               </div>
             </div>
           </div>
         </section>
 
-        <section className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4">
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
           <StatCard label="Likes" value={stats.likes} />
-          <StatCard label="Dislikes" value={stats.dislikes} />
-          <StatCard label="Rating" value={displayRating} />
+          <StatCard label="Average rating" value={displayRating} />
           <StatCard label="Comments" value={commentsList.length} />
           <StatCard label="Followers" value={displayFollowers} />
-          <StatCard
-            label="Streak"
-            value={leader.streak ? `${leader.streak} weeks` : "—"}
-          />
+          <StatCard label="Activity trend" value={trendText} />
         </section>
 
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-          <div className="xl:col-span-2 space-y-6">
-            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-5">
-                <h2 className="text-2xl font-bold text-slate-900">Community Discussion</h2>
+        <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.7fr)_360px]">
+          <div className="space-y-5">
+            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                <div className="flex flex-col gap-4">
+                  <h2 className="text-2xl font-bold text-slate-900">Overview</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    Public context, trust cues, and factual profile details.
+                  </p>
+                </div>
+                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                  {engagementLevel} engagement
+                </span>
+              </div>
+              <div className="mt-5 grid gap-4 md:grid-cols-2">
+                <OverviewCard
+                  title="Public trust snapshot"
+                  text={`Community trust is currently ${trustLabel.toLowerCase()}, supported by ${stats.likes} likes, ${stats.totalReactions} reactions, and an average rating of ${displayRating}.`}
+                />
+                <OverviewCard
+                  title="Citizen engagement"
+                  text={`This profile has ${commentsList.length} community comments and shows ${trendText.toLowerCase()} across reaction and discussion activity.`}
+                />
+              </div>
+
+              <div className="mt-5 grid gap-3 md:grid-cols-2">
+                <DetailRow label="Role" value={`${leader.currentStatus || "Current"} ${displayRole}`.trim()} />
+                <DetailRow label="Party" value={leader.party || "Not added yet"} />
+                <DetailRow label="District" value={getDistrictName(leader.district) || "Not added yet"} />
+                <DetailRow label="Province" value={getProvinceName(leader) || "Not added yet"} />
+                <DetailRow label="Service" value={`${leader.startYear || "-"} - ${leader.endYear || "Present"}`} />
+                {leader.portfolio ? <DetailRow label="Portfolio" value={leader.portfolio} /> : null}
+                {leader.age ? <DetailRow label="Age" value={String(leader.age)} /> : null}
+                {leader.birthPlace ? <DetailRow label="Birth Place" value={leader.birthPlace} /> : null}
+                {leader.permanentAddress ? (
+                  <div className="md:col-span-2">
+                    <DetailRow label="Permanent Address" value={leader.permanentAddress} />
+                  </div>
+                ) : null}
+              </div>
+            </section>
+
+            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+              <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h2 className="text-2xl font-bold text-slate-900">Community Discussion</h2>
+                  <p className="mt-1 text-sm text-slate-500">
+                    {commentsList.length} comment{commentsList.length === 1 ? "" : "s"}
+                  </p>
+                </div>
 
                 <select
                   value={commentSort}
@@ -438,303 +841,368 @@ function LeaderProfile() {
                 </select>
               </div>
 
-              <form onSubmit={handleCommentSubmit} className="space-y-4 mb-6">
-                <textarea
-                  rows={4}
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  placeholder="Share your thoughts about this leader..."
-                  className="w-full rounded-3xl border border-slate-300 px-5 py-4 outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <form
+                onSubmit={handleCommentSubmit}
+                className="mt-5 rounded-[26px] border border-slate-200 bg-slate-50 px-4 py-4"
+              >
+                <div>
+                  <textarea
+                    rows={3}
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                    placeholder="Share a respectful public comment about this leader..."
+                    className="w-full rounded-3xl border border-slate-300 bg-white px-5 py-4 outline-none transition focus:ring-2 focus:ring-blue-500"
+                    maxLength={300}
+                  />
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <span className={commentValidation.valid ? "text-xs text-slate-500" : "text-xs text-red-600"}>
+                      {commentValidation.valid
+                        ? "Keep it factual and respectful."
+                        : commentValidation.message}
+                    </span>
+                    <span className="text-slate-400">
+                      {normalizeTextInput(comment).length}/300
+                    </span>
+                  </div>
+                </div>
 
-                <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div className="flex gap-2">
+                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                  <div className="flex gap-1.5">
                     {[1, 2, 3, 4, 5].map((star) => (
                       <button
                         type="button"
                         key={star}
                         onClick={() => setRating(star)}
-                        className={`text-3xl ${
+                        className={`text-3xl leading-none transition ${
                           rating >= star ? "text-yellow-400" : "text-slate-300"
                         }`}
+                        aria-label={`Rate ${star} star`}
                       >
-                        ★
+                        {"\u2605"}
                       </button>
                     ))}
                   </div>
 
                   <button
                     type="submit"
-                    className="rounded-2xl bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition"
+                    disabled={!commentValidation.valid || commentSubmitting}
+                    className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
                   >
-                    Post Comment
+                    {commentSubmitting ? "Posting..." : "Post Comment"}
                   </button>
                 </div>
               </form>
 
-              <div className="space-y-4">
-                {commentsList.length > 0 ? (
-                  commentsList.map((item) => (
-                    <div
-                      key={item._id}
-                      className="rounded-3xl border border-slate-200 bg-slate-50 p-5"
-                    >
-                      <div className="flex items-start justify-between gap-4">
-                        <div>
-                          <p className="font-bold text-slate-900">{item.userName}</p>
-                          <p className="text-sm text-slate-500 mt-1">
-                            Rating: {item.rating || 0} • Likes: {item.likes || 0}
-                          </p>
-                        </div>
-                      </div>
+              <div className="mt-5 space-y-4">
+                {commentsLoading ? (
+                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                    Loading comments...
+                  </div>
+                ) : commentsList.length > 0 ? (
+                  commentsList.map((item) => {
+                    const currentReplyValidation = validateReplyText(replyText[item._id] || "");
+                    const replyCount = item.replies?.length || 0;
 
-                      <p className="text-slate-700 mt-4 leading-7">{item.text}</p>
-
-                      <div className="flex flex-wrap gap-3 mt-4">
-                        <button
-                          onClick={() => handleLikeComment(item._id)}
-                          className="rounded-xl bg-slate-900 px-4 py-2 text-white text-sm font-medium"
+                    return (
+                        <article
+                          key={item._id}
+                          className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
                         >
-                          Like
-                        </button>
-                      </div>
-
-                      <div className="mt-4 space-y-3">
-                        {item.replies?.map((reply, index) => (
-                          <div
-                            key={index}
-                            className="ml-2 md:ml-6 rounded-2xl bg-white border border-slate-200 p-4"
-                          >
-                            <p className="font-semibold text-slate-800">{reply.userName}</p>
-                            <p className="text-slate-700 mt-2">{reply.text}</p>
+                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
+                          <div>
+                            <p className="font-bold text-slate-900">{item.userName}</p>
+                            <p className="mt-1 text-sm text-slate-500">
+                              {formatDateTime(item.createdAt)} - Rating: {item.rating || 0} - Likes:{" "}
+                              {item.likes || 0}
+                            </p>
                           </div>
-                        ))}
-                      </div>
 
-                      <div className="mt-4">
-                        <textarea
-                          rows={2}
-                          value={replyText[item._id] || ""}
-                          onChange={(e) =>
-                            setReplyText((prev) => ({
-                              ...prev,
-                              [item._id]: e.target.value,
-                            }))
-                          }
-                          placeholder="Write a reply..."
-                          className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-                        />
+                          <button
+                            type="button"
+                            onClick={() =>
+                              setReportOpenFor((prev) => (prev === item._id ? null : item._id))
+                            }
+                            className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+                          >
+                            Report comment
+                          </button>
+                        </div>
 
-                        <button
-                          onClick={() => handleReplySubmit(item._id)}
-                          className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-white text-sm font-medium"
-                        >
-                          Reply
-                        </button>
-                      </div>
-                    </div>
-                  ))
+                        <p className="mt-4 leading-7 text-slate-700">{item.text}</p>
+
+                        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                          <button
+                            onClick={() => handleLikeComment(item._id)}
+                            className="rounded-xl bg-slate-950 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
+                          >
+                            Like
+                          </button>
+                          <span className="text-sm text-slate-500">
+                            {replyCount} repl{replyCount === 1 ? "y" : "ies"}
+                          </span>
+                        </div>
+
+                        {reportOpenFor === item._id && (
+                          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                            <p className="text-sm font-semibold text-slate-900">Report comment</p>
+                            <p className="mt-1 text-xs text-slate-500">
+                              Help keep discussion respectful and safe.
+                            </p>
+
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {REPORT_REASONS.map((reason) => (
+                                <button
+                                  key={reason}
+                                  type="button"
+                                  onClick={() => setReportReason(reason)}
+                                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                    reportReason === reason
+                                      ? "bg-slate-900 text-white"
+                                      : "bg-white text-slate-700"
+                                  }`}
+                                >
+                                  {reason}
+                                </button>
+                              ))}
+                            </div>
+
+                            <textarea
+                              rows={2}
+                              value={reportNote}
+                              onChange={(e) => setReportNote(e.target.value)}
+                              placeholder="Optional note"
+                              className="mt-3 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                            />
+
+                            <div className="mt-3 flex gap-2">
+                              <button
+                                type="button"
+                                onClick={() => handleReportComment(item._id)}
+                                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white"
+                              >
+                                Submit Report
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setReportOpenFor(null);
+                                  setReportNote("");
+                                }}
+                                className="rounded-xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        <div className="mt-4 space-y-3 border-l border-slate-200 pl-4 md:pl-6">
+                          {item.replies?.map((reply, index) => (
+                            <div
+                              key={index}
+                              className="rounded-2xl bg-slate-50 px-4 py-3"
+                            >
+                              <div className="flex items-center justify-between gap-3">
+                                <p className="font-semibold text-slate-800">{reply.userName}</p>
+                                <p className="text-xs text-slate-500">
+                                  {formatDateTime(reply.createdAt)}
+                                </p>
+                              </div>
+                              <p className="mt-2 text-sm leading-6 text-slate-700">{reply.text}</p>
+                            </div>
+                          ))}
+                        </div>
+
+                        <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                          <textarea
+                            rows={2}
+                            value={replyText[item._id] || ""}
+                            onChange={(e) =>
+                              setReplyText((prev) => ({
+                                ...prev,
+                                [item._id]: e.target.value,
+                              }))
+                            }
+                            placeholder="Write a respectful reply..."
+                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                            maxLength={220}
+                          />
+
+                          <div className="mt-2 flex items-center justify-between text-xs">
+                            <span
+                              className={
+                                currentReplyValidation.valid ? "text-slate-500" : "text-red-600"
+                              }
+                            >
+                              {replyError[item._id] ||
+                                (currentReplyValidation.valid
+                                  ? "Keep replies constructive."
+                                  : currentReplyValidation.message)}
+                            </span>
+                            <span className="text-slate-400">
+                              {normalizeTextInput(replyText[item._id] || "").length}/220
+                            </span>
+                          </div>
+
+                          <button
+                            onClick={() => handleReplySubmit(item._id)}
+                            disabled={!currentReplyValidation.valid || !!replySubmitting[item._id]}
+                            className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {replySubmitting[item._id] ? "Replying..." : "Reply"}
+                          </button>
+                        </div>
+                      </article>
+                    );
+                  })
                 ) : (
-                  <p className="text-slate-500">No comments yet.</p>
+                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+                    <p className="text-base font-semibold text-slate-700">
+                      Be the first to share your thoughts about this leader.
+                    </p>
+                    <p className="mt-2 text-sm text-slate-500">
+                      Respectful civic discussion helps improve transparency and accountability.
+                    </p>
+                  </div>
                 )}
+              </div>
+            </section>
+
+            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="text-2xl font-bold text-slate-900">Activity and updates</h2>
+              <div className="mt-4 rounded-2xl bg-slate-50 p-5">
+                <p className="text-sm font-semibold text-slate-900">Current interest trend</p>
+                <p className="mt-2 text-slate-600">
+                  {trendText}. This profile is drawing public attention through ratings,
+                  comments, and reaction activity tracked on the platform.
+                </p>
               </div>
             </section>
           </div>
 
-          <div className="space-y-6">
-            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Public Reaction</h2>
-
-              <div className="flex gap-3 mb-5">
-                <button
-                  onClick={() => handleLike(true)}
-                  className={`flex-1 rounded-2xl px-4 py-3 font-semibold transition ${
-                    liked === true
-                      ? "bg-green-600 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  Like
-                </button>
-
-                <button
-                  onClick={() => handleLike(false)}
-                  className={`flex-1 rounded-2xl px-4 py-3 font-semibold transition ${
-                    liked === false
-                      ? "bg-red-500 text-white"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                  }`}
-                >
-                  Dislike
-                </button>
-              </div>
+          <div className="space-y-5">
+            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-2xl font-bold text-slate-900">Public trust snapshot</h2>
 
               <div className="space-y-4">
-                <div>
-                  <div className="flex justify-between text-sm text-slate-600 mb-1">
-                    <span>Like</span>
-                    <span>{stats.likePercentage}%</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className="h-full bg-green-500 rounded-full"
-                      style={{ width: `${stats.likePercentage}%` }}
-                    />
-                  </div>
-                </div>
+                <ProgressBar label="Like" value={stats.likePercentage} colorClass="bg-green-500" />
+                <ProgressBar
+                  label="Dislike"
+                  value={stats.dislikePercentage}
+                  colorClass="bg-red-500"
+                />
 
-                <div>
-                  <div className="flex justify-between text-sm text-slate-600 mb-1">
-                    <span>Dislike</span>
-                    <span>{stats.dislikePercentage}%</span>
+                <div className="rounded-[24px] bg-slate-50 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Community reading</p>
+                  <p className="mt-2 text-slate-600">{trustLabel}</p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => handleLike(true)}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                        liked === true
+                          ? "bg-emerald-600 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      Support
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleLike(false)}
+                      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+                        liked === false
+                          ? "bg-red-600 text-white"
+                          : "bg-white text-slate-700 hover:bg-slate-100"
+                      }`}
+                    >
+                      Concern
+                    </button>
                   </div>
-                  <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
-                    <div
-                      className="h-full bg-red-500 rounded-full"
-                      style={{ width: `${stats.dislikePercentage}%` }}
-                    />
-                  </div>
-                </div>
-
-                <div className="pt-2">
-                  <p className="text-sm text-slate-500">
-                    Average rating: {displayRating} ({stats.ratingCount} votes)
-                  </p>
                 </div>
               </div>
             </section>
 
-            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Quick Rating</h2>
+            <section
+              id="quick-rate-card"
+              className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm"
+            >
+              <h2 className="mb-4 text-2xl font-bold text-slate-900">Quick rate</h2>
 
-              <div className="flex gap-2 mb-3">
+              <div className="mb-3 flex gap-1.5">
                 {[1, 2, 3, 4, 5].map((star) => (
                   <button
                     key={star}
                     onClick={() => handleRating(star)}
-                    className={`text-3xl ${
+                    className={`text-4xl leading-none transition ${
                       rating >= star ? "text-yellow-400" : "text-slate-300"
                     }`}
                   >
-                    ★
+                    {"\u2605"}
                   </button>
                 ))}
               </div>
 
               <p className="text-sm text-slate-500">
-                Rate once and update later anytime.
+                Add your public rating now and update it anytime later.
               </p>
             </section>
 
-            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Submit Complaint</h2>
+            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-2xl font-bold text-slate-900">Profile signals</h2>
 
-              {complaintMessage && (
-                <div className="mb-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
-                  {complaintMessage}
-                </div>
-              )}
-
-              <form onSubmit={handleComplaintSubmit} className="space-y-4">
-                <select
-                  value={complaintType}
-                  onChange={(e) => setComplaintType(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="Other">Other</option>
-                  <option value="Corruption">Corruption</option>
-                  <option value="Road">Road</option>
-                  <option value="Water">Water</option>
-                  <option value="Electricity">Electricity</option>
-                  <option value="Health">Health</option>
-                  <option value="Education">Education</option>
-                  <option value="Abuse of Power">Abuse of Power</option>
-                  <option value="Delay">Delay</option>
-                </select>
-
-                <input
-                  type="text"
-                  value={complaintPhoto}
-                  onChange={(e) => setComplaintPhoto(e.target.value)}
-                  placeholder="Photo proof URL (optional for now)"
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+              <div className="flex flex-wrap gap-2">
+                <BadgePill text={trustLabel} />
+                <BadgePill text={engagementLevel === "High" ? "Most Engaged" : "Rising Interest"} />
+                <BadgePill
+                  text={profileCompleteness >= 70 ? "Profile mostly complete" : "Needs more verified data"}
                 />
-
-                <textarea
-                  rows={5}
-                  value={complaint}
-                  onChange={(e) => setComplaint(e.target.value)}
-                  placeholder="Write your complaint..."
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                <BadgePill
+                  text={commentsList.length >= 10 ? "Highly Discussed" : "Needs More Public Feedback"}
                 />
+              </div>
 
-                <button
-                  type="submit"
-                  disabled={complaintLoading}
-                  className="w-full rounded-2xl bg-blue-600 text-white py-3 font-semibold hover:bg-blue-700 transition disabled:opacity-60"
-                >
-                  {complaintLoading ? "Submitting..." : "Submit Complaint"}
-                </button>
-              </form>
-
-              <div className="mt-6 pt-5 border-t border-slate-200">
-                <h3 className="text-lg font-bold text-slate-900 mb-3">Your Complaint History</h3>
-
-                {complaintHistory.length > 0 ? (
-                  <div className="space-y-3">
-                    {complaintHistory.map((item) => (
-                      <div
-                        key={item._id}
-                        className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                      >
-                        <div className="flex items-center justify-between gap-3 mb-2">
-                          <span className="text-sm font-semibold text-blue-700">
-                            {item.type || "Other"}
-                          </span>
-
-                          <span className="text-sm font-semibold text-amber-700 capitalize">
-                            {item.status || "pending"}
-                          </span>
-                        </div>
-
-                        <p className="text-slate-700 text-sm leading-6">{item.message}</p>
-
-                        {item.photo && (
-                          <a
-                            href={item.photo}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="inline-block mt-3 text-sm font-semibold text-blue-700 hover:underline"
-                          >
-                            View attached proof
-                          </a>
-                        )}
-
-                        {item.adminNote && (
-                          <div className="mt-3 rounded-xl bg-white border border-slate-200 p-3">
-                            <p className="text-xs font-bold text-slate-500 mb-1">Admin Note</p>
-                            <p className="text-sm text-slate-700">{item.adminNote}</p>
-                          </div>
-                        )}
-
-                        <p className="text-xs text-slate-500 mt-3">
-                          {item.createdAt ? new Date(item.createdAt).toLocaleString() : ""}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-slate-500 text-sm">
-                    No previous complaints submitted for this leader yet.
-                  </p>
-                )}
+              <div className="mt-5 grid gap-3">
+                <SignalStat label="Profile accuracy" value={`${profileCompleteness}%`} />
+                <SignalStat label="Engagement level" value={engagementLevel} />
+                <SignalStat
+                  label="Public visibility"
+                  value={leader?.streak ? `${leader.streak} day streak` : "Early stage"}
+                />
               </div>
             </section>
 
-            <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Background</h2>
+            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-2xl font-bold text-slate-900">Report a factual mistake</h2>
+              <p className="text-sm leading-6 text-slate-600">
+                Help improve public transparency by reporting incorrect profile information.
+              </p>
 
-              <div className="space-y-3 text-slate-600 leading-7">
+              <button
+                type="button"
+                onClick={() => setMistakeModalOpen(true)}
+                className="mt-4 w-full rounded-2xl bg-blue-600 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
+              >
+                Open report form
+              </button>
+
+              {complaintHistory.length > 0 ? (
+                <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                  <p className="text-sm font-semibold text-slate-900">
+                    Your previous profile accuracy reports
+                  </p>
+                  <p className="mt-1 text-xs text-slate-500">
+                    {complaintHistory.length} submitted item
+                    {complaintHistory.length === 1 ? "" : "s"}
+                  </p>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
+              <h2 className="mb-4 text-2xl font-bold text-slate-900">Background</h2>
+
+              <div className="space-y-3 leading-7 text-slate-600">
                 <p>
                   <span className="font-semibold text-slate-900">Role:</span>{" "}
                   {leader.currentStatus} {displayRole}
@@ -753,7 +1221,7 @@ function LeaderProfile() {
                 </p>
                 <p>
                   <span className="font-semibold text-slate-900">Service:</span>{" "}
-                  {leader.startYear || "—"} - {leader.endYear || "Present"}
+                  {leader.startYear || "-"} - {leader.endYear || "Present"}
                 </p>
                 {leader.portfolio && (
                   <p>
@@ -763,8 +1231,7 @@ function LeaderProfile() {
                 )}
                 {leader.age && (
                   <p>
-                    <span className="font-semibold text-slate-900">Age:</span>{" "}
-                    {leader.age}
+                    <span className="font-semibold text-slate-900">Age:</span> {leader.age}
                   </p>
                 )}
                 {leader.birthPlace && (
@@ -784,17 +1251,190 @@ function LeaderProfile() {
           </div>
         </div>
       </main>
+
+      {mistakeModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
+          onClick={() => setMistakeModalOpen(false)}
+        >
+          <div
+            className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-2xl font-bold text-slate-900">Report a factual mistake</h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Help improve profile accuracy using clear, factual corrections.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setMistakeModalOpen(false)}
+                className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+              >
+                Close
+              </button>
+            </div>
+
+            {mistakeMessage && (
+              <div className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
+                {mistakeMessage}
+              </div>
+            )}
+
+            <form onSubmit={handleReportMistakeSubmit} className="mt-5 space-y-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Mistake type
+                </label>
+                <select
+                  value={mistakeType}
+                  onChange={(e) => setMistakeType(e.target.value as MistakeType)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {MISTAKE_OPTIONS.map((option) => (
+                    <option key={option} value={option}>
+                      {option}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  What is the mistake?
+                </label>
+                <textarea
+                  rows={3}
+                  value={mistakeText}
+                  onChange={(e) => setMistakeText(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Describe the incorrect information"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Suggested correction
+                </label>
+                <textarea
+                  rows={2}
+                  value={suggestedCorrection}
+                  onChange={(e) => setSuggestedCorrection(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="What should it say instead?"
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Source / reference link
+                </label>
+                <input
+                  type="text"
+                  value={sourceLink}
+                  onChange={(e) => setSourceLink(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="https://..."
+                />
+              </div>
+
+              <div>
+                <label className="mb-2 block text-sm font-medium text-slate-700">
+                  Optional contact
+                </label>
+                <input
+                  type="text"
+                  value={contactInfo}
+                  onChange={(e) => setContactInfo(e.target.value)}
+                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Email or other contact info"
+                />
+              </div>
+
+              <div className="flex flex-col gap-3 sm:flex-row">
+                <button
+                  type="submit"
+                  disabled={mistakeSubmitting}
+                  className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                >
+                  {mistakeSubmitting ? "Submitting..." : "Submit report"}
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setMistakeModalOpen(false)}
+                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-semibold text-slate-700"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
+  );
+}
+
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function OverviewCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-2 text-sm leading-7 text-slate-600">{text}</p>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function SignalStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl bg-slate-50 px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function BadgePill({ text }: { text: string }) {
+  return (
+    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
+      {text}
+    </span>
   );
 }
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-5">
-      <p className="text-sm text-slate-500">{label}</p>
-      <p className="text-2xl font-extrabold text-slate-900 mt-2">{value}</p>
+    <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-extrabold text-slate-900">{value}</p>
     </div>
   );
 }
 
 export default LeaderProfile;
+

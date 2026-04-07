@@ -54,7 +54,7 @@ const userSchema = new mongoose.Schema(
     },
     role: {
       type: String,
-      enum: ["user", "admin"],
+      enum: ["user", "admin", "reviewer"],
       default: "user",
     },
     verificationStatus: {
@@ -66,10 +66,44 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
     },
     badges: {
       type: [String],
       default: [],
+    },
+    citizenshipFrontPhoto: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    citizenshipBackPhoto: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    verificationSelfiePhoto: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    verificationSubmittedAt: {
+      type: Date,
+      default: null,
+    },
+    verificationReviewedAt: {
+      type: Date,
+      default: null,
+    },
+    verificationNotes: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    verificationReviewedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      default: null,
     },
   },
   { timestamps: true }
