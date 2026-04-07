@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { api } from "../services/api";
 import { useAuth } from "../context/AuthContext";
+import { useLanguage } from "../context/LanguageContext";
 
 function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
@@ -10,6 +11,94 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function Profile() {
   const { user, token, updateUser } = useAuth();
+  const { language } = useLanguage();
+
+  const text =
+    language === "ne"
+      ? {
+          profileTitle: "प्रयोगकर्ता प्रोफाइल",
+          districtUnset: "जिल्ला सेट गरिएको छैन",
+          notAdded: "थप गरिएको छैन",
+          birthplace: "जन्मस्थान",
+          editProfile: "प्रोफाइल सम्पादन",
+          fullName: "पूरा नाम",
+          username: "प्रयोगकर्ता नाम",
+          email: "इमेल",
+          phone: "फोन",
+          district: "जिल्ला",
+          province: "प्रदेश",
+          profilePhoto: "प्रोफाइल फोटो URL",
+          bio: "परिचय लेख्नुहोस्...",
+          saveProfile: "प्रोफाइल सुरक्षित गर्नुहोस्",
+          saving: "सुरक्षित हुँदैछ...",
+          verificationCenter: "प्रमाणीकरण केन्द्र",
+          publicBadgeActive: "सार्वजनिक ब्याज सक्रिय",
+          whatIsPublic: "सार्वजनिक रूपमा के देखिन्छ",
+          whatIsPublicBody:
+            "तपाईंको प्रमाणीकरण स्थिति र ब्याज मात्र। नागरिकता नम्बर र अपलोड गरिएका कागजातहरू निजी रहन्छन् र अधिकृत समीक्षकले मात्र हेर्न सक्छन्।",
+          updateVerification: "प्रमाणीकरण कागजात अपडेट गर्नुहोस्",
+          viewVerification: "प्रमाणीकरण स्थिति हेर्नुहोस्",
+          manageVerification: "प्रमाणीकरण व्यवस्थापन",
+          startVerification: "प्रमाणीकरण सुरु गर्नुहोस्",
+          citizenBadges: "नागरिक ब्याजहरू",
+          noBadges: "अहिलेसम्म कुनै ब्याज छैन।",
+          privacyNote: "गोपनीयता सूचना",
+          privacyBody:
+            "प्रमाणीकरण कागजातहरू छुट्टै निजी समीक्षा प्रक्रियामा राखिन्छन्। यस पृष्ठमा प्रोफाइल जानकारी र प्रमाणीकरण स्थिति मात्र देखिन्छ, अपलोड गरिएको नागरिकता छवि होइन।",
+          verificationSummaryVerified:
+            "तपाईंको पहिचान प्रमाणित भइसकेको छ। सार्वजनिक प्रयोगकर्ताले केवल ब्याज र स्थिति मात्र देख्छन्।",
+          verificationSummaryPending:
+            "तपाईंका कागजातहरू सुरक्षित रूपमा पठाइएको छ र समीक्षकको अनुमोदनको प्रतीक्षामा छन्।",
+          verificationSummaryRejected:
+            "तपाईंको पछिल्लो प्रमाणीकरण अस्वीकृत भयो। टिप्पणी हेरेर अद्यावधिक कागजात पुनः पठाउन सक्नुहुन्छ।",
+          verificationSummaryDefault:
+            "तपाईंले आफ्नो नागरिकता निजी रूपमा समीक्षाका लागि पठाउन सक्नुहुन्छ। कागजातहरू सार्वजनिक प्रोफाइलमा कहिल्यै देखाइँदैनन्।",
+          updatedSuccess: "प्रोफाइल सफलतापूर्वक अद्यावधिक भयो",
+          updatedFail: "प्रोफाइल अद्यावधिक गर्न सकिएन",
+          wrong: "केही गल्ती भयो",
+        }
+      : {
+          profileTitle: "User Profile",
+          districtUnset: "District not set",
+          notAdded: "Not added",
+          birthplace: "Birthplace",
+          editProfile: "Edit Profile",
+          fullName: "Full name",
+          username: "Username",
+          email: "Email",
+          phone: "Phone",
+          district: "District",
+          province: "Province",
+          profilePhoto: "Profile photo URL",
+          bio: "Write your bio...",
+          saveProfile: "Save Profile",
+          saving: "Saving...",
+          verificationCenter: "Verification Center",
+          publicBadgeActive: "Public badge active",
+          whatIsPublic: "What is public",
+          whatIsPublicBody:
+            "Only your verification status and badge. Your citizenship number and uploaded images remain private and are only available to authorized reviewers.",
+          updateVerification: "Update Verification Documents",
+          viewVerification: "View Verification Status",
+          manageVerification: "Manage Verification",
+          startVerification: "Start Verification",
+          citizenBadges: "Citizen Badges",
+          noBadges: "No badges yet.",
+          privacyNote: "Privacy Note",
+          privacyBody:
+            "Verification documents are handled in a separate private review flow. This page only shows profile information and verification status, never the uploaded nagarikta images themselves.",
+          verificationSummaryVerified:
+            "Your identity has been verified. Public visitors only see your badge and status.",
+          verificationSummaryPending:
+            "Your documents are safely submitted and waiting for reviewer approval.",
+          verificationSummaryRejected:
+            "Your last verification submission was rejected. You can review the notes and submit updated documents.",
+          verificationSummaryDefault:
+            "You can submit your nagarikta privately for review. Documents are never shown on your public profile.",
+          updatedSuccess: "Profile updated successfully",
+          updatedFail: "Failed to update profile",
+          wrong: "Something went wrong",
+        };
 
   const [form, setForm] = useState({
     name: "",
@@ -63,12 +152,12 @@ function Profile() {
 
       if (result.user) {
         updateUser(result.user);
-        setMessage(result.message || "Profile updated successfully");
+        setMessage(result.message || text.updatedSuccess);
       } else {
-        setMessage(result.message || "Failed to update profile");
+        setMessage(result.message || text.updatedFail);
       }
     } catch (error: unknown) {
-      setMessage(getErrorMessage(error, "Something went wrong"));
+      setMessage(getErrorMessage(error, text.wrong));
     } finally {
       setLoading(false);
     }
@@ -79,11 +168,12 @@ function Profile() {
   const verificationSummary =
     verificationStatus === "verified"
       ? "Your identity has been verified. Public visitors only see your badge and status."
+      ? text.verificationSummaryVerified
       : verificationStatus === "pending"
-      ? "Your documents are safely submitted and waiting for reviewer approval."
+      ? text.verificationSummaryPending
       : verificationStatus === "rejected"
-      ? "Your last verification submission was rejected. You can review the notes and submit updated documents."
-      : "You can submit your nagarikta privately for review. Documents are never shown on your public profile.";
+      ? text.verificationSummaryRejected
+      : text.verificationSummaryDefault;
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -108,7 +198,7 @@ function Profile() {
 
                 <div>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    <VerificationBadge status={verificationStatus} />
+                    <VerificationBadge status={verificationStatus} language={language} />
                     {badges.map((badge) => (
                       <span
                         key={badge}
@@ -120,22 +210,22 @@ function Profile() {
                   </div>
 
                   <h1 className="text-3xl md:text-4xl font-extrabold text-slate-900">
-                    {form.name || "User Profile"}
+                    {form.name || text.profileTitle}
                   </h1>
                   <p className="text-slate-600 mt-2">{form.email}</p>
                   <p className="text-slate-500 mt-1">
-                    {form.district || "District not set"}
+                    {form.district || text.districtUnset}
                     {form.province ? `, ${form.province}` : ""}
                   </p>
                   <p className="text-slate-500 mt-1">
-                    Birthplace: {form.birthplace || "Not added"}
+                    {text.birthplace}: {form.birthplace || text.notAdded}
                   </p>
                 </div>
               </div>
             </section>
 
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Edit Profile</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">{text.editProfile}</h2>
 
               {message && (
                 <div className="mb-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
@@ -148,7 +238,7 @@ function Profile() {
                   name="name"
                   value={form.name}
                   onChange={handleChange}
-                  placeholder="Full name"
+                  placeholder={text.fullName}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -156,7 +246,7 @@ function Profile() {
                   name="username"
                   value={form.username}
                   onChange={handleChange}
-                  placeholder="Username"
+                  placeholder={text.username}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -164,7 +254,7 @@ function Profile() {
                   name="email"
                   value={form.email}
                   onChange={handleChange}
-                  placeholder="Email"
+                  placeholder={text.email}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -172,7 +262,7 @@ function Profile() {
                   name="phone"
                   value={form.phone}
                   onChange={handleChange}
-                  placeholder="Phone"
+                  placeholder={text.phone}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -180,7 +270,7 @@ function Profile() {
                   name="district"
                   value={form.district}
                   onChange={handleChange}
-                  placeholder="District"
+                  placeholder={text.district}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -188,7 +278,7 @@ function Profile() {
                   name="province"
                   value={form.province}
                   onChange={handleChange}
-                  placeholder="Province"
+                  placeholder={text.province}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -196,7 +286,7 @@ function Profile() {
                   name="birthplace"
                   value={form.birthplace}
                   onChange={handleChange}
-                  placeholder="Birthplace"
+                  placeholder={text.birthplace}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -204,7 +294,7 @@ function Profile() {
                   name="profilePhoto"
                   value={form.profilePhoto}
                   onChange={handleChange}
-                  placeholder="Profile photo URL"
+                  placeholder={text.profilePhoto}
                   className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                 />
 
@@ -214,7 +304,7 @@ function Profile() {
                     value={form.bio}
                     onChange={handleChange}
                     rows={4}
-                    placeholder="Write your bio..."
+                    placeholder={text.bio}
                     className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
@@ -225,7 +315,7 @@ function Profile() {
                     disabled={loading}
                     className="rounded-2xl bg-blue-600 px-5 py-3 text-white font-semibold hover:bg-blue-700 transition disabled:opacity-60"
                   >
-                    {loading ? "Saving..." : "Save Profile"}
+                    {loading ? text.saving : text.saveProfile}
                   </button>
                 </div>
               </form>
@@ -234,13 +324,13 @@ function Profile() {
 
           <div className="space-y-6">
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Verification Center</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">{text.verificationCenter}</h2>
 
               <div className="flex items-center gap-3">
-                <VerificationBadge status={verificationStatus} />
+                <VerificationBadge status={verificationStatus} language={language} />
                 {verificationStatus === "verified" ? (
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
-                    Public badge active
+                    {text.publicBadgeActive}
                   </span>
                 ) : null}
               </div>
@@ -250,10 +340,9 @@ function Profile() {
               </p>
 
               <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-700">
-                <p className="font-semibold text-slate-900">What is public</p>
+                <p className="font-semibold text-slate-900">{text.whatIsPublic}</p>
                 <p className="mt-2 leading-6">
-                  Only your verification status and badge. Your citizenship number and uploaded
-                  images remain private and are only available to authorized reviewers.
+                  {text.whatIsPublicBody}
                 </p>
               </div>
 
@@ -263,18 +352,18 @@ function Profile() {
                   className="block w-full rounded-2xl bg-slate-900 px-4 py-3 text-center font-semibold text-white transition hover:bg-slate-700"
                 >
                   {verificationStatus === "rejected"
-                    ? "Update Verification Documents"
+                    ? text.updateVerification
                     : verificationStatus === "pending"
-                    ? "View Verification Status"
+                    ? text.viewVerification
                     : verificationStatus === "verified"
-                    ? "Manage Verification"
-                    : "Start Verification"}
+                    ? text.manageVerification
+                    : text.startVerification}
                 </Link>
               </div>
             </section>
 
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Citizen Badges</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">{text.citizenBadges}</h2>
 
               <div className="flex flex-wrap gap-2">
                 {badges.length > 0 ? (
@@ -287,17 +376,15 @@ function Profile() {
                     </span>
                   ))
                 ) : (
-                  <p className="text-slate-500">No badges yet.</p>
+                  <p className="text-slate-500">{text.noBadges}</p>
                 )}
               </div>
             </section>
 
             <section className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6">
-              <h2 className="text-2xl font-bold text-slate-900 mb-4">Privacy Note</h2>
+              <h2 className="text-2xl font-bold text-slate-900 mb-4">{text.privacyNote}</h2>
               <p className="text-slate-600 text-sm leading-6">
-                Verification documents are handled in a separate private review flow. This
-                page only shows profile information and verification status, never the
-                uploaded nagarikta images themselves.
+                {text.privacyBody}
               </p>
             </section>
           </div>
@@ -309,8 +396,10 @@ function Profile() {
 
 function VerificationBadge({
   status,
+  language,
 }: {
   status: "unverified" | "pending" | "verified" | "rejected";
+  language: "en" | "ne";
 }) {
   const styles = {
     unverified: "bg-slate-200 text-slate-700",
@@ -320,10 +409,10 @@ function VerificationBadge({
   };
 
   const labels = {
-    unverified: "Unverified",
-    pending: "Pending Review",
-    verified: "Verified",
-    rejected: "Rejected",
+    unverified: language === "ne" ? "अप्रमाणित" : "Unverified",
+    pending: language === "ne" ? "समीक्षामा" : "Pending Review",
+    verified: language === "ne" ? "प्रमाणित" : "Verified",
+    rejected: language === "ne" ? "अस्वीकृत" : "Rejected",
   };
 
   return (
