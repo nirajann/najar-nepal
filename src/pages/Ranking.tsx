@@ -132,7 +132,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
     const likes = raw.likes ?? 0;
     const dislikes = raw.dislikes ?? 0;
     const comments = raw.comments ?? 0;
-    const rating = raw.averageRating ?? 0;
+    const averageRating = raw.averageRating ?? 0;
     const ratingCount = raw.ratingCount ?? 0;
     const totalReactions = raw.totalReactions ?? likes + dislikes;
     const engagementCount =
@@ -144,7 +144,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
         likes,
         dislikes,
         comments,
-        rating,
+        averageRating,
         ratingCount,
         totalReactions,
         engagementScore: engagementCount,
@@ -158,7 +158,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
 
   return safeStats.map(({ leader, stats }) => {
     const confidenceWeight = getConfidenceWeight(stats.ratingCount);
-    const ratingQuality = normalize((stats.rating / 5) * confidenceWeight, 1);
+    const ratingQuality = normalize((stats.averageRating / 5) * confidenceWeight, 1);
     const discussionQuality = normalize(stats.comments, maxComments);
     const engagementQuality = normalize(stats.engagementScore, maxEngagement);
     const reactionQuality = normalize(stats.totalReactions, maxReactions);
@@ -174,7 +174,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
       stats,
       publicScore: roundValue(publicScore),
       confidenceWeight: roundValue(confidenceWeight),
-      weightedRating: roundValue(stats.rating * confidenceWeight),
+      weightedRating: roundValue(stats.averageRating * confidenceWeight),
       engagementCount: stats.engagementScore,
       trendLabel: getTrendLabel(
         stats.comments,
@@ -182,7 +182,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
         stats.ratingCount
       ),
       trustLabel: getTrustLabel(
-        stats.rating,
+        stats.averageRating,
         stats.ratingCount,
         stats.comments,
         leader.verified
@@ -336,7 +336,7 @@ function FeaturedLeaderCard({
       <div className="mt-4 grid grid-cols-3 gap-2">
         <MetricTile
           label={text.rating}
-          value={roundValue(stats.rating)}
+          value={roundValue(stats.averageRating)}
           helper={`${stats.ratingCount} ${text.ratings}`}
         />
         <MetricTile label={text.comments} value={stats.comments} helper={text.badge} />
@@ -415,7 +415,7 @@ function LeaderListRow({
         <LeaderboardMetric label={text.score} value={publicScore} strong />
         <LeaderboardMetric
           label={text.rating}
-          value={roundValue(stats.rating)}
+          value={roundValue(stats.averageRating)}
           helper={`${stats.ratingCount}`}
         />
         <LeaderboardMetric label={text.comments} value={stats.comments} />
@@ -571,11 +571,11 @@ function Ranking() {
 
     return computed.sort((a, b) => {
       if (sortBy === "Highest Rated") {
-        return b.stats.rating - a.stats.rating;
+        return b.stats.averageRating - a.stats.averageRating;
       }
 
       if (sortBy === "Lowest Rated") {
-        return a.stats.rating - b.stats.rating;
+        return a.stats.averageRating - b.stats.averageRating;
       }
 
       if (sortBy === "Most Discussed") {

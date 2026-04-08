@@ -3,7 +3,6 @@ import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import AdminPageSection from "./AdminPageSection";
-import AdminToolbar from "./AdminToolbar";
 import AdminFormCard from "./AdminFormCard";
 import AdminDataTable from "./AdminDataTable";
 
@@ -298,7 +297,6 @@ const filteredLeaders = useMemo(() => {
   return leaders
     .filter((leader) => {
       const name = (leader.name || "").toLowerCase();
-      const role = (leader.role || "").toLowerCase();
       const province = (leader.province || "").toLowerCase();
 
       const searchMatch = !q || name.includes(q);

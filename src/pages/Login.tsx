@@ -207,11 +207,11 @@ function Login() {
                   <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
                     <p className="mb-2 text-sm font-semibold text-slate-800">{text.requirements}</p>
                     <div className="space-y-1 text-xs">
-                      <p className={checkClass(passwordChecks.minLength)}>• {text.req1}</p>
-                      <p className={checkClass(passwordChecks.upper)}>• {text.req2}</p>
-                      <p className={checkClass(passwordChecks.lower)}>• {text.req3}</p>
-                      <p className={checkClass(passwordChecks.number)}>• {text.req4}</p>
-                      <p className={checkClass(passwordChecks.special)}>• {text.req5}</p>
+                      <p className={checkClass(passwordChecks.minLength)}>ï¿½ {text.req1}</p>
+                      <p className={checkClass(passwordChecks.upper)}>ï¿½ {text.req2}</p>
+                      <p className={checkClass(passwordChecks.lower)}>ï¿½ {text.req3}</p>
+                      <p className={checkClass(passwordChecks.number)}>ï¿½ {text.req4}</p>
+                      <p className={checkClass(passwordChecks.special)}>ï¿½ {text.req5}</p>
                     </div>
                   </div>
                 )}
