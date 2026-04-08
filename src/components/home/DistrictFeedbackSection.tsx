@@ -62,6 +62,33 @@ function getErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
 }
 
+function getScoreTone(value: number) {
+  if (value >= 75) {
+    return {
+      chip: "bg-emerald-50 text-emerald-700 border-emerald-200",
+      bar: "bg-[linear-gradient(90deg,#2563eb_0%,#0f766e_100%)]",
+      track: "bg-emerald-100",
+      text: "text-emerald-700",
+    };
+  }
+
+  if (value >= 50) {
+    return {
+      chip: "bg-amber-50 text-amber-700 border-amber-200",
+      bar: "bg-[linear-gradient(90deg,#f59e0b_0%,#f97316_100%)]",
+      track: "bg-amber-100",
+      text: "text-amber-700",
+    };
+  }
+
+  return {
+    chip: "bg-red-50 text-red-700 border-red-200",
+    bar: "bg-[linear-gradient(90deg,#ef4444_0%,#dc2626_100%)]",
+    track: "bg-red-100",
+    text: "text-red-700",
+  };
+}
+
 function ScoreField({
   label,
   value,
@@ -71,26 +98,37 @@ function ScoreField({
   value: number;
   onChange: (value: number) => void;
 }) {
-  const tone =
-    value >= 75
-      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-      : value >= 50
-      ? "bg-amber-50 text-amber-700 border-amber-200"
-      : "bg-red-50 text-red-700 border-red-200";
+  const tone = getScoreTone(value);
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md">
+    <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
       <div className="mb-3 flex items-center justify-between gap-3">
         <div>
           <p className="text-sm font-semibold text-slate-900">{label}</p>
-          <p className="mt-1 text-xs text-slate-500">
-            0 = low, 100 = strong public condition
-          </p>
+          <p className="mt-1 text-xs text-slate-500">0 low - 100 strong</p>
         </div>
 
-        <span className={`rounded-full border px-3 py-1.5 text-sm font-bold ${tone}`}>
+        <span className={`rounded-full border px-3 py-1.5 text-sm font-bold ${tone.chip}`}>
           {value}
         </span>
+      </div>
+
+      <div className={`mb-3 h-2.5 overflow-hidden rounded-full ${tone.track}`}>
+        <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${value}%` }} />
+      </div>
+
+      <div className="mb-3 grid grid-cols-5 gap-1">
+        {Array.from({ length: 5 }).map((_, index) => {
+          const active = value >= (index + 1) * 20;
+          return (
+            <span
+              key={`${label}-${index}`}
+              className={`h-2 rounded-full transition ${
+                active ? tone.bar : "bg-slate-200"
+              }`}
+            />
+          );
+        })}
       </div>
 
       <input
@@ -133,11 +171,11 @@ function OverallScoreCard({
 
   if (state.status === "loading") {
     return (
-      <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[24px] border border-blue-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
-        <div className="mt-3 h-9 w-20 animate-pulse rounded-xl bg-slate-200" />
+        <div className="skeleton-shimmer mt-3 h-9 w-20 rounded-xl" />
         <p className="mt-3 text-sm leading-6 text-slate-500">Loading district score...</p>
       </div>
     );
@@ -145,7 +183,7 @@ function OverallScoreCard({
 
   if (state.status === "error") {
     return (
-      <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[24px] border border-red-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -157,11 +195,14 @@ function OverallScoreCard({
 
   if (state.status === "empty") {
     return (
-      <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[24px] border border-blue-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
         <p className="mt-1 text-4xl font-extrabold tracking-tight text-blue-700">0</p>
+        <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-blue-100">
+          <div className="h-full w-[10%] rounded-full bg-[linear-gradient(90deg,#94a3b8_0%,#cbd5e1_100%)]" />
+        </div>
         <p className="mt-2 text-xs leading-5 text-slate-500">No verified feedback yet</p>
         <p className="mt-1 text-xs leading-5 text-slate-500">
           Verified contributors: {state.contributors}
@@ -171,13 +212,19 @@ function OverallScoreCard({
   }
 
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+    <div className="rounded-[24px] border border-blue-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         {title}
       </p>
       <p className="mt-1 text-4xl font-extrabold tracking-tight text-blue-700">
         {state.score}
       </p>
+      <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-blue-100">
+        <div
+          className="h-full rounded-full bg-[linear-gradient(90deg,#2563eb_0%,#0f766e_100%)]"
+          style={{ width: `${Math.max(8, Math.min(state.score, 100))}%` }}
+        />
+      </div>
       <p className="mt-2 text-xs leading-5 text-slate-500">
         Verified contributors: {state.contributors}
       </p>
@@ -471,7 +518,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
 
   return (
     <section className="relative z-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm [contain:layout_paint] md:p-6">
-      <div className="rounded-[28px] border border-slate-200 bg-gradient-to-b from-slate-50 to-white p-5 shadow-sm">
+      <div className="rounded-[28px] border border-blue-100 bg-gradient-to-b from-slate-50 to-white p-5 shadow-sm">
         <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <h3 className="text-xl font-bold tracking-tight text-slate-950">
@@ -553,7 +600,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           />
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-200 bg-slate-950 px-6 py-5 text-white shadow-sm">
+        <div className="mt-6 rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-6 py-5 text-white shadow-sm">
           <div className="flex items-center justify-between gap-4">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
@@ -565,6 +612,12 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
             <div className="text-right">
               <p className="text-5xl font-extrabold tracking-tight">{overallValue}</p>
             </div>
+          </div>
+          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/10">
+            <div
+              className={`h-full rounded-full ${getScoreTone(overallValue).bar}`}
+              style={{ width: `${Math.max(8, Math.min(overallValue, 100))}%` }}
+            />
           </div>
         </div>
 

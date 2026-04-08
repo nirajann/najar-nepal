@@ -1,3 +1,112 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+@layer base {
+  body {
+    background-color: #f4f7fb;
+    color: #020617;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  ::selection {
+    background-color: rgba(37, 99, 235, 0.2);
+    color: #020617;
+  }
+}
+
+@layer components {
+  .page-fade-in {
+    animation: pageFadeIn 480ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .surface-shell {
+    border-radius: 32px;
+    border: 1px solid rgba(219, 234, 254, 0.8);
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.08);
+  }
+
+  .surface-shell-dark {
+    border-radius: 32px;
+    border: 1px solid rgba(30, 41, 59, 0.8);
+    background: linear-gradient(180deg, #0f172a 0%, #111827 100%);
+    color: #ffffff;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.3);
+  }
+
+  .surface-card {
+    border-radius: 26px;
+    border: 1px solid rgba(219, 234, 254, 0.8);
+    background: #ffffff;
+    box-shadow: 0 12px 34px rgba(15, 23, 42, 0.06);
+    transition: transform 300ms ease, box-shadow 300ms ease, border-color 300ms ease;
+  }
+
+  .surface-card-strong {
+    border-radius: 28px;
+    border: 1px solid rgba(191, 219, 254, 0.8);
+    background: linear-gradient(180deg, #ffffff 0%, #f6faff 100%);
+    box-shadow: 0 18px 40px rgba(29, 78, 216, 0.08);
+    transition: transform 300ms ease, box-shadow 300ms ease, border-color 300ms ease;
+  }
+
+  .interactive-lift {
+    transition: transform 300ms ease, box-shadow 300ms ease;
+  }
+
+  .interactive-lift:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 18px 42px rgba(15, 23, 42, 0.12);
+  }
+
+  .skeleton-shimmer {
+    position: relative;
+    overflow: hidden;
+    background: rgba(226, 232, 240, 0.8);
+  }
+
+  .skeleton-shimmer::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    transform: translateX(-100%);
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.36) 50%,
+      transparent 100%
+    );
+    animation: skeletonShimmer 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes skeletonShimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes pageFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-fade-in,
+  .skeleton-shimmer::after {
+    animation: none !important;
+  }
+
+  .interactive-lift {
+    transition: none !important;
+  }
+}

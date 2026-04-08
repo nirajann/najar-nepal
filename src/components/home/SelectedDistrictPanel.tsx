@@ -17,6 +17,72 @@ type LeaderCardRef = {
   localLevel?: string;
 } | null | undefined;
 
+function getScoreTone(score?: number | null) {
+  if (typeof score !== "number") {
+    return {
+      text: "text-slate-700",
+      chip: "bg-slate-100 text-slate-700",
+      bar: "bg-slate-400",
+      track: "bg-slate-200",
+    };
+  }
+
+  if (score >= 71) {
+    return {
+      text: "text-blue-700",
+      chip: "bg-blue-50 text-blue-700",
+      bar: "bg-[linear-gradient(90deg,#2563eb_0%,#0f766e_100%)]",
+      track: "bg-blue-100",
+    };
+  }
+
+  if (score >= 41) {
+    return {
+      text: "text-amber-700",
+      chip: "bg-amber-50 text-amber-700",
+      bar: "bg-[linear-gradient(90deg,#f59e0b_0%,#f97316_100%)]",
+      track: "bg-amber-100",
+    };
+  }
+
+  return {
+    text: "text-red-700",
+    chip: "bg-red-50 text-red-700",
+    bar: "bg-[linear-gradient(90deg,#ef4444_0%,#dc2626_100%)]",
+    track: "bg-red-100",
+  };
+}
+
+function CompactSignalBar({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value?: number | null;
+  helper?: string;
+}) {
+  const tone = getScoreTone(value);
+  const width = typeof value === "number" ? `${Math.max(6, Math.min(value, 100))}%` : "18%";
+
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+          {label}
+        </p>
+        <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${tone.chip}`}>
+          {typeof value === "number" ? value : "--"}
+        </span>
+      </div>
+      <div className={`mt-3 h-2.5 overflow-hidden rounded-full ${tone.track}`}>
+        <div className={`h-full rounded-full ${tone.bar}`} style={{ width }} />
+      </div>
+      {helper ? <p className="mt-2 text-xs text-slate-500">{helper}</p> : null}
+    </div>
+  );
+}
+
 function LeaderMiniCard({
   label,
   leader,
@@ -107,19 +173,30 @@ function SummaryStat({
   );
 }
 
-function SnapshotRow({
+function SnapshotMetric({
   label,
   value,
+  tone = "blue",
 }: {
   label: string;
-  value: string;
+  value: string | number;
+  tone?: "blue" | "red" | "slate";
 }) {
+  const toneClass =
+    tone === "red"
+      ? "bg-red-50 text-red-700"
+      : tone === "slate"
+      ? "bg-slate-100 text-slate-700"
+      : "bg-blue-50 text-blue-700";
+
   return (
-    <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+    <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
       <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
-      <p className="text-right text-sm font-semibold text-slate-900">{value}</p>
+      <p className={`mt-2 text-xl font-extrabold tracking-tight ${toneClass.split(" ")[1]}`}>
+        {value}
+      </p>
     </div>
   );
 }
@@ -154,11 +231,18 @@ function SelectedDistrictPanel({ district }: Props) {
     void loadNationalContext();
   }, []);
 
+  const linkedRepresentativeCount = district
+    ? [district.mpLeader, district.mayorLeader, district.ministerLeader].filter(
+        (leader) => leader?.leaderId
+      ).length
+    : 0;
+  const publicScoreTone = getScoreTone(district?.satisfactionScore);
+
   return (
-    <section className="rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm md:p-5">
+    <section className="rounded-[28px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_16px_40px_rgba(15,23,42,0.08)] transition duration-300 md:p-5">
       {!district ? (
         <div className="space-y-4">
-          <div className="rounded-[28px] bg-gradient-to-b from-slate-50 to-white p-5">
+          <div className="rounded-[28px] bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-5">
             <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
               {text.explorer}
             </div>
@@ -174,7 +258,7 @@ function SelectedDistrictPanel({ district }: Props) {
                 (item, index) => (
                   <div
                     key={item}
-                    className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3"
+                    className="flex items-center gap-3 rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm"
                   >
                     <div className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-950 text-[11px] font-bold text-white">
                       {index + 1}
@@ -186,7 +270,7 @@ function SelectedDistrictPanel({ district }: Props) {
             </div>
           </div>
 
-          <div className="rounded-[28px] border border-slate-200 bg-slate-50/80 p-5">
+          <div className="rounded-[28px] border border-blue-100 bg-blue-50/40 p-5">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-base font-bold text-slate-950">{text.nationalContext}</h3>
@@ -206,7 +290,7 @@ function SelectedDistrictPanel({ district }: Props) {
             </div>
 
             <div className="mt-5 grid gap-4 sm:grid-cols-2">
-              <div className="rounded-3xl border border-slate-200 bg-white p-4">
+              <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   {text.pmLabel}
                 </p>
@@ -217,10 +301,10 @@ function SelectedDistrictPanel({ district }: Props) {
                       <img
                         src={pmLeader.photo}
                         alt={pmLeader.name}
-                        className="h-14 w-14 rounded-2xl border border-slate-200 object-cover"
+                        className="h-14 w-14 rounded-2xl border border-blue-100 object-cover"
                       />
                     ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-slate-200 text-sm font-bold text-slate-600">
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-50 text-sm font-bold text-blue-700">
                         {pmLeader.name?.charAt(0) || "P"}
                       </div>
                     )}
@@ -241,7 +325,7 @@ function SelectedDistrictPanel({ district }: Props) {
               </div>
 
               <div className="grid gap-3">
-                <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     {text.totalDistricts}
                   </p>
@@ -250,7 +334,7 @@ function SelectedDistrictPanel({ district }: Props) {
                   </p>
                 </div>
 
-                <div className="rounded-3xl border border-slate-200 bg-white p-4">
+                <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm">
                   <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                     {text.totalProfiles}
                   </p>
@@ -264,7 +348,7 @@ function SelectedDistrictPanel({ district }: Props) {
         </div>
       ) : (
         <div className="space-y-4">
-          <div className="rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-900 p-5 text-white shadow-sm">
+          <div className="rounded-[28px] bg-[linear-gradient(145deg,#0f172a_0%,#111827_60%,#1d4ed8_100%)] p-5 text-white shadow-[0_18px_40px_rgba(15,23,42,0.22)] transition duration-300">
             <p className="text-[11px] uppercase tracking-[0.16em] text-blue-100">
               {text.selectedDistrict}
             </p>
@@ -283,37 +367,71 @@ function SelectedDistrictPanel({ district }: Props) {
               />
             </div>
 
-            <p className="mt-4 text-sm leading-6 text-slate-200">{text.summaryText}</p>
+            <div className="mt-4 rounded-2xl bg-white/10 px-4 py-4 backdrop-blur-sm">
+              <div className="flex items-center justify-between gap-3">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-100">
+                  {text.publicSignals}
+                </p>
+                <span className={`rounded-full px-2.5 py-1 text-xs font-bold ${publicScoreTone.chip}`}>
+                  {typeof district.satisfactionScore === "number"
+                    ? district.satisfactionScore
+                    : text.noScore}
+                </span>
+              </div>
+              <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/15">
+                <div
+                  className={`h-full rounded-full ${publicScoreTone.bar}`}
+                  style={{
+                    width:
+                      typeof district.satisfactionScore === "number"
+                        ? `${Math.max(6, Math.min(district.satisfactionScore, 100))}%`
+                        : "18%",
+                  }}
+                />
+              </div>
+              <p className="mt-3 text-sm leading-6 text-slate-200">{text.summaryText}</p>
+            </div>
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-[24px] border border-blue-100 bg-white p-4 shadow-sm">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               {text.districtSnapshot}
             </p>
 
-            <div className="mt-3 space-y-3">
-              <SnapshotRow label={text.selectedDistrict} value={district.name} />
-              <SnapshotRow label={text.provinceLabel} value={district.province || "-"} />
-              <SnapshotRow
+            <div className="mt-3 grid gap-3 sm:grid-cols-2">
+              <SnapshotMetric label={text.selectedDistrict} value={district.name} tone="slate" />
+              <SnapshotMetric label={text.provinceLabel} value={district.province || "-"} tone="blue" />
+              <SnapshotMetric
                 label={text.localLevels}
                 value={
                   district.localLevels.length > 0
                     ? `${district.localLevels.length}`
                     : text.noLocalLevels
                 }
+                tone="blue"
               />
-              <SnapshotRow
+              <SnapshotMetric
+                label={text.representatives}
+                value={linkedRepresentativeCount}
+                tone={linkedRepresentativeCount > 0 ? "blue" : "red"}
+              />
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <CompactSignalBar
                 label={text.publicScore}
-                value={
-                  typeof district.satisfactionScore === "number"
-                    ? `${district.satisfactionScore}`
-                    : text.noScore
-                }
+                value={district.satisfactionScore}
+                helper={text.districtSummary}
+              />
+              <CompactSignalBar
+                label={text.representatives}
+                value={Math.round((linkedRepresentativeCount / 3) * 100)}
+                helper={text.linkedProfiles}
               />
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+          <div className="rounded-[24px] border border-blue-100 bg-white p-4 shadow-sm transition duration-300">
             <div>
               <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                 {text.representatives}
@@ -360,7 +478,7 @@ function SelectedDistrictPanel({ district }: Props) {
             </div>
           </div>
 
-          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+          <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] p-4">
             <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
               {text.publicSignals}
             </p>

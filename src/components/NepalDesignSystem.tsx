@@ -15,8 +15,8 @@ function getNepalButtonClipPath() {
 function getNepalButtonClassName(tone: NepalButtonTone, className = "") {
   const base =
     tone === "primary"
-      ? "group relative inline-flex min-h-[52px] items-center overflow-hidden rounded-[18px] px-6 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(15,23,42,0.16)]"
-      : "group relative inline-flex min-h-[52px] items-center overflow-hidden rounded-[18px] px-6 py-3 text-sm font-semibold text-slate-700 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(15,23,42,0.08)]";
+      ? "group relative inline-flex min-h-[52px] items-center overflow-hidden rounded-[18px] px-6 py-3 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_16px_30px_rgba(15,23,42,0.22)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/60 focus-visible:ring-offset-2"
+      : "group relative inline-flex min-h-[52px] items-center overflow-hidden rounded-[18px] px-6 py-3 text-sm font-semibold text-slate-800 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_14px_28px_rgba(15,23,42,0.1)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-400/50 focus-visible:ring-offset-2";
 
   return `${base} ${className}`.trim();
 }
@@ -35,46 +35,45 @@ function NepalButtonInner({
       <span
         className={`absolute inset-0 ${
           tone === "primary"
-            ? "bg-[linear-gradient(135deg,#0f172a_0%,#172554_100%)]"
-            : "border border-slate-200 bg-white"
+            ? "bg-[linear-gradient(135deg,#0b1220_0%,#172554_54%,#1d4ed8_100%)]"
+            : "border border-blue-200/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)]"
         }`}
         style={{ clipPath }}
       />
       <span
         className={`absolute inset-[1px] ${
           tone === "primary"
-            ? "bg-[linear-gradient(135deg,rgba(220,38,38,0.2),rgba(15,23,42,0) 34%,rgba(29,78,216,0.18) 100%)]"
-            : "bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.94) 42%,rgba(239,246,255,0.98) 100%)]"
+            ? "bg-[linear-gradient(135deg,rgba(239,68,68,0.24),rgba(15,23,42,0) 34%,rgba(96,165,250,0.22) 100%)]"
+            : "bg-[linear-gradient(135deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96) 42%,rgba(239,246,255,0.98) 100%)]"
         }`}
         style={{ clipPath }}
       />
       <span
-        className="absolute left-0 top-0 h-full w-[7px] bg-[linear-gradient(180deg,#dc2626_0%,#1d4ed8_100%)] opacity-95"
+        className={`absolute left-0 top-0 h-full ${tone === "primary" ? "w-[6px]" : "w-[4px]"} bg-[linear-gradient(180deg,#dc2626_0%,#1d4ed8_100%)] opacity-95`}
         style={{ clipPath: "inset(0 round 18px 0 0 18px)" }}
       />
       <span
-        className="absolute left-[11px] top-[8px] bottom-[8px] w-[3px] opacity-70"
+        className={`absolute left-[11px] top-[8px] bottom-[8px] ${tone === "primary" ? "w-[3px]" : "w-[2px]"} opacity-60`}
         style={{
           backgroundImage:
-            "repeating-linear-gradient(180deg, rgba(255,255,255,0.95) 0 2px, transparent 2px 4px)",
+            tone === "primary"
+              ? "repeating-linear-gradient(180deg, rgba(255,255,255,0.95) 0 2px, transparent 2px 4px)"
+              : "repeating-linear-gradient(180deg, rgba(29,78,216,0.5) 0 2px, transparent 2px 4px)",
         }}
       />
       <span
         className={`absolute inset-y-0 -left-[8%] w-[42%] ${
-          tone === "primary" ? "bg-white/10" : "bg-red-50/70"
+          tone === "primary" ? "bg-white/10" : "bg-blue-50/80"
         } opacity-0 blur-[2px] transition duration-500 group-hover:translate-x-5 group-hover:opacity-100`}
         style={{ clipPath: "polygon(0 0, 26% 0, 100% 100%, 74% 100%)" }}
       />
-      <span className="absolute right-3 top-1/2 -translate-y-1/2 opacity-90">
-        <NepalFlagPennant compact className="h-3.5 w-3" />
-      </span>
       <span
         className={`absolute inset-[1px] ${
-          tone === "primary" ? "border border-white/10" : "border border-slate-200/80"
+          tone === "primary" ? "border border-white/10" : "border border-blue-100/90"
         }`}
         style={{ clipPath }}
       />
-      <span className="relative z-10 pl-3 pr-6">{children}</span>
+      <span className="relative z-10 flex w-full items-center justify-center px-3 text-center">{children}</span>
     </>
   );
 }

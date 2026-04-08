@@ -21,60 +21,10 @@ const DistrictFeedbackSection = lazy(
   () => import("../components/home/DistrictFeedbackSection")
 );
 
-function SidePanelSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
-      <DhakaBorder />
-      <div className="p-4">
-        <div className="mb-4 flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl border border-red-100 bg-red-50 text-[11px] font-bold text-red-600">
-            ???
-          </div>
-          <div className="animate-pulse space-y-2">
-            <div className="h-4 w-28 rounded bg-slate-200" />
-            <div className="h-3 w-20 rounded bg-slate-200" />
-          </div>
-        </div>
-        <div className="animate-pulse space-y-3">
-          <div className="h-8 w-40 rounded bg-slate-200" />
-          <div className="h-10 rounded-2xl bg-slate-200" />
-          <div className="h-10 rounded-2xl bg-slate-200" />
-          <div className="h-24 rounded-2xl bg-slate-200" />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function LowerSectionSkeleton() {
-  return (
-    <div className="overflow-hidden rounded-[30px] border border-slate-200 bg-white shadow-sm">
-      <DhakaBorder />
-      <div className="p-4">
-        <div className="mb-3 flex items-center justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-400">
-            Loading section
-          </p>
-          <div className="h-3 w-16 rounded bg-slate-200" />
-        </div>
-        <div className="animate-pulse space-y-3">
-          <div className="h-4 w-28 rounded bg-slate-200" />
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="h-16 rounded-2xl bg-slate-200" />
-            <div className="h-16 rounded-2xl bg-slate-200" />
-            <div className="h-16 rounded-2xl bg-slate-200" />
-            <div className="h-16 rounded-2xl bg-slate-200" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function DhakaBorder() {
   return (
     <div
-      className="h-2 w-full bg-[linear-gradient(90deg,#dc2626_0%,#dc2626_12%,#1d4ed8_12%,#1d4ed8_24%,#f8fafc_24%,#f8fafc_28%,#dc2626_28%,#dc2626_40%,#1d4ed8_40%,#1d4ed8_52%,#f8fafc_52%,#f8fafc_56%,#dc2626_56%,#dc2626_68%,#1d4ed8_68%,#1d4ed8_80%,#f8fafc_80%,#f8fafc_84%,#dc2626_84%,#dc2626_100%)]"
+      className="h-1.5 w-full bg-[linear-gradient(90deg,#dc2626_0%,#dc2626_16%,#1d4ed8_16%,#1d4ed8_34%,#f8fafc_34%,#f8fafc_40%,#dc2626_40%,#dc2626_58%,#1d4ed8_58%,#1d4ed8_76%,#f8fafc_76%,#f8fafc_82%,#dc2626_82%,#dc2626_100%)]"
       aria-hidden="true"
     />
   );
@@ -83,15 +33,9 @@ function DhakaBorder() {
 function NepalPatternBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className="absolute inset-x-0 top-0 h-[480px] bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.08),transparent_34%),radial-gradient(circle_at_top_right,rgba(29,78,216,0.08),transparent_38%),linear-gradient(180deg,rgba(248,250,252,0.96),rgba(248,250,252,0.86))]" />
-      <div className="absolute left-[-6%] top-[90px] h-[340px] w-[340px] rounded-full border border-red-100/70 opacity-70" />
-      <div className="absolute right-[-8%] top-[180px] h-[420px] w-[420px] rounded-full border border-blue-100/80 opacity-70" />
-      <svg viewBox="0 0 1440 1200" className="absolute inset-0 h-full w-full opacity-[0.16]" fill="none">
-        <path d="M0 220C142 187 253 165 386 136C525 105 642 85 794 88C945 91 1081 123 1249 108C1320 101 1385 88 1440 72" stroke="#1d4ed8" strokeWidth="2" />
-        <path d="M0 286C123 250 259 224 404 210C566 194 672 198 847 213C1028 229 1189 256 1440 228" stroke="#dc2626" strokeWidth="2" strokeDasharray="5 9" />
-        <path d="M0 970C161 936 316 908 468 898C636 887 781 900 964 920C1151 940 1287 982 1440 1031" stroke="#0f172a" strokeWidth="1.5" opacity="0.6" />
-      </svg>
-      <div className="absolute left-0 right-0 top-[420px] h-24 opacity-[0.12]" style={{ backgroundImage: "repeating-linear-gradient(90deg, rgba(220,38,38,0.9) 0 18px, rgba(248,250,252,0) 18px 28px, rgba(29,78,216,0.95) 28px 46px, rgba(248,250,252,0) 46px 58px)" }} />
+      <div className="absolute inset-x-0 top-0 h-[420px] bg-[radial-gradient(circle_at_top_left,rgba(220,38,38,0.08),transparent_34%),radial-gradient(circle_at_top_right,rgba(37,99,235,0.08),transparent_36%),linear-gradient(180deg,rgba(248,250,252,0.98),rgba(248,250,252,0.9))]" />
+      <div className="absolute left-[-8%] top-[70px] h-[300px] w-[300px] rounded-full border border-red-100/60 opacity-70" />
+      <div className="absolute right-[-8%] top-[160px] h-[360px] w-[360px] rounded-full border border-blue-100/70 opacity-70" />
     </div>
   );
 }
@@ -128,6 +72,65 @@ function getDistrictScoreKey(name = "") {
   return normalizeDistrictAlias(name).toUpperCase();
 }
 
+function SidePanelSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.08)]">
+      <DhakaBorder />
+      <div className="space-y-4 p-5">
+        <div className="animate-pulse space-y-3">
+          <div className="h-4 w-28 rounded bg-slate-200" />
+          <div className="h-8 w-44 rounded bg-slate-200" />
+          <div className="h-4 w-24 rounded bg-slate-200" />
+          <div className="h-24 rounded-2xl bg-slate-200" />
+          <div className="h-16 rounded-2xl bg-slate-200" />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function LowerSectionSkeleton() {
+  return (
+    <div className="overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-[0_16px_30px_rgba(15,23,42,0.06)]">
+      <DhakaBorder />
+      <div className="space-y-4 p-5 animate-pulse">
+        <div className="h-4 w-40 rounded bg-slate-200" />
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="h-16 rounded-2xl bg-slate-200" />
+          <div className="h-16 rounded-2xl bg-slate-200" />
+        </div>
+        <div className="h-24 rounded-2xl bg-slate-200" />
+      </div>
+    </div>
+  );
+}
+
+function LiveStat({
+  label,
+  value,
+  tone = "default",
+}: {
+  label: string;
+  value: string;
+  tone?: "default" | "blue" | "red";
+}) {
+  const toneClass =
+    tone === "blue"
+      ? "border-blue-100 bg-blue-50/60"
+      : tone === "red"
+      ? "border-red-100 bg-red-50/60"
+      : "border-slate-200 bg-white";
+
+  return (
+    <div className={`rounded-[22px] border px-4 py-4 shadow-sm ${toneClass}`}>
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+        {label}
+      </p>
+      <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
+    </div>
+  );
+}
+
 function UtilityCard({
   title,
   text,
@@ -142,34 +145,16 @@ function UtilityCard({
   return (
     <Link
       to={href}
-      className="group relative overflow-hidden rounded-[28px] border border-slate-200 bg-white p-5 transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_18px_36px_rgba(15,23,42,0.08)]"
+      className="group relative overflow-hidden rounded-[28px] border border-blue-100 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(15,23,42,0.10)]"
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
-      <h3 className="text-base font-bold text-slate-950">{title}</h3>
-      <p className="mt-2 text-sm leading-6 text-slate-600">{text}</p>
+      <h3 className="text-lg font-bold text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-700">{text}</p>
       <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
         <span>{cta}</span>
-        <span className="text-red-500 transition group-hover:translate-x-0.5">{"->"}</span>
+        <span className="text-red-500 transition group-hover:translate-x-0.5">→</span>
       </div>
     </Link>
-  );
-}
-
-function NationalStatCard({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string;
-  helper: string;
-}) {
-  return (
-    <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
-      <p className="mt-2 text-sm leading-6 text-slate-500">{helper}</p>
-    </div>
   );
 }
 
@@ -183,6 +168,7 @@ type FeaturedLeaderItem = {
   photo?: string;
 };
 
+
 function FeaturedLeadersPanel({
   leaders,
   loading,
@@ -195,15 +181,8 @@ function FeaturedLeadersPanel({
   const primaryLeader = leaders[0];
   const supportingLeaders = leaders.slice(1, 4);
 
-  const getAvatarTone = (index: number) =>
-    index % 3 === 1
-      ? "bg-blue-50 text-blue-700 ring-blue-100"
-      : index % 3 === 2
-      ? "bg-slate-100 text-slate-700 ring-slate-200"
-      : "bg-red-50 text-red-600 ring-red-100";
-
   return (
-    <section className="mt-6 overflow-hidden rounded-[28px] border border-slate-200 bg-white shadow-sm md:mt-8">
+    <section className="mt-8 overflow-hidden rounded-[30px] border border-blue-100 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.07)]">
       <DhakaBorder />
       <div className="p-5 md:p-6">
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
@@ -211,15 +190,15 @@ function FeaturedLeadersPanel({
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">
               {content.featuredProfilesEyebrow}
             </p>
-            <h2 className="mt-2 text-xl font-bold tracking-tight text-slate-950">
+            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
               {content.featuredProfilesTitle}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
               {content.featuredProfilesHelper}
             </p>
           </div>
           {!loading && leaders.length > 0 ? (
-            <div className="inline-flex items-center gap-2 self-start rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-semibold text-slate-600">
+            <div className="inline-flex items-center gap-2 self-start rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
               <span className="h-2 w-2 rounded-full bg-red-500" />
               <span>
                 {leaders.length} {content.featuredProfilesVisibleCount}
@@ -228,36 +207,29 @@ function FeaturedLeadersPanel({
           ) : null}
         </div>
 
-        <div className="mt-5">
+        <div className="mt-6">
           {loading ? (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.9fr)]">
-              <div className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-5">
-                <div className="animate-pulse">
-                  <div className="flex items-start gap-4">
-                    <div className="h-16 w-16 rounded-[22px] bg-slate-200" />
-                    <div className="flex-1 space-y-3">
-                      <div className="h-4 w-24 rounded bg-slate-200" />
-                      <div className="h-6 w-48 rounded bg-slate-200" />
-                      <div className="h-4 w-40 rounded bg-slate-200" />
-                      <div className="h-10 rounded-2xl bg-slate-200" />
-                    </div>
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.9fr)]">
+              <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-5 animate-pulse">
+                <div className="flex gap-4">
+                  <div className="h-16 w-16 rounded-[20px] bg-slate-200" />
+                  <div className="flex-1 space-y-3">
+                    <div className="h-4 w-24 rounded bg-slate-200" />
+                    <div className="h-6 w-48 rounded bg-slate-200" />
+                    <div className="h-4 w-36 rounded bg-slate-200" />
+                    <div className="h-20 rounded-2xl bg-slate-200" />
                   </div>
                 </div>
               </div>
               <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={`featured-loading-${index}`}
-                    className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-4"
-                  >
-                    <div className="animate-pulse">
-                      <div className="flex items-start gap-3">
-                        <div className="h-12 w-12 rounded-2xl bg-slate-200" />
-                        <div className="flex-1 space-y-2">
-                          <div className="h-4 w-28 rounded bg-slate-200" />
-                          <div className="h-3 w-20 rounded bg-slate-200" />
-                          <div className="h-3 w-24 rounded bg-slate-200" />
-                        </div>
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="rounded-[22px] border border-slate-200 bg-slate-50 p-4 animate-pulse">
+                    <div className="flex gap-3">
+                      <div className="h-12 w-12 rounded-2xl bg-slate-200" />
+                      <div className="flex-1 space-y-2">
+                        <div className="h-4 w-24 rounded bg-slate-200" />
+                        <div className="h-3 w-20 rounded bg-slate-200" />
+                        <div className="h-3 w-28 rounded bg-slate-200" />
                       </div>
                     </div>
                   </div>
@@ -265,45 +237,44 @@ function FeaturedLeadersPanel({
               </div>
             </div>
           ) : leaders.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.3fr)_minmax(280px,0.9fr)]">
+            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.9fr)]">
               {primaryLeader ? (
-                <article className="group relative overflow-hidden rounded-[26px] border border-slate-200 bg-[linear-gradient(145deg,rgba(255,255,255,0.98),rgba(248,250,252,0.96))] p-5 shadow-sm transition duration-300 hover:-translate-y-1 hover:border-slate-300 hover:shadow-[0_20px_40px_rgba(15,23,42,0.10)] md:p-6">
-                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500/80 to-blue-600" />
-                  <div className="absolute right-0 top-0 h-32 w-32 rounded-full bg-red-50/70 blur-3xl" />
-                  <div className="relative flex h-full flex-col justify-between gap-5">
-                    <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+                <article className="group relative overflow-hidden rounded-[28px] border border-blue-100 bg-[linear-gradient(145deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-[0_18px_34px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_48px_rgba(15,23,42,0.10)] md:p-6">
+                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 to-blue-600" />
+                  <div className="flex flex-col gap-5">
+                    <div className="flex flex-col gap-4 sm:flex-row">
                       {primaryLeader.photo ? (
                         <img
                           src={primaryLeader.photo}
                           alt={primaryLeader.name}
-                          className="h-20 w-20 shrink-0 rounded-[24px] border border-white/80 object-cover shadow-sm"
+                          className="h-20 w-20 rounded-[22px] border border-white/80 object-cover shadow-sm"
                         />
                       ) : (
-                        <div
-                          className={`flex h-20 w-20 shrink-0 items-center justify-center rounded-[24px] text-2xl font-bold ring-1 ${getAvatarTone(0)}`}
-                        >
+                        <div className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-blue-50 text-2xl font-bold text-blue-700 ring-1 ring-blue-100">
                           {primaryLeader.name.charAt(0)}
                         </div>
                       )}
 
                       <div className="min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className="inline-flex items-center rounded-full border border-red-100 bg-red-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-600">
+                          <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-600">
                             {content.featuredProfilesFeaturedLabel}
                           </span>
-                          <span className="inline-flex items-center rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
+                          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
                             {content.featuredProfilesPublicLabel}
                           </span>
                         </div>
+
                         <h3 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">
                           {primaryLeader.name}
                         </h3>
-                        <p className="mt-1 text-sm font-semibold text-slate-600">
+                        <p className="mt-1 text-sm font-semibold text-slate-700">
                           {primaryLeader.role}
                         </p>
+
                         <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-slate-200 bg-white/85 px-4 py-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                               {content.featuredProfilesLocationLabel}
                             </p>
                             <p className="mt-1 text-sm font-medium text-slate-700">
@@ -311,17 +282,19 @@ function FeaturedLeadersPanel({
                               {primaryLeader.province ? `, ${primaryLeader.province}` : ""}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white/85 px-4 py-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
                               {content.featuredProfilesRoleLabel}
                             </p>
                             <p className="mt-1 text-sm font-medium text-slate-700">
                               {primaryLeader.role}
                             </p>
                           </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white/85 px-4 py-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                              {primaryLeader.party ? content.featuredProfilesPartyLabel : content.featuredProfilesProfileLabel}
+                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
+                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
+                              {primaryLeader.party
+                                ? content.featuredProfilesPartyLabel
+                                : content.featuredProfilesProfileLabel}
                             </p>
                             <p className="mt-1 text-sm font-medium text-slate-700">
                               {primaryLeader.party || content.featuredProfilesProfileReady}
@@ -331,21 +304,16 @@ function FeaturedLeadersPanel({
                       </div>
                     </div>
 
-                    <div className="flex flex-col gap-4 border-t border-slate-200/80 pt-4 sm:flex-row sm:items-end sm:justify-between">
-                      <div className="max-w-lg">
-                        <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-                          {content.featuredProfilesFeaturedLabel}
-                        </p>
-                        <p className="mt-2 text-sm leading-6 text-slate-500">
-                          {content.featuredProfilesHelper}
-                        </p>
-                      </div>
+                    <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                      <p className="max-w-lg text-sm leading-6 text-slate-700">
+                        {content.featuredProfilesHelper}
+                      </p>
                       <Link
                         to={`/leader/${primaryLeader.leaderId}`}
-                        className="inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-red-600"
+                        className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
                       >
                         <span>{content.featuredProfilesAction}</span>
-                        <span className="transition group-hover:translate-x-0.5">{"->"}</span>
+                        <span>→</span>
                       </Link>
                     </div>
                   </div>
@@ -353,38 +321,42 @@ function FeaturedLeadersPanel({
               ) : null}
 
               <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
                   {content.featuredProfilesSupportingTitle}
                 </p>
                 {supportingLeaders.map((leader, index) => (
                   <article
                     key={leader.leaderId}
-                    className="group rounded-[22px] border border-slate-200 bg-slate-50/70 p-4 transition duration-300 hover:-translate-y-0.5 hover:border-slate-300 hover:bg-white hover:shadow-sm"
+                    className="group rounded-[22px] border border-slate-200 bg-slate-50/80 p-4 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
                   >
                     <div className="flex items-start gap-3">
                       {leader.photo ? (
                         <img
                           src={leader.photo}
                           alt={leader.name}
-                          className="h-14 w-14 shrink-0 rounded-[18px] object-cover"
+                          className="h-14 w-14 rounded-[18px] object-cover"
                         />
                       ) : (
                         <div
-                          className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-[18px] text-base font-bold ring-1 ${getAvatarTone(index + 1)}`}
+                          className={`flex h-14 w-14 items-center justify-center rounded-[18px] text-base font-bold ring-1 ${
+                            index % 2 === 0
+                              ? "bg-blue-50 text-blue-700 ring-blue-100"
+                              : "bg-red-50 text-red-600 ring-red-100"
+                          }`}
                         >
                           {leader.name.charAt(0)}
                         </div>
                       )}
 
                       <div className="min-w-0 flex-1">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-600">
+                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
                           {content.featuredProfilesPublicLabel}
                         </span>
                         <h3 className="mt-2 truncate text-base font-bold text-slate-950">
                           {leader.name}
                         </h3>
-                        <p className="text-sm font-medium text-slate-500">{leader.role}</p>
-                        <p className="mt-2 text-xs text-slate-500">
+                        <p className="text-sm font-medium text-slate-600">{leader.role}</p>
+                        <p className="mt-2 text-xs text-slate-600">
                           {leader.districtName}
                           {leader.province ? `, ${leader.province}` : ""}
                         </p>
@@ -393,17 +365,17 @@ function FeaturedLeadersPanel({
 
                     <Link
                       to={`/leader/${leader.leaderId}`}
-                      className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900 transition hover:text-red-600"
+                      className="mt-4 inline-flex items-center text-sm font-semibold text-slate-950 transition hover:text-blue-700"
                     >
                       <span>{content.featuredProfilesAction}</span>
-                      <span className="transition group-hover:translate-x-0.5">{"->"}</span>
+                      <span>→</span>
                     </Link>
                   </article>
                 ))}
               </div>
             </div>
           ) : (
-            <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 text-sm text-slate-600">
+            <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 text-sm text-slate-700">
               {content.featuredProfilesEmpty}
             </div>
           )}
@@ -412,237 +384,236 @@ function FeaturedLeadersPanel({
     </section>
   );
 }
+
+type HeroPreviewItem = {
+  districtId: string;
+  districtName: string;
+  province: string;
+  score: number | null;
+  leaderName: string;
+  liveSignal: string;
+  activitySummary: string;
+  linkedCount: number;
+  accent: "blue" | "red" | "slate";
+  markerX: number;
+  markerY: number;
+};
+
+function getHeroPreviewSignal(score: number | null, linkedCount: number) {
+  if (typeof score === "number" && score >= 75) return "Strong public trust signal";
+  if (typeof score === "number" && score >= 50) return "Moderate trust and civic visibility";
+  if (linkedCount >= 2) return "Linked public profiles available";
+  if (linkedCount >= 1) return "Early district visibility on platform";
+  return "District public data is still developing";
+}
+
+function getHeroPreviewActivity(score: number | null, linkedCount: number, localLevels: number) {
+  if (typeof score === "number") {
+    return `${localLevels} local levels and ${linkedCount} linked public profile${linkedCount === 1 ? "" : "s"} are visible in this district summary.`;
+  }
+
+  if (linkedCount > 0) {
+    return `${linkedCount} linked public profile${linkedCount === 1 ? "" : "s"} and district context are already available here.`;
+  }
+
+  return `${localLevels} local levels are visible now while district public signals continue to build.`;
+}
+
+function getHeroPreviewAccent(score: number | null, linkedCount: number) {
+  if (typeof score === "number" && score < 45) return "red" as const;
+  if (typeof score === "number" && score >= 70) return "blue" as const;
+  if (linkedCount >= 2) return "blue" as const;
+  return "slate" as const;
+}
+
 function HeroVisual({
   filteredDistrictsCount,
   leaderCount,
+  items,
+  selectedDistrictId,
+  loading,
 }: {
   filteredDistrictsCount: number;
   leaderCount: number;
+  items: HeroPreviewItem[];
+  selectedDistrictId?: string;
+  loading: boolean;
 }) {
   const { section } = useLanguage();
   const uiText = section("home");
-const previewItems = [
-  {
-    districtName: "Kathmandu",
-    province: "Bagmati Province",
-    leader: "Kathmandu Metropolitan leadership",
-    score: "82/100",
-    feedback: "Public sentiment and trust signals remain clearly visible across the district view.",
-    updateOne: "District context stays visible in one place",
-    updateTwo: "Trust snapshot updates with the selected area",
-    updateThree: "Leader profile overview remains easy to scan",
-    markerX: 172,
-    markerY: 124,
-    accent: "red" as const,
-  },
-  {
-    districtName: "Pokhara",
-    province: "Gandaki Province",
-    leader: "Pokhara Metropolitan leadership",
-    score: "79/100",
-    feedback: "Citizen discussion around services, tourism, and infrastructure remains easy to follow.",
-    updateOne: "District and profile context stay connected",
-    updateTwo: "Public trust view stays readable and clear",
-    updateThree: "Civic signals are shown in a cleaner summary",
-    markerX: 138,
-    markerY: 118,
-    accent: "blue" as const,
-  },
-  {
-    districtName: "Dharan",
-    province: "Koshi Province",
-    leader: "Dharan Sub-Metropolitan leadership",
-    score: "76/100",
-    feedback: "Local engagement and service discussion are presented in a more direct district view.",
-    updateOne: "Map and district summary stay in sync",
-    updateTwo: "Public trust is easier to understand quickly",
-    updateThree: "Leader visibility remains part of the same flow",
-    markerX: 226,
-    markerY: 108,
-    accent: "slate" as const,
-  },
-  {
-    districtName: "Jhapa",
-    province: "Koshi Province",
-    leader: "Jhapa district public profile",
-    score: "74/100",
-    feedback: "District-level representation and public context are visible together in one civic view.",
-    updateOne: "District browsing feels more direct",
-    updateTwo: "Profile context stays visible with the map",
-    updateThree: "Public information remains easy to explore",
-    markerX: 286,
-    markerY: 92,
-    accent: "red" as const,
-  },
-  {
-    districtName: "Lalitpur",
-    province: "Bagmati Province",
-    leader: "Lalitpur Metropolitan leadership",
-    score: "81/100",
-    feedback: "Urban services, heritage, and public trust are presented in a cleaner accountability view.",
-    updateOne: "Selected district remains the main focus",
-    updateTwo: "Trust score and area context stay together",
-    updateThree: "Public profile visibility feels more active",
-    markerX: 180,
-    markerY: 128,
-    accent: "blue" as const,
-  },
-];
-
   const [activeIndex, setActiveIndex] = useState(0);
 
+  const selectedIndex = useMemo(() => {
+    if (!selectedDistrictId) return -1;
+    return items.findIndex((item) => item.districtId === selectedDistrictId);
+  }, [items, selectedDistrictId]);
+
   useEffect(() => {
+    if (selectedIndex >= 0) {
+      setActiveIndex(selectedIndex);
+      return;
+    }
+
+    if (items.length <= 1) {
+      setActiveIndex(0);
+      return;
+    }
+
     const intervalId = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % previewItems.length);
-    }, 4200);
+      setActiveIndex((current) => (current + 1) % items.length);
+    }, 5200);
 
     return () => window.clearInterval(intervalId);
-  }, [previewItems.length]);
+  }, [items.length, selectedIndex]);
 
-  const activeItem = previewItems[activeIndex];
-  const accentClasses =
+  if (loading) {
+    return (
+      <div className="relative overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.10)] md:p-5">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3">
+            <div className="skeleton-shimmer h-6 w-28 rounded-full" />
+            <div className="skeleton-shimmer h-4 w-24 rounded-full" />
+          </div>
+          <div className="rounded-[26px] border border-blue-100 bg-white p-4 shadow-sm">
+            <div className="skeleton-shimmer h-[280px] rounded-[22px]" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const activeItem = items[activeIndex] || null;
+
+  if (!activeItem) {
+    return (
+      <div className="relative overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.10)] md:p-5">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
+        <div className="rounded-[26px] border border-blue-100 bg-white p-4 shadow-sm">
+          <div className="rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-5 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
+              {uiText.heroPreviewLabel}
+            </p>
+            <p className="mt-4 text-sm leading-7 text-slate-200">
+              {uiText.heroPreviewFallback}
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  const accent =
     activeItem.accent === "blue"
       ? {
-          badge: "bg-blue-50 text-blue-700",
-          glow: "bg-blue-400/12",
           dot: "#60a5fa",
-          pulse: "rgba(96,165,250,0.14)",
+          badge: "bg-blue-50 text-blue-700 border-blue-100",
+          bar: "bg-[linear-gradient(90deg,#2563eb_0%,#0f766e_100%)]",
         }
       : activeItem.accent === "slate"
       ? {
-          badge: "bg-slate-100 text-slate-700",
-          glow: "bg-slate-300/20",
           dot: "#cbd5e1",
-          pulse: "rgba(203,213,225,0.16)",
+          badge: "bg-slate-100 text-slate-700 border-slate-200",
+          bar: "bg-[linear-gradient(90deg,#94a3b8_0%,#cbd5e1_100%)]",
         }
       : {
-          badge: "bg-red-50 text-red-600",
-          glow: "bg-red-400/12",
           dot: "#ef4444",
-          pulse: "rgba(239,68,68,0.14)",
+          badge: "bg-red-50 text-red-600 border-red-100",
+          bar: "bg-[linear-gradient(90deg,#ef4444_0%,#2563eb_100%)]",
         };
 
   return (
-    <div className="relative overflow-hidden rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-5 shadow-[0_24px_60px_rgba(15,23,42,0.12)] md:p-6">
-      <div className="pointer-events-none absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,255,255,0.85),transparent_28%)]" />
+    <div className="relative overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.10)] md:p-5">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
       <div className="relative">
         <div className="mb-4 flex items-center justify-between gap-3">
-          <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
             {uiText.heroPreviewLabel}
           </span>
-          <span className="text-xs font-medium text-slate-500">
+          <span className="text-xs font-medium text-slate-600">
             {leaderCount}+ {uiText.heroPreviewLeaderProfiles}
           </span>
         </div>
 
-        <div className="grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-[28px] border border-slate-200 bg-slate-950 p-4 text-white shadow-[0_18px_32px_rgba(15,23,42,0.18)] transition duration-700">
-            <div className="mb-4 flex items-center justify-between gap-3">
-              <div>
+        <div className="rounded-[26px] border border-blue-100 bg-white p-4 shadow-sm">
+          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-4 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)]">
+              <div className="mb-4 flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                   {uiText.heroPreviewMapLabel}
                 </p>
-                <p
-                  key={`feedback-${activeIndex}`}
-                  className="mt-1 animate-[fadeIn_500ms_ease-out] text-sm text-slate-400"
-                >
-                  {activeItem.feedback}
-                </p>
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
+                  {filteredDistrictsCount} {uiText.heroPreviewVisible}
+                </span>
               </div>
-              <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-white">
-                {filteredDistrictsCount} {uiText.heroPreviewVisible}
-              </span>
-            </div>
 
-            <div className="relative h-[240px] overflow-hidden rounded-[22px] border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,0.9),rgba(15,23,42,0.96))]">
-              <div className="absolute inset-y-0 left-[-15%] w-[38%] rotate-12 bg-white/5 blur-2xl animate-[shellDrift_16s_ease-in-out_infinite]" />
-              <svg viewBox="0 0 420 240" className="absolute inset-0 h-full w-full" fill="none">
-                <path
-                  d="M36 146L84 128L122 112L166 98L214 84L250 92L288 78L328 84L356 70L386 78L364 101L328 113L292 126L256 134L214 142L176 156L138 170L96 178L54 172L36 146Z"
-                  fill="rgba(255,255,255,0.06)"
-                  stroke="rgba(255,255,255,0.35)"
-                  strokeWidth="2"
-                />
-                <path
-                  d="M56 165C104 142 149 129 189 120C236 109 278 96 332 77"
-                  stroke="rgba(96,165,250,0.7)"
-                  strokeWidth="2"
-                  strokeDasharray="6 7"
-                />
-                <circle
-                  key={`marker-${activeIndex}`}
-                  cx={activeItem.markerX}
-                  cy={activeItem.markerY}
-                  r="5"
-                  fill={accentClasses.dot}
-                  className="animate-[pulse_2.8s_ease-in-out_infinite]"
-                />
-                <circle
-                  key={`pulse-${activeIndex}`}
-                  cx={activeItem.markerX}
-                  cy={activeItem.markerY}
-                  r="14"
-                  fill={accentClasses.pulse}
-                  className="animate-[pulse_3.1s_ease-in-out_infinite]"
-                />
-              </svg>
+              <div className="relative h-[230px] overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,0.92),rgba(15,23,42,0.98))]">
+                <svg viewBox="0 0 420 240" className="absolute inset-0 h-full w-full" fill="none">
+                  <path
+                    d="M36 146L84 128L122 112L166 98L214 84L250 92L288 78L328 84L356 70L386 78L364 101L328 113L292 126L256 134L214 142L176 156L138 170L96 178L54 172L36 146Z"
+                    fill="rgba(255,255,255,0.06)"
+                    stroke="rgba(255,255,255,0.35)"
+                    strokeWidth="2"
+                  />
+                  <circle cx={activeItem.markerX} cy={activeItem.markerY} r="5" fill={accent.dot} />
+                  <circle cx={activeItem.markerX} cy={activeItem.markerY} r="14" fill={accent.dot} opacity="0.16" />
+                </svg>
 
-              <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-2">
-                <div
-                  key={`district-${activeIndex}`}
-                  className="rounded-[20px] border border-white/10 bg-white/8 p-3 backdrop-blur-sm animate-[fadeIn_550ms_ease-out]"
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-                    {uiText.heroPreviewDistrictLabel}
-                  </p>
-                  <h3 className="mt-1 text-lg font-bold text-white">{activeItem.districtName}</h3>
-                  <p className="text-sm text-slate-300">{activeItem.province}</p>
-                </div>
-
-                <div
-                  key={`score-${activeIndex}`}
-                  className="rounded-[20px] border border-white/10 bg-white/8 p-3 backdrop-blur-sm animate-[fadeIn_650ms_ease-out]"
-                >
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-                    {uiText.heroPreviewTrustLabel}
-                  </p>
-                  <p className="mt-1 text-xl font-extrabold text-white">{activeItem.score}</p>
-                  <span className={`mt-2 inline-flex rounded-full px-3 py-1 text-[11px] font-semibold ${accentClasses.badge}`}>
-                    {activeItem.province}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="space-y-4">
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition duration-700">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {uiText.heroPreviewLeaderLabel}
-              </p>
-              <div className="mt-3 flex items-center gap-3">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl ${accentClasses.badge}`}>
-                  {activeItem.leader.charAt(0)}
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-slate-950">{activeItem.leader}</h3>
-                  <p className="text-sm text-slate-500">{uiText.heroPreviewLeaderHelper}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm transition duration-700">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                {uiText.heroPreviewActivityLabel}
-              </p>
-              <div className="mt-3 space-y-3">
-                {[activeItem.updateOne, activeItem.updateTwo, activeItem.updateThree].map((item) => (
-                  <div key={item} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-3 py-3">
-                    <span className="mt-1 h-2.5 w-2.5 rounded-full bg-red-500" />
-                    <p className="text-sm leading-6 text-slate-600">{item}</p>
+                <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-[18px] border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                      {uiText.heroPreviewDistrictLabel}
+                    </p>
+                    <h3 className="mt-1 text-xl font-bold text-white">{activeItem.districtName}</h3>
+                    <p className="text-sm text-slate-200">{activeItem.province}</p>
                   </div>
-                ))}
+
+                  <div className="rounded-[18px] border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                      {uiText.heroPreviewTrustLabel}
+                    </p>
+                    <p className="mt-1 text-2xl font-extrabold text-white">
+                      {typeof activeItem.score === "number" ? `${activeItem.score}/100` : "--"}
+                    </p>
+                    <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
+                      <div
+                        className={`h-full rounded-full ${accent.bar}`}
+                        style={{
+                          width:
+                            typeof activeItem.score === "number"
+                              ? `${Math.max(8, Math.min(activeItem.score, 100))}%`
+                              : "18%",
+                        }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <div className="rounded-[22px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                  {uiText.heroPreviewLeaderLabel}
+                </p>
+                <div className="mt-3 flex items-start gap-3">
+                  <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent.badge}`}>
+                    {activeItem.leaderName.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <h3 className="truncate text-base font-bold text-slate-950">{activeItem.leaderName}</h3>
+                    <p className="mt-1 text-sm font-medium text-slate-700">{activeItem.liveSignal}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="rounded-[22px] border border-blue-100 bg-white p-4 shadow-sm">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+                  {uiText.heroPreviewActivityLabel}
+                </p>
+                <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
+                  <p className="text-sm leading-6 text-slate-700">{activeItem.activitySummary}</p>
+                </div>
               </div>
             </div>
           </div>
@@ -651,12 +622,13 @@ const previewItems = [
     </div>
   );
 }
+
 function Home() {
   const { section } = useLanguage();
+  const text = section("home");
+
   const lastTrackedDistrictRef = useRef("");
   const lastTrackedSearchRef = useRef("");
-
-  const text = section("home");
 
   const [selectedDistrict, setSelectedDistrict] = useState<DistrictInfo | null>(null);
   const [selectedProvince, setSelectedProvince] = useState<string>("ALL");
@@ -899,28 +871,119 @@ function Home() {
       .slice(0, 4);
   }, [districts]);
 
+  const heroPreviewItems = useMemo<HeroPreviewItem[]>(() => {
+    const markerPositions = [
+      { x: 172, y: 124 },
+      { x: 138, y: 118 },
+      { x: 226, y: 108 },
+      { x: 286, y: 92 },
+      { x: 180, y: 128 },
+    ];
+
+    return districts
+      .map((district, index) => {
+        const linkedLeaders = [
+          district.mayorLeader,
+          district.mpLeader,
+          district.ministerLeader,
+          ...(Array.isArray(district.naLeaders) ? district.naLeaders : []),
+        ].filter(Boolean);
+
+        const score =
+          typeof district.satisfactionScore === "number" ? district.satisfactionScore : null;
+        const linkedCount = linkedLeaders.length;
+        const completeness =
+          (score !== null ? 2 : 0) +
+          (district.mayorLeader?.leaderId ? 3 : 0) +
+          (district.mpLeader?.leaderId ? 2 : 0) +
+          (district.ministerLeader?.leaderId ? 2 : 0) +
+          (linkedCount > 0 ? 1 : 0);
+
+        const marker = markerPositions[index % markerPositions.length];
+        const leaderName =
+          district.mayorLeader?.name ||
+          district.mpLeader?.name ||
+          district.ministerLeader?.name ||
+          linkedLeaders[0]?.name ||
+          district.name;
+
+        return {
+          districtId: district.districtId,
+          districtName: district.name,
+          province: district.province,
+          score,
+          leaderName,
+          liveSignal: getHeroPreviewSignal(score, linkedCount),
+          activitySummary: getHeroPreviewActivity(
+            score,
+            linkedCount,
+            district.localLevels?.length || 0
+          ),
+          linkedCount,
+          accent: getHeroPreviewAccent(score, linkedCount),
+          markerX: marker.x,
+          markerY: marker.y,
+          completeness,
+        };
+      })
+      .filter((item) => item.score !== null || item.linkedCount > 0)
+      .sort((a, b) => b.completeness - a.completeness)
+      .slice(0, 5)
+      .map((item) => ({
+        districtId: item.districtId,
+        districtName: item.districtName,
+        province: item.province,
+        score: item.score,
+        leaderName: item.leaderName,
+        liveSignal: item.liveSignal,
+        activitySummary: item.activitySummary,
+        linkedCount: item.linkedCount,
+        accent: item.accent,
+        markerX: item.markerX,
+        markerY: item.markerY,
+      }));
+  }, [districts]);
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-50">
       <NepalPatternBackdrop />
       <Navbar />
 
-      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-4 md:px-5 md:py-5">
-        <section className="rounded-[32px] border border-slate-200 bg-white p-5 shadow-sm md:p-8">
-          <div className="grid items-center gap-8 xl:grid-cols-[1.1fr_0.9fr]">
-            <div className="max-w-3xl" style={{ animation: "heroFadeUp 700ms ease-out both" }}>
-              <div className="inline-flex rounded-full border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600">
+      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-4 md:px-5 md:py-6">
+        <section className="rounded-[34px] border border-blue-100 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.08)] md:p-8">
+          <div className="grid items-start gap-6 xl:grid-cols-[1.12fr_0.88fr] xl:gap-8">
+            <div className="max-w-3xl pt-1">
+              <div className="inline-flex rounded-full border border-red-100 bg-red-50/70 px-3 py-1 text-[11px] font-semibold text-red-600">
                 {text.heroBadge}
               </div>
 
-             <h1 className="mt-4 max-w-4xl text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
+              <h1 className="mt-4 max-w-4xl text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
                 {text.heroTitle}
               </h1>
 
-              <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
-                {text.heroSubtitle}
+              <p className="mt-4 max-w-2xl text-lg font-semibold leading-8 text-slate-700 md:text-[21px]">
+                {text.heroSupportLine}
               </p>
 
-              <div className="mt-6 flex flex-wrap gap-3">
+              <div className="mt-7 max-w-2xl rounded-[26px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
+                <div className="flex flex-col gap-3 sm:flex-row">
+                  <input
+                    type="search"
+                    value={searchText}
+                    onChange={(event) => setSearchText(event.target.value)}
+                    placeholder={text.heroSearchPlaceholder}
+                    className="h-14 flex-1 rounded-2xl border border-blue-200 bg-white px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                  />
+                  <NepalAnchorButton
+                    href="#district-map"
+                    className="min-h-[56px] justify-center whitespace-nowrap px-6 text-sm shadow-[0_14px_24px_rgba(15,23,42,0.14)]"
+                  >
+                    {text.heroSearchAction}
+                  </NepalAnchorButton>
+                </div>
+              </div>
+
+              <div className="mt-6 flex flex-wrap items-center gap-3">
                 <NepalAnchorButton href="#district-map">
                   {text.primaryCta}
                 </NepalAnchorButton>
@@ -931,7 +994,7 @@ function Home() {
 
                 <a
                   href="#district-map"
-                  className="inline-flex items-center px-1 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+                  className="inline-flex items-center px-1 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
                 >
                   {text.seeHowItWorks}
                 </a>
@@ -941,48 +1004,28 @@ function Home() {
             <HeroVisual
               filteredDistrictsCount={loadingDistricts ? 0 : filteredDistrictsCount}
               leaderCount={loadingDistricts ? 0 : leaderCount}
+              items={heroPreviewItems}
+              selectedDistrictId={selectedDistrict?.districtId}
+              loading={loadingDistricts}
             />
           </div>
-        </section>
 
-        <section className="mt-6 grid grid-cols-1 gap-4 md:mt-8 md:grid-cols-2 xl:grid-cols-4">
-          <NationalStatCard label={text.stat1Label} value="77" helper={text.stat1Helper} />
-          <NationalStatCard label={text.stat2Label} value="753" helper={text.stat2Helper} />
-          <NationalStatCard
-            label={text.stat3Label}
-            value={String(Object.keys(districtScores).length)}
-            helper={text.stat3Helper}
-          />
-          <NationalStatCard
-            label={text.stat4Label}
-            value={`${leaderCount}+`}
-            helper={text.stat4Helper}
-          />
-        </section>
-
-        <FeaturedLeadersPanel
-          leaders={featuredLeaders}
-          loading={loadingDistricts}
-        />
-
-        <section className="mt-8 md:mt-10">
-          <div className="mb-4 flex flex-col gap-2 lg:flex-row lg:items-end lg:justify-between">
-            <div>
-              <h2 className="text-2xl font-bold tracking-tight text-slate-950">
-                {text.mapSectionTitle}
-              </h2>
-              <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-                {text.mapSectionText}
-              </p>
-            </div>
-
-            <div className="rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-600">
-              {text.mapQuickHint}
-            </div>
+          <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-4">
+            <LiveStat label={text.liveStatsUpdated} value={new Date().toLocaleDateString()} />
+            <LiveStat label={text.liveStatsDistricts} value={String(filteredDistrictsCount)} tone="blue" />
+            <LiveStat label={text.liveStatsProfiles} value={`${leaderCount}+`} />
+            <LiveStat label={text.liveStatsSignals} value={String(Object.keys(districtScores).length)} tone="red" />
           </div>
+        </section>
 
-          <div id="district-map" className="relative z-0 grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_420px]">
-            <div className="relative z-0 min-w-0">
+        <FeaturedLeadersPanel leaders={featuredLeaders} loading={loadingDistricts} />
+
+        <section className="mt-10">
+          <div
+            id="district-map"
+            className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_420px]"
+          >
+            <div className="min-w-0">
               <NepalMap
                 districts={districts}
                 districtLoading={loadingDistricts}
@@ -1004,17 +1047,19 @@ function Home() {
             </div>
 
             <Suspense fallback={<SidePanelSkeleton />}>
-              <SelectedDistrictPanel district={selectedDistrict} />
+              <div className="xl:sticky xl:top-24 xl:self-start">
+                <SelectedDistrictPanel district={selectedDistrict} />
+              </div>
             </Suspense>
           </div>
         </section>
 
-        <section className="mt-10 md:mt-12">
+        <section className="mt-12">
           <div className="mb-4">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-950">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-950">
               {text.lowerSectionTitle}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
               {text.lowerSectionText}
             </p>
           </div>
@@ -1022,10 +1067,10 @@ function Home() {
           <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
             <div>
               <div className="mb-3">
-                <h3 className="text-lg font-bold tracking-tight text-slate-950">
+                <h3 className="text-xl font-bold tracking-tight text-slate-950">
                   {text.feedbackTitle}
                 </h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-slate-600">
                   {text.feedbackText}
                 </p>
               </div>
@@ -1040,10 +1085,10 @@ function Home() {
 
             <div>
               <div className="mb-3">
-                <h3 className="text-lg font-bold tracking-tight text-slate-950">
+                <h3 className="text-xl font-bold tracking-tight text-slate-950">
                   {text.districtDetailsTitle}
                 </h3>
-                <p className="mt-1 text-sm leading-6 text-slate-500">
+                <p className="mt-1 text-sm leading-6 text-slate-600">
                   {text.districtDetailsText}
                 </p>
               </div>
@@ -1055,12 +1100,12 @@ function Home() {
           </div>
         </section>
 
-        <section className="mt-10 md:mt-12">
+        <section className="mt-12">
           <div className="mb-4">
-            <h2 className="text-2xl font-bold tracking-tight text-slate-950">
+            <h2 className="text-3xl font-bold tracking-tight text-slate-950">
               {text.exploreMoreTitle}
             </h2>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
               {text.exploreMoreText}
             </p>
           </div>
@@ -1086,11 +1131,3 @@ function Home() {
 }
 
 export default Home;
-
-
-
-
-
-
-
-

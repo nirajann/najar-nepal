@@ -248,6 +248,41 @@ function translateRankingSignal(value: string, text: Record<string, string>) {
   return map[value] || value;
 }
 
+function MiniTrendSparkline({
+  values,
+  tone = "blue",
+}: {
+  values: number[];
+  tone?: "blue" | "amber" | "red";
+}) {
+  const safeValues = values.length ? values : [0, 0, 0, 0, 0];
+  const max = Math.max(...safeValues, 1);
+  const min = Math.min(...safeValues, 0);
+  const range = max - min || 1;
+  const stroke =
+    tone === "amber" ? "#d97706" : tone === "red" ? "#dc2626" : "#2563eb";
+  const points = safeValues
+    .map((value, index) => {
+      const x = (index / Math.max(safeValues.length - 1, 1)) * 100;
+      const y = 26 - ((value - min) / range) * 22;
+      return `${x},${y}`;
+    })
+    .join(" ");
+
+  return (
+    <svg viewBox="0 0 100 28" className="h-7 w-24" aria-hidden="true">
+      <polyline
+        fill="none"
+        stroke={stroke}
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        points={points}
+      />
+    </svg>
+  );
+}
+
 function ScoreBadge({
   score,
   large = false,
@@ -263,9 +298,9 @@ function ScoreBadge({
 
   return (
     <div
-      className={`relative inline-flex ${sizeClass} items-center justify-center rounded-full border border-blue-100 bg-white shadow-sm ring-4 ring-blue-50`}
+      className={`relative inline-flex ${sizeClass} items-center justify-center rounded-full border border-blue-200/80 bg-[radial-gradient(circle_at_top,_rgba(191,219,254,0.45),_#ffffff_62%)] shadow-[0_12px_26px_rgba(29,78,216,0.12)] ring-4 ring-blue-50/90 transition duration-300`}
     >
-      <div className="absolute inset-2 rounded-full border border-dashed border-blue-200/80" />
+      <div className="absolute inset-2 rounded-full border border-dashed border-blue-300/80" />
       <div className="relative text-center">
         <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
           {text.score}
@@ -290,20 +325,28 @@ function FeaturedLeaderCard({
   const { leader, stats, publicScore, trendLabel, trustLabel, dataLabel } = item;
   const featureBadge = getFeaturedBadge(item, rank);
   const isFirst = rank === 1;
+  const sparkTone = publicScore >= 70 ? "blue" : publicScore >= 45 ? "amber" : "red";
+  const sparklineValues = [
+    stats.ratingCount,
+    stats.comments,
+    stats.totalReactions,
+    item.engagementCount,
+    Math.round(publicScore),
+  ];
   const cardTone = isFirst
-    ? "border-blue-200 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_transparent_48%),linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] shadow-lg shadow-blue-100/60"
-    : "border-slate-200 bg-white shadow-sm";
+    ? "border-blue-200 bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.16),_transparent_48%),linear-gradient(180deg,#ffffff_0%,#f7fbff_58%,#eef4ff_100%)] shadow-[0_18px_42px_rgba(29,78,216,0.12)]"
+    : "border-blue-100 bg-white shadow-[0_12px_30px_rgba(15,23,42,0.06)]";
 
   return (
     <article
-      className={`rounded-[26px] border p-4 transition duration-300 hover:-translate-y-1 hover:shadow-xl ${cardTone} ${
+      className={`rounded-[26px] border p-4 transition duration-300 hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(15,23,42,0.12)] ${cardTone} ${
         isFirst ? "xl:-mt-1 xl:p-5" : ""
       }`}
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
+            <span className="rounded-full border border-slate-200 bg-slate-950 px-3 py-1.5 text-xs font-semibold text-white shadow-sm">
               {text.topRank} #{rank}
             </span>
             <span
@@ -330,7 +373,19 @@ function FeaturedLeaderCard({
         <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
           {translateRankingSignal(trustLabel, text)}
         </span>
-        <p className="text-sm text-slate-500">{translateRankingSignal(dataLabel, text)}</p>
+        <p className="text-sm text-slate-600">{translateRankingSignal(dataLabel, text)}</p>
+      </div>
+
+      <div className="mt-4 flex items-center justify-between rounded-2xl border border-blue-100/80 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-3 py-2.5">
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+            {text.tableTrend}
+          </p>
+          <p className="mt-1 text-sm font-semibold text-slate-800">
+            {translateRankingSignal(trendLabel, text)}
+          </p>
+        </div>
+        <MiniTrendSparkline values={sparklineValues} tone={sparkTone as "blue" | "amber" | "red"} />
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
@@ -371,10 +426,10 @@ function LeaderListRow({
   const { leader, stats, publicScore, trendLabel, trustLabel, dataLabel } = item;
 
   return (
-    <article className="rounded-[22px] border border-slate-200 bg-white/95 px-4 py-3 shadow-sm transition duration-300 hover:border-slate-300 hover:shadow-md">
+    <article className="rounded-[22px] border border-blue-100/80 bg-white/95 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_16px_34px_rgba(15,23,42,0.1)]">
       <div className="grid gap-3 lg:grid-cols-[minmax(0,2.4fr)_minmax(120px,0.8fr)_repeat(4,minmax(90px,0.7fr))_minmax(120px,0.9fr)_auto] lg:items-center">
         <div className="flex min-w-0 items-center gap-3">
-          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-slate-950 text-sm font-bold text-white">
+          <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-sm font-bold text-white shadow-[0_10px_20px_rgba(29,78,216,0.18)]">
             #{rank}
           </div>
 
@@ -385,7 +440,7 @@ function LeaderListRow({
               className="h-12 w-12 rounded-[16px] object-cover"
             />
           ) : (
-            <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-slate-200 text-lg font-bold text-slate-600">
+            <div className="flex h-12 w-12 items-center justify-center rounded-[16px] bg-blue-50 text-lg font-bold text-blue-700">
               {leader.name?.charAt(0) || "L"}
             </div>
           )}
@@ -397,7 +452,7 @@ function LeaderListRow({
             <p className="mt-0.5 truncate text-sm font-medium text-blue-600">
               {roleLabel(leader.role)}
             </p>
-            <p className="mt-0.5 truncate text-sm text-slate-500">
+            <p className="mt-0.5 truncate text-sm text-slate-600">
               {getDistrictName(leader.district)}, {getProvinceName(leader)}
             </p>
           </div>
@@ -407,7 +462,7 @@ function LeaderListRow({
           <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
             {translateRankingSignal(trustLabel, text)}
           </span>
-          <p className="mt-1 hidden text-xs text-slate-500 lg:block">
+          <p className="mt-1 hidden text-xs text-slate-600 lg:block">
             {translateRankingSignal(dataLabel, text)}
           </p>
         </div>
@@ -445,12 +500,12 @@ function MetricTile({
   helper?: string;
 }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-500">
+    <div className="rounded-2xl border border-blue-100/80 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-3 py-2.5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-600">
         {label}
       </p>
       <p className="mt-1 text-base font-bold text-slate-950">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-500">{helper}</p> : null}
+      {helper ? <p className="mt-1 text-xs text-slate-600">{helper}</p> : null}
     </div>
   );
 }
@@ -470,7 +525,7 @@ function LeaderboardMetric({
 }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-400">
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
         {label}
       </p>
       <p
@@ -480,7 +535,7 @@ function LeaderboardMetric({
       >
         {value}
       </p>
-      {helper ? <p className="mt-0.5 text-xs text-slate-500">{helper}</p> : null}
+      {helper ? <p className="mt-0.5 text-xs text-slate-600">{helper}</p> : null}
     </div>
   );
 }
@@ -594,14 +649,14 @@ function Ranking() {
   const remaining = rankedLeaders.slice(3);
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen page-fade-in bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_26%,#f4f7fb_100%)]">
       <Navbar />
 
       <main className="mx-auto max-w-[1380px] px-4 py-4 md:px-6">
-        <section className="rounded-[32px] border border-slate-200 bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)] p-4 shadow-sm md:p-5 lg:p-6">
+        <section className="surface-shell p-4 md:p-5 lg:p-6">
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
-              <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+              <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">
                 {text.badge}
               </div>
 
@@ -609,13 +664,13 @@ function Ranking() {
                 {text.title}
               </h1>
 
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
+              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
                 {text.subtitle}
               </p>
 
               {showHowItWorks && (
-                <div className="mt-3 rounded-3xl border border-slate-200 bg-white/80 p-4">
-                  <p className="text-sm font-semibold text-slate-900">{text.methodTitle}</p>
+                <div className="mt-3 rounded-3xl border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-4">
+                  <p className="text-sm font-semibold text-slate-950">{text.methodTitle}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
                     {text.methodText}
                   </p>
@@ -624,8 +679,8 @@ function Ranking() {
             </div>
 
             <div className="grid gap-2 sm:grid-cols-3 xl:w-[540px]">
-              <div className="rounded-3xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-700 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{text.visibleLeaders}</p>
+              <div className="rounded-3xl border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] px-4 py-2.5 text-slate-700 shadow-sm">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-600">{text.visibleLeaders}</p>
                 <p className="mt-1 text-xl font-extrabold text-slate-950">
                   {rankedLeaders.length}
                 </p>
@@ -634,7 +689,7 @@ function Ranking() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="rounded-3xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400"
+                className="rounded-3xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
               >
                 <option>{text.sortPublic}</option>
                 <option>{text.sortHighest}</option>
@@ -644,7 +699,7 @@ function Ranking() {
               </select>
 
               {lastUpdated ? (
-                <div className="rounded-3xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-sm text-slate-600">
+                <div className="rounded-3xl border border-blue-100/80 bg-white/90 px-4 py-2.5 text-sm text-slate-600">
                   {text.lastUpdated}: <span className="font-semibold text-slate-900">{lastUpdated}</span>
                 </div>
               ) : (
@@ -688,7 +743,7 @@ function Ranking() {
                 {Array.from({ length: 3 }).map((_, index) => (
                   <div
                     key={index}
-                    className="h-[240px] animate-pulse rounded-[28px] border border-slate-200 bg-slate-100"
+                    className="skeleton-shimmer h-[240px] rounded-[28px] border border-blue-100/70"
                   />
                 ))}
               </div>
@@ -696,13 +751,13 @@ function Ranking() {
                 {Array.from({ length: 5 }).map((_, index) => (
                   <div
                     key={index}
-                    className="h-[88px] animate-pulse rounded-[24px] border border-slate-200 bg-slate-100"
+                    className="skeleton-shimmer h-[88px] rounded-[24px] border border-blue-100/70"
                   />
                 ))}
               </div>
             </div>
           ) : rankedLeaders.length === 0 ? (
-            <div className="mt-6 rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
+            <div className="mt-6 rounded-[28px] border border-dashed border-blue-200 bg-white px-6 py-12 text-center">
               <h2 className="text-xl font-bold text-slate-900">{text.emptyTitle}</h2>
               <p className="mt-2 text-sm text-slate-500">
                 {text.emptyBody}
@@ -714,11 +769,11 @@ function Ranking() {
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-slate-950 md:text-xl">{text.topTitle}</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-slate-600">
                       {text.topBody}
                     </p>
                   </div>
-                  <div className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 md:inline-flex">
+                  <div className="hidden rounded-full border border-blue-100 bg-white px-4 py-2 text-xs font-semibold text-blue-700 md:inline-flex">
                     {text.spotlight}
                   </div>
                 </div>
@@ -734,28 +789,28 @@ function Ranking() {
                 </div>
               </section>
 
-              <section className="rounded-[30px] border border-slate-200 bg-white/75 p-4 shadow-sm md:p-5">
+              <section className="rounded-[30px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] md:p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
                     <h2 className="text-lg font-bold text-slate-950 md:text-xl">{text.fullTitle}</h2>
-                    <p className="mt-1 text-sm text-slate-500">
+                    <p className="mt-1 text-sm text-slate-600">
                       {text.fullBody}
                     </p>
                   </div>
-                  <p className="hidden text-sm text-slate-500 md:block">
+                  <p className="hidden text-sm text-slate-600 md:block">
                     {text.compactView}
                   </p>
                 </div>
 
-                <div className="mb-3 hidden rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(120px,0.8fr)_repeat(4,minmax(90px,0.7fr))_minmax(120px,0.9fr)_auto] lg:gap-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableLeader}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableSignal}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableScore}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableAvgRating}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableComments}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableEngagement}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableTrend}</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-right text-slate-500">{text.tableAction}</p>
+                <div className="mb-3 hidden rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(120px,0.8fr)_repeat(4,minmax(90px,0.7fr))_minmax(120px,0.9fr)_auto] lg:gap-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableLeader}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableSignal}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableScore}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableAvgRating}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableComments}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableEngagement}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{text.tableTrend}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-right text-slate-600">{text.tableAction}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -777,5 +832,3 @@ function Ranking() {
 }
 
 export default Ranking;
-
-

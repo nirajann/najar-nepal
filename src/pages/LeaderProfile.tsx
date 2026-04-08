@@ -309,11 +309,11 @@ function ProgressBar({
 }) {
   return (
     <div>
-      <div className="mb-1 flex justify-between text-sm text-slate-600">
+      <div className="mb-1 flex justify-between text-sm text-slate-200">
         <span>{label}</span>
         <span>{value}%</span>
       </div>
-      <div className="h-3 overflow-hidden rounded-full bg-slate-200">
+      <div className="h-3 overflow-hidden rounded-full bg-white/10">
         <div className={`h-full rounded-full ${colorClass}`} style={{ width: `${value}%` }} />
       </div>
     </div>
@@ -683,10 +683,10 @@ function LeaderProfile() {
 
   if (leaderLoading) {
     return (
-      <div className="min-h-screen bg-slate-100">
+      <div className="min-h-screen page-fade-in bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_26%,#f4f7fb_100%)]">
         <Navbar />
         <main className="mx-auto max-w-6xl px-4 py-8">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6">
+          <div className="surface-shell p-6">
             <h1 className="text-3xl font-bold text-slate-900">Loading leader...</h1>
           </div>
         </main>
@@ -696,10 +696,10 @@ function LeaderProfile() {
 
   if (!leader) {
     return (
-      <div className="min-h-screen bg-slate-100">
+      <div className="min-h-screen page-fade-in bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_26%,#f4f7fb_100%)]">
         <Navbar />
         <main className="mx-auto max-w-6xl px-4 py-8">
-          <div className="rounded-3xl border border-slate-200 bg-white p-6">
+          <div className="surface-shell p-6">
             <h1 className="text-3xl font-bold text-slate-900">Leader not found</h1>
             <p className="mt-2 text-slate-500">
               This profile is not connected yet in the real leader dataset.
@@ -711,17 +711,17 @@ function LeaderProfile() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen page-fade-in bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_26%,#f4f7fb_100%)]">
       <Navbar />
 
       <main className="mx-auto max-w-7xl space-y-6 px-4 py-8 md:px-6">
         {message && (
-          <div className="rounded-2xl border border-slate-200 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
+          <div className="rounded-2xl border border-blue-100 bg-white px-5 py-4 text-sm text-slate-700 shadow-sm">
             {message}
           </div>
         )}
 
-        <section className="overflow-hidden rounded-[32px] border border-slate-200 bg-white shadow-sm">
+        <section className="overflow-hidden rounded-[32px] border border-slate-900/80 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] text-white shadow-[0_24px_64px_rgba(15,23,42,0.25)]">
           <div className="bg-[radial-gradient(circle_at_top_right,rgba(96,165,250,0.22),transparent_30%),linear-gradient(135deg,#020617_0%,#0f172a_58%,#1d4ed8_100%)] px-6 py-7 text-white md:px-8 md:py-8">
             <p className="text-sm font-medium text-blue-100">Public civic profile</p>
             <h1 className="mt-2 text-3xl font-extrabold tracking-tight md:text-5xl">
@@ -732,21 +732,21 @@ function LeaderProfile() {
             </p>
           </div>
 
-          <div className="border-t border-slate-200 bg-white px-6 py-6 md:px-8">
+          <div className="border-t border-slate-800/70 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] px-6 py-6 text-slate-950 md:px-8">
             <div className="flex flex-col gap-6 lg:flex-row lg:items-start lg:justify-between">
               <div className="-mt-16 shrink-0">
                 {leader.photo ? (
                   <img
                     src={leader.photo}
                     alt={leader.name}
-                    className="h-28 w-28 rounded-[28px] border border-slate-200 object-cover shadow-xl md:h-32 md:w-32"
+                    className="h-28 w-28 rounded-[28px] border border-blue-200 object-cover shadow-[0_18px_34px_rgba(15,23,42,0.18)] md:h-32 md:w-32"
                   />
                 ) : (
                   <div className="space-y-2 text-center">
                     <div className="flex h-28 w-28 items-center justify-center rounded-[28px] border border-white/10 bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_60%,#2563eb_100%)] text-4xl font-bold text-white shadow-xl md:h-32 md:w-32">
                       {leader.name?.charAt(0) || "L"}
                     </div>
-                    <p className="text-xs font-medium text-slate-500">No official photo yet</p>
+                    <p className="text-xs font-medium text-slate-600">No official photo yet</p>
                   </div>
                 )}
               </div>
@@ -762,7 +762,7 @@ function LeaderProfile() {
                     {trustLabel}
                   </span>
                   {leader.badge && (
-                    <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700">
+                    <span className="rounded-full border border-slate-200 bg-slate-950 px-3 py-1.5 text-sm font-semibold text-white">
                       {leader.badge}
                     </span>
                   )}
@@ -775,16 +775,16 @@ function LeaderProfile() {
                   <InfoBlock label="Term" value={`${leader.startYear || "-"} - ${leader.endYear || "Present"}`} />
                 </div>
 
-                <div className="mt-6 rounded-3xl bg-slate-50 p-5">
+                <div className="mt-6 rounded-3xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] p-5 shadow-sm">
                   <p className="text-sm font-semibold text-slate-900">Civic summary</p>
-                  <p className="mt-2 leading-7 text-slate-600">
+                  <p className="mt-2 leading-7 text-slate-700">
                     {leader.name} is currently serving as a{" "}
                     {leader.currentStatus?.toLowerCase() || ""} {displayRole.toLowerCase()}.
                     This profile brings together public trust signals, citizen discussion, and factual identity details to support transparency and accountability.
                   </p>
                 </div>
 
-                <p className="mt-4 text-sm text-slate-500">
+                <p className="mt-4 text-sm text-slate-600">
                   {engagementLevel} engagement with {profileCompleteness}% profile completeness.
                 </p>
 
@@ -824,15 +824,15 @@ function LeaderProfile() {
 
         <div className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.7fr)_360px]">
           <div className="space-y-5">
-            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="surface-shell p-6">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="flex flex-col gap-4">
                   <h2 className="text-2xl font-bold text-slate-900">Overview</h2>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-600">
                     Public context, trust cues, and factual profile details.
                   </p>
                 </div>
-                <span className="rounded-full bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-600">
+                <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
                   {engagementLevel} engagement
                 </span>
               </div>
@@ -864,11 +864,11 @@ function LeaderProfile() {
               </div>
             </section>
 
-            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="surface-shell p-6">
               <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">Community Discussion</h2>
-                  <p className="mt-1 text-sm text-slate-500">
+                  <p className="mt-1 text-sm text-slate-600">
                     {commentsList.length} comment{commentsList.length === 1 ? "" : "s"}
                   </p>
                 </div>
@@ -876,7 +876,7 @@ function LeaderProfile() {
                 <select
                   value={commentSort}
                   onChange={(e) => setCommentSort(e.target.value)}
-                  className="rounded-2xl border border-slate-300 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="rounded-2xl border border-blue-100 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-200"
                 >
                   <option value="newest">Newest</option>
                   <option value="liked">Most Liked</option>
@@ -887,7 +887,7 @@ function LeaderProfile() {
 
               <form
                 onSubmit={handleCommentSubmit}
-                className="mt-5 rounded-[26px] border border-slate-200 bg-slate-50 px-4 py-4"
+                className="mt-5 rounded-[26px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-4 py-4"
               >
                 <div>
                   <textarea
@@ -895,7 +895,7 @@ function LeaderProfile() {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                     placeholder="Share a respectful public comment about this leader..."
-                    className="w-full rounded-3xl border border-slate-300 bg-white px-5 py-4 outline-none transition focus:ring-2 focus:ring-blue-500"
+                    className="w-full rounded-3xl border border-blue-100 bg-white px-5 py-4 outline-none transition focus:ring-2 focus:ring-blue-200"
                     maxLength={300}
                   />
                   <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
@@ -904,7 +904,7 @@ function LeaderProfile() {
                         ? "Keep it factual and respectful."
                         : commentValidation.message}
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-slate-500">
                       {normalizeTextInput(comment).length}/300
                     </span>
                   </div>
@@ -918,7 +918,7 @@ function LeaderProfile() {
                         key={star}
                         onClick={() => setRating(star)}
                         className={`text-3xl leading-none transition ${
-                          rating >= star ? "text-yellow-400" : "text-slate-300"
+                          rating >= star ? "text-amber-400" : "text-slate-300"
                         }`}
                         aria-label={`Rate ${star} star`}
                       >
@@ -939,7 +939,7 @@ function LeaderProfile() {
 
               <div className="mt-5 space-y-4">
                 {commentsLoading ? (
-                  <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5 text-sm text-slate-500">
+                  <div className="rounded-3xl border border-blue-100 bg-blue-50/60 p-5 text-sm text-slate-600">
                     Loading comments...
                   </div>
                 ) : commentsList.length > 0 ? (
@@ -950,12 +950,12 @@ function LeaderProfile() {
                     return (
                         <article
                           key={item._id}
-                          className="rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm"
+                          className="surface-card interactive-lift p-5"
                         >
                         <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                           <div>
                             <p className="font-bold text-slate-900">{item.userName}</p>
-                            <p className="mt-1 text-sm text-slate-500">
+                            <p className="mt-1 text-sm text-slate-600">
                               {formatDateTime(item.createdAt)} - Rating: {item.rating || 0} - Likes:{" "}
                               {item.likes || 0}
                             </p>
@@ -966,7 +966,7 @@ function LeaderProfile() {
                             onClick={() =>
                               setReportOpenFor((prev) => (prev === item._id ? null : item._id))
                             }
-                            className="text-sm font-medium text-slate-500 transition hover:text-slate-700"
+                            className="text-sm font-medium text-slate-500 transition hover:text-blue-700"
                           >
                             Report comment
                           </button>
@@ -977,19 +977,19 @@ function LeaderProfile() {
                         <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
                           <button
                             onClick={() => handleLikeComment(item._id)}
-                            className="rounded-xl bg-slate-950 px-4 py-2 font-medium text-white transition hover:bg-slate-800"
+                            className="rounded-xl bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] px-4 py-2 font-medium text-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(29,78,216,0.2)]"
                           >
                             Like
                           </button>
-                          <span className="text-sm text-slate-500">
+                          <span className="text-sm text-slate-600">
                             {replyCount} repl{replyCount === 1 ? "y" : "ies"}
                           </span>
                         </div>
 
                         {reportOpenFor === item._id && (
-                          <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-4">
+                          <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/60 p-4">
                             <p className="text-sm font-semibold text-slate-900">Report comment</p>
-                            <p className="mt-1 text-xs text-slate-500">
+                            <p className="mt-1 text-xs text-slate-600">
                               Help keep discussion respectful and safe.
                             </p>
 
@@ -1001,7 +1001,7 @@ function LeaderProfile() {
                                   onClick={() => setReportReason(reason)}
                                 className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                                     reportReason === reason
-                                      ? "bg-slate-900 text-white"
+                                      ? "bg-slate-950 text-white"
                                       : "bg-white text-slate-700"
                                   }`}
                                 >
@@ -1015,7 +1015,7 @@ function LeaderProfile() {
                               value={reportNote}
                               onChange={(e) => setReportNote(e.target.value)}
                               placeholder="Optional note"
-                              className="mt-3 w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                              className="mt-3 w-full rounded-2xl border border-red-100 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-red-200"
                             />
 
                             <div className="mt-3 flex gap-2">
@@ -1040,15 +1040,15 @@ function LeaderProfile() {
                           </div>
                         )}
 
-                        <div className="mt-4 space-y-3 border-l border-slate-200 pl-4 md:pl-6">
+                        <div className="mt-4 space-y-3 border-l border-blue-100 pl-4 md:pl-6">
                           {item.replies?.map((reply, index) => (
                             <div
                               key={index}
-                              className="rounded-2xl bg-slate-50 px-4 py-3"
+                              className="rounded-2xl bg-blue-50/50 px-4 py-3"
                             >
                               <div className="flex items-center justify-between gap-3">
                                 <p className="font-semibold text-slate-800">{reply.userName}</p>
-                                <p className="text-xs text-slate-500">
+                                <p className="text-xs text-slate-600">
                                   {formatDateTime(reply.createdAt)}
                                 </p>
                               </div>
@@ -1057,7 +1057,7 @@ function LeaderProfile() {
                           ))}
                         </div>
 
-                        <div className="mt-4 rounded-2xl bg-slate-50 p-4">
+                        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
                           <textarea
                             rows={2}
                             value={replyText[item._id] || ""}
@@ -1068,7 +1068,7 @@ function LeaderProfile() {
                               }))
                             }
                             placeholder="Write a respectful reply..."
-                            className="w-full rounded-2xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                            className="w-full rounded-2xl border border-blue-100 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
                             maxLength={220}
                           />
 
@@ -1083,7 +1083,7 @@ function LeaderProfile() {
                                   ? "Keep replies constructive."
                                   : currentReplyValidation.message)}
                             </span>
-                            <span className="text-slate-400">
+                            <span className="text-slate-500">
                               {normalizeTextInput(replyText[item._id] || "").length}/220
                             </span>
                           </div>
@@ -1100,11 +1100,11 @@ function LeaderProfile() {
                     );
                   })
                 ) : (
-                  <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-5 py-10 text-center">
+                  <div className="rounded-3xl border border-dashed border-blue-200 bg-blue-50/40 px-5 py-10 text-center">
                     <p className="text-base font-semibold text-slate-700">
                       Be the first to share your thoughts about this leader.
                     </p>
-                    <p className="mt-2 text-sm text-slate-500">
+                    <p className="mt-2 text-sm text-slate-600">
                       Respectful civic discussion helps improve transparency and accountability.
                     </p>
                   </div>
@@ -1112,11 +1112,11 @@ function LeaderProfile() {
               </div>
             </section>
 
-            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="surface-shell p-6">
               <h2 className="text-2xl font-bold text-slate-900">Activity and updates</h2>
-              <div className="mt-4 rounded-2xl bg-slate-50 p-5">
+              <div className="mt-4 rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] p-5">
                 <p className="text-sm font-semibold text-slate-900">Current interest trend</p>
-                <p className="mt-2 text-slate-600">
+                <p className="mt-2 text-slate-700">
                   {trendText}. This profile is drawing public attention through ratings,
                   comments, and reaction activity tracked on the platform.
                 </p>
@@ -1125,8 +1125,8 @@ function LeaderProfile() {
           </div>
 
           <div className="space-y-5">
-            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-2xl font-bold text-slate-900">Public trust snapshot</h2>
+            <section className="surface-shell-dark p-6">
+              <h2 className="mb-4 text-2xl font-bold text-white">Public trust snapshot</h2>
 
               <div className="space-y-4">
                 <ProgressBar label="Like" value={stats.likePercentage} colorClass="bg-green-500" />
@@ -1136,9 +1136,9 @@ function LeaderProfile() {
                   colorClass="bg-red-500"
                 />
 
-                <div className="rounded-[24px] bg-slate-50 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">Community reading</p>
-                  <p className="mt-2 text-slate-600">{trustLabel}</p>
+                <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">Community reading</p>
+                  <p className="mt-2 text-slate-100">{trustLabel}</p>
                   <div className="mt-4 flex gap-2">
                     <button
                       type="button"
@@ -1146,7 +1146,7 @@ function LeaderProfile() {
                       className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                         liked === true
                           ? "bg-emerald-600 text-white"
-                          : "bg-white text-slate-700 hover:bg-slate-100"
+                          : "bg-white/10 text-white hover:bg-white/15"
                       }`}
                     >
                       Support
@@ -1157,7 +1157,7 @@ function LeaderProfile() {
                       className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
                         liked === false
                           ? "bg-red-600 text-white"
-                          : "bg-white text-slate-700 hover:bg-slate-100"
+                          : "bg-white/10 text-white hover:bg-white/15"
                       }`}
                     >
                       Concern
@@ -1167,10 +1167,7 @@ function LeaderProfile() {
               </div>
             </section>
 
-            <section
-              id="quick-rate-card"
-              className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm"
-            >
+            <section id="quick-rate-card" className="surface-shell p-6">
               <h2 className="mb-4 text-2xl font-bold text-slate-900">Quick rate</h2>
 
               <div className="mb-3 flex gap-1.5">
@@ -1187,12 +1184,12 @@ function LeaderProfile() {
                 ))}
               </div>
 
-              <p className="text-sm text-slate-500">
+              <p className="text-sm text-slate-600">
                 Add your public rating now and update it anytime later.
               </p>
             </section>
 
-            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="surface-shell p-6">
               <h2 className="mb-4 text-2xl font-bold text-slate-900">Profile signals</h2>
 
               <div className="flex flex-wrap gap-2">
@@ -1216,9 +1213,9 @@ function LeaderProfile() {
               </div>
             </section>
 
-            <section className="rounded-[30px] border border-slate-200 bg-white p-6 shadow-sm">
+            <section className="surface-shell p-6">
               <h2 className="mb-4 text-2xl font-bold text-slate-900">Report a factual mistake</h2>
-              <p className="text-sm leading-6 text-slate-600">
+              <p className="text-sm leading-6 text-slate-700">
                 Help improve public transparency by reporting incorrect profile information.
               </p>
 
@@ -1231,11 +1228,11 @@ function LeaderProfile() {
               </button>
 
               {complaintHistory.length > 0 ? (
-                <div className="mt-5 rounded-2xl bg-slate-50 p-4">
+                <div className="mt-5 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
                   <p className="text-sm font-semibold text-slate-900">
                     Your previous profile accuracy reports
                   </p>
-                  <p className="mt-1 text-xs text-slate-500">
+                  <p className="mt-1 text-xs text-slate-600">
                     {complaintHistory.length} submitted item
                     {complaintHistory.length === 1 ? "" : "s"}
                   </p>
@@ -1302,13 +1299,13 @@ function LeaderProfile() {
           onClick={() => setMistakeModalOpen(false)}
         >
           <div
-            className="w-full max-w-2xl rounded-3xl border border-slate-200 bg-white p-6 shadow-2xl"
+            className="w-full max-w-2xl rounded-3xl border border-blue-100 bg-white p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div>
                 <h3 className="text-2xl font-bold text-slate-900">Report a factual mistake</h3>
-                <p className="mt-1 text-sm text-slate-500">
+                <p className="mt-1 text-sm text-slate-600">
                   Help improve profile accuracy using clear, factual corrections.
                 </p>
               </div>
@@ -1316,14 +1313,14 @@ function LeaderProfile() {
               <button
                 type="button"
                 onClick={() => setMistakeModalOpen(false)}
-                className="rounded-xl border border-slate-200 px-3 py-2 text-sm font-medium text-slate-600"
+                className="rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium text-slate-700"
               >
                 Close
               </button>
             </div>
 
             {mistakeMessage && (
-              <div className="mt-4 rounded-2xl bg-slate-100 px-4 py-3 text-sm text-slate-700">
+              <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-slate-700">
                 {mistakeMessage}
               </div>
             )}
@@ -1336,7 +1333,7 @@ function LeaderProfile() {
                 <select
                   value={mistakeType}
                   onChange={(e) => setMistakeType(e.target.value as MistakeType)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
                 >
                   {MISTAKE_OPTIONS.map((option) => (
                     <option key={option} value={option}>
@@ -1354,7 +1351,7 @@ function LeaderProfile() {
                   rows={3}
                   value={mistakeText}
                   onChange={(e) => setMistakeText(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="Describe the incorrect information"
                 />
               </div>
@@ -1367,7 +1364,7 @@ function LeaderProfile() {
                   rows={2}
                   value={suggestedCorrection}
                   onChange={(e) => setSuggestedCorrection(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="What should it say instead?"
                 />
               </div>
@@ -1380,7 +1377,7 @@ function LeaderProfile() {
                   type="text"
                   value={sourceLink}
                   onChange={(e) => setSourceLink(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="https://..."
                 />
               </div>
@@ -1393,7 +1390,7 @@ function LeaderProfile() {
                   type="text"
                   value={contactInfo}
                   onChange={(e) => setContactInfo(e.target.value)}
-                  className="w-full rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
                   placeholder="Email or other contact info"
                 />
               </div>
@@ -1410,7 +1407,7 @@ function LeaderProfile() {
                 <button
                   type="button"
                   onClick={() => setMistakeModalOpen(false)}
-                  className="rounded-2xl border border-slate-200 bg-white px-5 py-3 font-semibold text-slate-700"
+                  className="rounded-2xl border border-blue-100 bg-white px-5 py-3 font-semibold text-slate-700"
                 >
                   Cancel
                 </button>
@@ -1425,8 +1422,8 @@ function LeaderProfile() {
 
 function InfoBlock({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+    <div className="rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f2f7ff_100%)] px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</p>
       <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
     </div>
   );
@@ -1434,17 +1431,17 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function OverviewCard({ title, text }: { title: string; text: string }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-slate-50 px-5 py-4">
+    <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-5 py-4">
       <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-2 text-sm leading-7 text-slate-600">{text}</p>
+      <p className="mt-2 text-sm leading-7 text-slate-700">{text}</p>
     </div>
   );
 }
 
 function DetailRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+    <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
         {label}
       </p>
       <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
@@ -1454,8 +1451,8 @@ function DetailRow({ label, value }: { label: string; value: string }) {
 
 function SignalStat({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl bg-slate-50 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
         {label}
       </p>
       <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
@@ -1465,7 +1462,7 @@ function SignalStat({ label, value }: { label: string; value: string }) {
 
 function BadgePill({ text }: { text: string }) {
   return (
-    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm font-semibold text-slate-700">
+    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700">
       {text}
     </span>
   );
@@ -1473,8 +1470,8 @@ function BadgePill({ text }: { text: string }) {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+    <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(15,23,42,0.1)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</p>
       <p className="mt-2 text-xl font-extrabold text-slate-900">{value}</p>
     </div>
   );

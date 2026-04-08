@@ -32,6 +32,8 @@ type TooltipState = {
   districtName: string;
   provinceName: string;
   municipalitiesCount: number;
+  satisfactionScore: number | null;
+  linkedLeaderCount: number;
 };
 
 function normalizeName(name: string) {
@@ -57,6 +59,52 @@ function normalizeDistrictAlias(name: string) {
     .replace("WEST RUKUM", "RUKUM WEST")
     .replace("EASTERN RUKUM", "RUKUM EAST")
     .replace("EAST RUKUM", "RUKUM EAST");
+}
+
+function getDistrictLinkedLeaderCount(district?: DistrictInfo | null) {
+  if (!district) return 0;
+
+  let count = 0;
+  if (district.mpLeader?.leaderId) count += 1;
+  if (district.mayorLeader?.leaderId) count += 1;
+  if (district.ministerLeader?.leaderId) count += 1;
+  if (Array.isArray(district.naLeaders)) {
+    count += district.naLeaders.filter((leader) => leader?.leaderId).length;
+  }
+
+  return count;
+}
+
+function getMapScoreTone(score?: number | null) {
+  if (typeof score !== "number") {
+    return {
+      fill: "#dbe4f0",
+      hover: "#cbd8e8",
+      legend: "bg-slate-300",
+    };
+  }
+
+  if (score <= 40) {
+    return {
+      fill: "#f59e9e",
+      hover: "#ef7373",
+      legend: "bg-red-400",
+    };
+  }
+
+  if (score <= 70) {
+    return {
+      fill: "#f2c46f",
+      hover: "#e9b24a",
+      legend: "bg-amber-400",
+    };
+  }
+
+  return {
+    fill: "#3aa4a6",
+    hover: "#238b93",
+    legend: "bg-teal-500",
+  };
 }
 
 function getDistrictCandidates(rawName: string, districts: DistrictInfo[]) {
@@ -153,9 +201,11 @@ function NepalMap({
     visible: false,
     x: 0,
     y: 0,
-    districtName: "",
-    provinceName: "",
-    municipalitiesCount: 0,
+      districtName: "",
+      provinceName: "",
+      municipalitiesCount: 0,
+      satisfactionScore: null,
+      linkedLeaderCount: 0,
   });
 
   const [mapHeight, setMapHeight] = useState(600);
@@ -205,6 +255,7 @@ function NepalMap({
     const width = 1040;
     const height = 680;
     const clipId = "nepal-map-clip";
+    const selectedGlowId = "nepal-map-selected-glow";
 
     const svg = d3.select(svgRef.current);
     svg.selectAll("*").remove();
@@ -223,6 +274,19 @@ function NepalMap({
       .attr("width", width)
       .attr("height", height)
       .attr("rx", 18);
+
+    const glow = defs.append("filter").attr("id", selectedGlowId);
+    glow.append("feGaussianBlur").attr("stdDeviation", 3.5).attr("result", "blur");
+    glow
+      .append("feColorMatrix")
+      .attr("in", "blur")
+      .attr("type", "matrix")
+      .attr(
+        "values",
+        "0 0 0 0 0.113 0 0 0 0 0.306 0 0 0 0 0.847 0 0 0 0.55 0"
+      )
+      .attr("result", "glow");
+    glow.append("feMerge").html("<feMergeNode in='glow'/><feMergeNode in='SourceGraphic'/>");
 
     const projection = d3.geoMercator();
     const path = d3.geoPath(projection);
@@ -280,7 +344,46 @@ function NepalMap({
         districtName: matched?.name || rawName,
         provinceName: matched?.province || text.unknownProvince,
         municipalitiesCount: matched?.localLevels?.length || 0,
+        satisfactionScore:
+          typeof matched?.satisfactionScore === "number" ? matched.satisfactionScore : null,
+        linkedLeaderCount: getDistrictLinkedLeaderCount(matched),
       });
+    };
+
+    const getDistrictVisualState = (feature: any) => {
+      const rawName =
+        feature.properties?.DISTRICT ||
+        feature.properties?.district ||
+        feature.properties?.name ||
+        feature.properties?.NAME_2 ||
+        "";
+
+      const matches = getDistrictCandidates(rawName, districts);
+      const matched = matches[0];
+
+      const districtKey = normalizeDistrictAlias(matched?.name || rawName);
+      const score = districtScores[districtKey.toUpperCase()];
+
+      const normalizedDistrict = normalizeDistrictAlias(rawName);
+      const searchMatch =
+        searchText.trim() === "" ||
+        normalizedDistrict.includes(normalizeDistrictAlias(searchText));
+
+      const provinceMatch =
+        selectedProvince === "ALL" || matched?.province === selectedProvince;
+
+      const selectedMatch =
+        !!selectedDistrict &&
+        normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict;
+
+      return {
+        matched,
+        score,
+        searchMatch,
+        provinceMatch,
+        selectedMatch,
+        normalizedDistrict,
+      };
     };
 
     mapLayer
@@ -290,77 +393,56 @@ function NepalMap({
       .append("path")
       .attr("d", path as any)
       .attr("fill", (feature: any) => {
-        const rawName =
-          feature.properties?.DISTRICT ||
-          feature.properties?.district ||
-          feature.properties?.name ||
-          feature.properties?.NAME_2 ||
-          "";
+        const state = getDistrictVisualState(feature);
+        const tone = getMapScoreTone(state.score);
 
-        const matches = getDistrictCandidates(rawName, districts);
-        const matched = matches[0];
-
-        const districtKey = normalizeDistrictAlias(matched?.name || rawName);
-        const score = districtScores[districtKey.toUpperCase()];
-
-        const normalizedDistrict = normalizeDistrictAlias(rawName);
-        const searchMatch =
-          searchText.trim() === "" ||
-          normalizedDistrict.includes(normalizeDistrictAlias(searchText));
-
-        const provinceMatch =
-          selectedProvince === "ALL" || matched?.province === selectedProvince;
-
-        const selectedMatch =
-          !!selectedDistrict &&
-          normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict;
-
-        if (selectedMatch) return "#1d4ed8";
-        if (!provinceMatch || !searchMatch) return "#dbeafe";
-        if (score === undefined) return "#a8e3db";
-        if (score >= 80) return "#22c55e";
-        if (score >= 60) return "#84cc16";
-        if (score >= 40) return "#facc15";
-        if (score >= 20) return "#fb923c";
-        return "#ef4444";
+        if (!state.provinceMatch || !state.searchMatch) return "#e8eef6";
+        if (selectedDistrict && !state.selectedMatch) return d3.color(tone.fill)?.copy({ opacity: 0.42 })?.toString() || tone.fill;
+        if (state.selectedMatch) return tone.hover;
+        return tone.fill;
       })
       .attr("stroke", (feature: any) => {
-        const rawName =
-          feature.properties?.DISTRICT ||
-          feature.properties?.district ||
-          feature.properties?.name ||
-          feature.properties?.NAME_2 ||
-          "";
-        const normalizedDistrict = normalizeDistrictAlias(rawName);
-
-        return selectedDistrict &&
-          normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict
-          ? "#1e3a8a"
-          : "#64748b";
+        const state = getDistrictVisualState(feature);
+        return state.selectedMatch ? "#dbeafe" : "#7a8aa1";
       })
       .attr("stroke-width", (feature: any) => {
-        const rawName =
-          feature.properties?.DISTRICT ||
-          feature.properties?.district ||
-          feature.properties?.name ||
-          feature.properties?.NAME_2 ||
-          "";
-        const normalizedDistrict = normalizeDistrictAlias(rawName);
-
-        return selectedDistrict &&
-          normalizeDistrictAlias(selectedDistrict.name) === normalizedDistrict
-          ? 2.4
-          : isMobile
-          ? 1.05
-          : 0.85;
+        const state = getDistrictVisualState(feature);
+        return state.selectedMatch ? 2.8 : isMobile ? 1.05 : 0.9;
+      })
+      .attr("filter", (feature: any) => {
+        const state = getDistrictVisualState(feature);
+        return state.selectedMatch ? `url(#${selectedGlowId})` : null;
       })
       .style("cursor", "pointer")
       .style("touch-action", "manipulation")
       .style("pointer-events", "auto")
+      .style("transition", "fill 220ms ease, stroke 220ms ease, opacity 180ms ease, filter 220ms ease")
       .on("mouseenter", function (event: MouseEvent, feature: any) {
         showTooltip(event, feature);
+        const state = getDistrictVisualState(feature);
+        const tone = getMapScoreTone(state.score);
+        d3.select(this)
+          .attr("opacity", 1)
+          .attr("fill", state.selectedMatch ? tone.hover : tone.hover)
+          .attr("stroke-width", state.selectedMatch ? 3.1 : 1.35);
       })
       .on("mouseleave", function () {
+        const node = d3.select(this);
+        const feature = node.datum();
+        const state = getDistrictVisualState(feature);
+        const tone = getMapScoreTone(state.score);
+        node
+          .attr(
+            "fill",
+            !state.provinceMatch || !state.searchMatch
+              ? "#e8eef6"
+              : selectedDistrict && !state.selectedMatch
+              ? d3.color(tone.fill)?.copy({ opacity: 0.42 })?.toString() || tone.fill
+              : state.selectedMatch
+              ? tone.hover
+              : tone.fill
+          )
+          .attr("stroke-width", state.selectedMatch ? 2.8 : isMobile ? 1.05 : 0.9);
         if (tooltipTimeoutRef.current) {
           window.clearTimeout(tooltipTimeoutRef.current);
         }
@@ -447,9 +529,36 @@ function NepalMap({
     isMobile,
   ]);
 
+  const scoreBands = useMemo(() => {
+    const visibleDistricts = districts.filter((district) => {
+      const provinceMatch =
+        selectedProvince === "ALL" || district.province === selectedProvince;
+      const searchQuery = searchText.trim().toLowerCase();
+      const searchMatch =
+        !searchQuery ||
+        district.name.toLowerCase().includes(searchQuery) ||
+        district.province.toLowerCase().includes(searchQuery);
+      return provinceMatch && searchMatch;
+    });
+
+    let high = 0;
+    let medium = 0;
+    let low = 0;
+
+    visibleDistricts.forEach((district) => {
+      const score = districtScores[getDistrictScoreKey(district.name)];
+      if (typeof score !== "number") return;
+      if (score <= 40) low += 1;
+      else if (score <= 70) medium += 1;
+      else high += 1;
+    });
+
+    return { high, medium, low };
+  }, [districts, selectedProvince, searchText, districtScores]);
+
   return (
     <section
-      className="pointer-events-none relative z-0 isolate overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm [contain:layout_paint] md:p-5"
+      className="pointer-events-none relative z-0 isolate overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_22px_52px_rgba(15,23,42,0.1)] [contain:layout_paint] md:p-5"
       ref={wrapperRef}
     >
       <div className="pointer-events-auto mb-5 space-y-4">
@@ -468,7 +577,7 @@ function NepalMap({
             </p>
 
             {isMobile ? (
-              <p className="mt-3 rounded-2xl bg-slate-100 px-4 py-3 text-xs font-medium text-slate-600">
+              <p className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-medium text-blue-800">
                 {text.mobileHint}
               </p>
             ) : null}
@@ -476,18 +585,18 @@ function NepalMap({
 
           <button
             onClick={onReset}
-            className="rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
+            className="rounded-2xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-semibold text-slate-800 transition hover:-translate-y-0.5 hover:border-blue-200 hover:bg-blue-50"
           >
             {text.reset}
           </button>
         </div>
 
         <div className="grid gap-3">
-          <div className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-3 md:p-4">
+          <div className="rounded-[28px] border border-blue-100 bg-[linear-gradient(180deg,#f9fbff_0%,#f4f8ff_100%)] p-3 md:p-4">
             <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] xl:items-start">
               <div>
                 <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="rounded-full bg-white px-3 py-1.5 font-medium text-slate-600 shadow-sm">
+                    <span className="rounded-full bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm">
                     {text.resultCount || "Visible districts"}: {totalDistricts}
                   </span>
 
@@ -505,10 +614,10 @@ function NepalMap({
                 </div>
 
                 <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                     {text.filtersTitle || "Search and filter"}
                   </p>
-                  <p className="mt-1 text-sm text-slate-600">
+                  <p className="mt-1 text-sm text-slate-700">
                     {text.filtersText || "Start with a district search or narrow the map by province."}
                   </p>
                 </div>
@@ -519,30 +628,30 @@ function NepalMap({
                     placeholder={text.searchPlaceholder}
                     value={searchText}
                     onChange={(e) => setSearchText(e.target.value)}
-                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
+                    className="w-full rounded-2xl border border-blue-100 bg-white px-4 py-3.5 text-base outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   />
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+              <div className="rounded-2xl border border-blue-100 bg-white px-4 py-4 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-sm font-bold text-blue-700">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#dbeafe_0%,#bfdbfe_100%)] text-sm font-bold text-blue-700">
                     i
                   </div>
                   <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                       {text.guideTitle}
                     </p>
-                    <p className="mt-1 text-sm leading-6 text-slate-600">{text.guideText}</p>
+                    <p className="mt-1 text-sm leading-6 text-slate-700">{text.guideText}</p>
                     <p className="mt-1 text-xs leading-5 text-slate-500">{text.guideShort}</p>
                   </div>
                 </div>
               </div>
             </div>
 
-            <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+            <div className="mt-4 rounded-2xl border border-blue-100 bg-white px-3 py-3 shadow-sm">
               <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
                   {text.provinceLabel || "Province filter"}
                 </p>
 
@@ -551,15 +660,15 @@ function NepalMap({
                 onClick={() => setSelectedProvince("ALL")}
                 className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
                   selectedProvince === "ALL"
-                    ? "bg-slate-950 text-white"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    ? "bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white shadow-[0_10px_20px_rgba(29,78,216,0.2)]"
+                    : "bg-blue-50 text-blue-800 hover:bg-blue-100"
                 }`}
               >
                 {text.allProvinces}
               </button>
 
               <button
-                className="hidden rounded-full bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 xl:inline-flex"
+                className="hidden rounded-full bg-red-50 px-3 py-2 text-xs font-medium text-red-700 xl:inline-flex"
                 type="button"
               >
                 {(text.quickTip || "Tip")}: {text.quickTipText || "Click any district to open its summary and linked public data."}
@@ -574,10 +683,10 @@ function NepalMap({
                     onClick={() => setSelectedProvince(province.rawName)}
                     className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
                       selectedProvince === province.rawName
-                        ? "bg-slate-950 text-white"
+                        ? "bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white shadow-[0_10px_20px_rgba(29,78,216,0.2)]"
                         : index > 5 && !isMobile
-                        ? "hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex"
-                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                        ? "hidden bg-blue-50 text-blue-800 hover:bg-blue-100 sm:inline-flex"
+                        : "bg-blue-50 text-blue-800 hover:bg-blue-100"
                     }`}
                   >
                     {province.name}
@@ -587,29 +696,32 @@ function NepalMap({
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs">
-            <p className="mr-1 font-semibold uppercase tracking-wide text-slate-500">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-blue-100 bg-white px-3 py-3 text-xs shadow-sm">
+            <p className="mr-1 font-semibold uppercase tracking-wide text-slate-600">
               {text.legendTitle}
             </p>
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">
-              <span className="h-2.5 w-2.5 rounded-full bg-green-500" />
-              {text.legendHigh}
+            <span className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-teal-700">
+              <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
+              {text.legendHigh} 71-100
+              <span className="text-slate-500">({scoreBands.high})</span>
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">
+            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-amber-700">
               <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-              {text.legendMid}
+              {text.legendMid} 41-70
+              <span className="text-slate-500">({scoreBands.medium})</span>
             </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-slate-50 px-3 py-1.5 text-slate-600">
+            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-rose-700">
               <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-              {text.legendLow}
+              {text.legendLow} 0-40
+              <span className="text-slate-500">({scoreBands.low})</span>
             </span>
           </div>
         </div>
       </div>
 
-      <div className="pointer-events-auto relative z-0 overflow-hidden rounded-[24px] border border-slate-200 bg-slate-100 [contain:layout_paint]">
+      <div className="pointer-events-auto relative z-0 overflow-hidden rounded-[26px] border border-blue-100 bg-[radial-gradient(circle_at_top,_rgba(219,234,254,0.45),_#f8fbff_60%,_#ffffff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_18px_40px_rgba(15,23,42,0.08)] [contain:layout_paint] transition duration-300">
         {districtLoading ? (
-          <div className="h-[320px] animate-pulse bg-slate-200 md:h-[520px] xl:h-[600px]" />
+          <div className="skeleton-shimmer h-[320px] md:h-[520px] xl:h-[600px]" />
         ) : (
           <svg
             ref={svgRef}
@@ -621,13 +733,26 @@ function NepalMap({
 
       {!isMobile && tooltip.visible && (
         <div
-          className="pointer-events-none absolute z-10 max-w-xs rounded-2xl bg-slate-900 px-4 py-3 text-sm text-white shadow-2xl"
+          className="pointer-events-none absolute z-10 max-w-xs rounded-2xl border border-white/10 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-4 py-3 text-sm text-white shadow-2xl"
           style={{ left: tooltip.x, top: tooltip.y }}
         >
-          <p className="text-base font-bold">{tooltip.districtName}</p>
-          <p className="text-slate-300">{tooltip.provinceName}</p>
-          <p className="mt-1 text-slate-200">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-base font-bold">{tooltip.districtName}</p>
+              <p className="text-slate-300">{tooltip.provinceName}</p>
+            </div>
+            <span className="rounded-full bg-white/10 px-2.5 py-1 text-xs font-semibold text-white">
+              {tooltip.satisfactionScore ?? "--"}
+            </span>
+          </div>
+          <p className="mt-2 text-slate-200">
             {text.localLevels}: {tooltip.municipalitiesCount}
+          </p>
+          <p className="mt-1 text-slate-200">
+            Score: {typeof tooltip.satisfactionScore === "number" ? tooltip.satisfactionScore : "Not available"}
+          </p>
+          <p className="mt-1 text-slate-300">
+            Linked profiles: {tooltip.linkedLeaderCount}
           </p>
         </div>
       )}

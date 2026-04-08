@@ -289,13 +289,22 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
           "Upload clear document images. They stay private and are never displayed on your public profile.",
       },
       home: {
-       heroBadge: "Nepal Public Accountability Platform",
-heroTitle: "Public Voice. Public Trust. Public Accountability.",
-heroSubtitle:
-  "See district-level public sentiment, leader visibility, and civic signals across Nepal in one modern accountability platform.",
-primaryCta: "Explore Nepal Map",
-secondaryCta: "View Rankings",
-seeHowItWorks: "See how it works",
+        heroBadge: "Nepal Public Accountability Platform",
+        heroTitle: "Public Voice. Public Trust. Public Accountability.",
+        heroSupportLine:
+          "Search districts, compare leaders, follow civic projects, and see where public trust is moving.",
+        heroSubtitle:
+          "See district-level public sentiment, leader visibility, and civic signals across Nepal in one modern accountability platform.",
+        heroSearchPlaceholder: "Search any district to start exploring...",
+        heroSearchAction: "Go to map",
+        liveStatsUpdated: "Last updated",
+        liveStatsDistricts: "districts visible",
+        liveStatsProfiles: "leader profiles",
+        liveStatsSignals: "district trust signals",
+        liveStatsFeedback: "feedback-ready districts",
+        primaryCta: "Explore Nepal Map",
+        secondaryCta: "View Rankings",
+        seeHowItWorks: "See how it works",
         stat1Label: "77 Districts",
         stat1Helper:
           "Navigate Nepal district by district through the interactive map.",
@@ -348,6 +357,8 @@ seeHowItWorks: "See how it works",
         heroPreviewLeaderProfiles: "leader profiles",
         heroPreviewLeaderLabel: "Leader profile",
         heroPreviewLeaderHelper: "This panel shows a rotating product demo",
+        heroPreviewFallback:
+          "Live district preview will appear here as more public data becomes available.",
         lowerSectionTitle: "District insights",
         lowerSectionText:
           "Public feedback and linked district details stay together here, so the page feels easier to scan after you select a district.",
@@ -678,9 +689,18 @@ seeHowItWorks: "See how it works",
       },
       home: {
         heroBadge: "नेपाल सार्वजनिक जवाफदेहिता प्लेटफर्म",
-        heroTitle: "नेता हेर्नुहोस्। सार्वजनिक भावना बुझ्नुहोस्। जवाफदेहिता बलियो बनाउनुहोस्।",
+        heroTitle: "Public Voice. Public Trust. Public Accountability.",
+        heroSupportLine:
+          "जिल्ला खोज्नुहोस्, नेताहरू तुलना गर्नुहोस्, नागरिक परियोजनाहरू पछ्याउनुहोस्, र सार्वजनिक विश्वास कहाँ सर्दैछ हेर्नुहोस्।",
         heroSubtitle:
-          "जिल्ला हेर्नुहोस्, नेताहरू तुलना गर्नुहोस्, सार्वजनिक परियोजनाहरू पछ्याउनुहोस्, र नेपालका लागि बनाइएको एउटै स्पष्ट प्लेटफर्मबाट नागरिक विश्वास बुझ्नुहोस्।",
+          "नेपालभरको जिल्लास्तरीय सार्वजनिक भावना, नेतृत्व दृश्यता, र नागरिक संकेतहरू एउटै आधुनिक जवाफदेहिता प्लेटफर्ममा हेर्नुहोस्।",
+        heroSearchPlaceholder: "सुरु गर्न कुनै जिल्ला खोज्नुहोस्...",
+        heroSearchAction: "नक्सामा जानुहोस्",
+        liveStatsUpdated: "अन्तिम अद्यावधिक",
+        liveStatsDistricts: "देखिने जिल्ला",
+        liveStatsProfiles: "नेता प्रोफाइल",
+        liveStatsSignals: "जिल्ला विश्वास संकेत",
+        liveStatsFeedback: "प्रतिक्रिया तयार जिल्ला",
         primaryCta: "नेपाल नक्सा हेर्नुहोस्",
         secondaryCta: "र्‍याङ्किङ हेर्नुहोस्",
         seeHowItWorks: "यसले कसरी काम गर्छ",
@@ -736,6 +756,8 @@ seeHowItWorks: "See how it works",
         heroPreviewLeaderLabel: "सार्वजनिक प्रोफाइल अवलोकन",
         heroPreviewLeaderHelper: "प्रोफाइल सन्दर्भ यहाँ देखिन्छ",
         heroPreviewActivityLabel: "प्रत्यक्ष नागरिक संकेत",
+        heroPreviewFallback:
+          "थप सार्वजनिक डाटा उपलब्ध हुँदै जाँदा प्रत्यक्ष जिल्ला दृश्य यहाँ देखिनेछ।",
         lowerSectionTitle: "जिल्ला अन्तर्दृष्टि",
         lowerSectionText:
           "सार्वजनिक प्रतिक्रिया र सम्बन्धित जिल्ला विवरण सँगै राखिएकाले जिल्ला चयन गरेपछि पृष्ठ छिटो बुझ्न सजिलो हुन्छ।",
