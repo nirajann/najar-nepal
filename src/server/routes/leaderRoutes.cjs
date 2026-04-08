@@ -251,6 +251,7 @@ router.get("/check-duplicate", async (req, res) => {
 // Get all leaders
 router.get("/", async (req, res) => {
   try {
+    console.log("GET /api/leaders hit");
     const filter = buildLeaderFilter(req.query);
 
     const leaders = await Leader.find(filter)
@@ -259,6 +260,7 @@ router.get("/", async (req, res) => {
 
     res.json(leaders);
   } catch (error) {
+    console.error("GET /api/leaders failed:", error);
     res.status(500).json({
       message: "Failed to fetch leaders",
       error: error.message,
@@ -269,6 +271,7 @@ router.get("/", async (req, res) => {
 // Get aggregated ranking summary
 router.get("/ranking-summary", async (req, res) => {
   try {
+    console.log("GET /api/leaders/ranking-summary hit");
     const filter = buildLeaderFilter(req.query);
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
 
@@ -285,6 +288,7 @@ router.get("/ranking-summary", async (req, res) => {
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
+    console.error("GET /api/leaders/ranking-summary failed:", error);
     res.status(500).json({
       message: "Failed to load ranking summary",
       error: error.message,
