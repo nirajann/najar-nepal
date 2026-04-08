@@ -2,28 +2,28 @@
 
 **Public Voice. Public Trust. Public Accountability.**
 
-Najar Nepal is a modern civic-tech platform built for Nepal to improve transparency, public engagement, and accountability. It helps users explore districts, view public leader profiles, track civic activity, rate public experience, and understand how communities respond to leadership and public issues.
+Najar Nepal is a modern civic-tech platform built for Nepal to improve transparency, public engagement, and accountability. It helps users explore districts, view public leader profiles, track civic activity, rate public experience, and better understand how communities respond to leadership and public issues.
 
 ---
 
 ## Preview
 
-<img width="1914" height="875" alt="image" src="https://github.com/user-attachments/assets/9eeabc50-a883-42c4-b892-da8f1716ade1" />
+<img width="1914" height="875" alt="Najar Nepal Preview" src="https://github.com/user-attachments/assets/9eeabc50-a883-42c4-b892-da8f1716ade1" />
 
+---
 
 ## About the Project
 
-Najar Nepal is designed as a public-facing transparency and civic engagement platform.  
-The goal is to make leadership visibility, district-level public sentiment, and accountability easier to explore in a clean and interactive way.
+Najar Nepal is a public-facing transparency and civic engagement platform designed for Nepal. Its goal is to make leadership visibility, district-level public sentiment, and accountability easier to explore through a clean, modern, and interactive web experience.
 
-The platform combines:
+The platform brings together:
 - district exploration
 - public leader profiles
 - verified citizen feedback
 - community discussion
 - civic rankings
 - public project tracking
-- bilingual experience in English and Nepali
+- bilingual support in English and Nepali
 
 ---
 
@@ -33,20 +33,20 @@ The platform combines:
 - Explore Nepal through an interactive district map
 - Click districts to view local public information
 - Search and filter by district and province
-- View linked representatives and district summary
+- View linked representatives and district summaries
 
 ### Public Leader Profiles
 - Role, district, party, and term information
 - Public trust and engagement indicators
 - Ratings, likes, comments, and replies
 - Report factual mistakes on public profiles
-- Cleaner civic-style profile presentation
+- Clean civic-style profile presentation
 
 ### Leaders Ranking
 - Civic leaderboard based on public score, rating quality, discussion activity, and engagement
 - Top leaders spotlight
 - Category-based filtering
-- Sortable public ranking view
+- Sortable ranking view
 
 ### District Public Feedback
 - Citizens can rate district conditions
@@ -61,19 +61,19 @@ The platform combines:
 - Overall district public score
 
 ### Public Projects Tracker
-- Track commitments and public project states
+- Track commitments and project status
 - View completed, in-progress, stalled, broken, and not-started items
 - National progress overview
 - Clear status-based dashboard layout
 
 ### Verification Center
-- Private Nagarikta / citizenship verification submission
+- Private citizenship verification submission
 - Verification documents are never shown publicly
-- Public profile only displays verification status or badge
+- Public profiles display verification status only
 
 ### Bilingual Support
-- Global English / Nepali language switch
-- Built so one navbar language toggle updates most of the website UI
+- Global English / Nepali language switching
+- Shared language system designed to update the website UI consistently
 
 ---
 
@@ -81,9 +81,9 @@ The platform combines:
 
 Najar Nepal was created to support:
 - transparency in public leadership
-- easier public access to civic information
-- district-level awareness
-- public accountability
+- easier access to civic information
+- district-level public awareness
+- accountability and trust
 - community participation
 - a modern Nepal-focused civic-tech experience
 
@@ -103,7 +103,7 @@ Najar Nepal was created to support:
 - MongoDB
 - Mongoose
 
-### Authentication / Platform
+### Authentication and Platform
 - JWT authentication
 - Protected routes
 - Admin-aware flows
@@ -117,7 +117,7 @@ This project emphasizes:
 - modern civic-tech design
 - responsive layout
 - interactive map usability
-- clean information hierarchy
+- clear information hierarchy
 - public trust signals
 - safer discussion flow
 - bilingual clarity
@@ -153,13 +153,13 @@ Najar Nepal includes privacy-focused design decisions such as:
 
 ## Future Improvements
 
-Possible future improvements include:
+Planned future improvements include:
 - larger real-world civic datasets
 - stronger moderation tools
 - richer district and project analytics
 - more advanced leaderboard scaling
 - deeper admin insights
-- deployment hardening and production security improvements
+- stronger deployment and production security
 
 ---
 
@@ -168,5 +168,5 @@ Possible future improvements include:
 Clone the repository:
 
 ```bash
-git clone https://github.com/your-username/your-repo-name.git
+git clone https://github.com/nirajann/your-repo-name.git
 cd your-repo-name
