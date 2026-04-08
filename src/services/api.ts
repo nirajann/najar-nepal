@@ -1,5 +1,5 @@
 const API_BASE_URL =
-  import.meta.env.VITE_API_BASE_URL || "https://najar-nepal-api.onrender.com/api";
+  (import.meta.env.VITE_API_BASE_URL || "https://najar-nepal-api.onrender.com/api").replace(/\/+$/, "");
 
 type UnauthorizedHandler = (() => void) | null;
 
