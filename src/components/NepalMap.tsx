@@ -61,6 +61,10 @@ function normalizeDistrictAlias(name: string) {
     .replace("EAST RUKUM", "RUKUM EAST");
 }
 
+function getDistrictScoreKey(name: string) {
+  return normalizeDistrictAlias(name).toUpperCase();
+}
+
 function getDistrictLinkedLeaderCount(district?: DistrictInfo | null) {
   if (!district) return 0;
 
