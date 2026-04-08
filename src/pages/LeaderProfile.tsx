@@ -1,6 +1,7 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import { NepalActionButton } from "../components/NepalDesignSystem";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
 
@@ -369,6 +370,8 @@ function LeaderProfile() {
   const [mistakeSubmitting, setMistakeSubmitting] = useState(false);
 
   const [complaintHistory, setComplaintHistory] = useState<ComplaintItem[]>([]);
+  const trackedViewRef = useRef("");
+  const leaderId = leader?.leaderId || "";
 
   const ensureLogin = () => {
     if (!isAuthenticated) {
@@ -378,73 +381,102 @@ function LeaderProfile() {
     return true;
   };
 
-  const loadLeader = async () => {
-    if (!id) return;
+  const loadLeaderProfile = useCallback(async () => {
+    if (!id) {
+      setLeader(null);
+      setLeaderLoading(false);
+      return;
+    }
 
     try {
       setLeaderLoading(true);
-      const data = await api.getLeaderById(id);
-      setLeader(data?.leader || data || null);
+      setCommentsLoading(true);
+      setMessage("");
+
+      const data = await api.getLeaderPublicProfile(id, {
+        sort: commentSort,
+        limit: "50",
+      });
+
+      const nextLeader = data?.leader || null;
+      const nextStats = data?.stats || {};
+      const nextComments = Array.isArray(data?.comments) ? data.comments : [];
+
+      setLeader(nextLeader);
+      setStats({
+        likes: nextStats.likes ?? 0,
+        dislikes: nextStats.dislikes ?? 0,
+        totalReactions: nextStats.totalReactions ?? 0,
+        averageRating: nextStats.averageRating ?? nextStats.rating ?? 0,
+        likePercentage: nextStats.likePercentage ?? "0.0",
+        dislikePercentage: nextStats.dislikePercentage ?? "0.0",
+        ratingCount: nextStats.ratingCount ?? 0,
+      });
+      setCommentsList(nextComments);
     } catch (error: any) {
       setLeader(null);
+      setCommentsList([]);
+      setStats({
+        likes: 0,
+        dislikes: 0,
+        totalReactions: 0,
+        averageRating: 0,
+        likePercentage: "0.0",
+        dislikePercentage: "0.0",
+        ratingCount: 0,
+      });
       setMessage(error.message || "Leader not found");
     } finally {
       setLeaderLoading(false);
-    }
-  };
-
-  const loadLeaderData = async () => {
-    if (!leader) return;
-
-    try {
-      setCommentsLoading(true);
-
-      const statsData = await api.getLeaderStats(leader.leaderId);
-      setStats({
-        likes: statsData.likes ?? 0,
-        dislikes: statsData.dislikes ?? 0,
-        totalReactions: statsData.totalReactions ?? 0,
-        averageRating: statsData.averageRating ?? statsData.rating ?? 0,
-        likePercentage: statsData.likePercentage ?? "0.0",
-        dislikePercentage: statsData.dislikePercentage ?? "0.0",
-        ratingCount: statsData.ratingCount ?? 0,
-      });
-
-      const commentsData = await api.getComments(leader.leaderId, commentSort);
-      setCommentsList(Array.isArray(commentsData) ? commentsData : []);
-    } catch (error) {
-      console.error(error);
-    } finally {
       setCommentsLoading(false);
     }
-  };
+  }, [commentSort, id]);
 
-  const loadComplaintHistory = async () => {
-    if (!token || !leader) return;
+  const loadComplaintHistory = useCallback(async () => {
+    if (!token || !leaderId) {
+      setComplaintHistory([]);
+      return;
+    }
 
     try {
-      const data = await api.getMyComplaintsByLeader(token, leader.leaderId);
+      const data = await api.getMyComplaintsByLeader(token, leaderId);
       setComplaintHistory(Array.isArray(data) ? data : []);
     } catch (error) {
       console.error(error);
+      setComplaintHistory([]);
     }
-  };
+  }, [leaderId, token]);
 
   useEffect(() => {
-    loadLeader();
-  }, [id]);
+    void loadLeaderProfile();
+  }, [loadLeaderProfile]);
 
   useEffect(() => {
-    if (leader) {
-      loadLeaderData();
-    }
-  }, [leader, commentSort]);
+    if (!token || !leaderId) return;
+    void loadComplaintHistory();
+  }, [loadComplaintHistory, leaderId, token]);
 
   useEffect(() => {
-    if (token && leader) {
-      loadComplaintHistory();
-    }
-  }, [token, leader]);
+    if (!leader?.leaderId) return;
+    if (trackedViewRef.current === leader.leaderId) return;
+
+    trackedViewRef.current = leader.leaderId;
+
+    void api.trackEvent(
+      {
+        eventName: "leader_profile_viewed",
+        entityType: "leader",
+        entityId: leader.leaderId,
+        entityName: leader.name,
+        sourcePage: "leader_profile",
+        metadata: {
+          role: leader.role || "",
+          district: getDistrictName(leader.district),
+        },
+      },
+      token || undefined
+    );
+  }, [leader, token]);
 
   const handleLike = async (value: boolean) => {
     if (!ensureLogin() || !token || !leader) return;
@@ -455,10 +487,11 @@ function LeaderProfile() {
         token,
         leader.leaderId,
         rating || 1,
-        value ? "like" : "dislike"
+        value ? "like" : "dislike",
+        "leader_profile"
       );
       setMessage(result.message || "Reaction saved");
-      await loadLeaderData();
+      await loadLeaderProfile();
     } catch (error: any) {
       setMessage(error.message || "Failed to save reaction");
     }
@@ -469,9 +502,15 @@ function LeaderProfile() {
 
     try {
       setRating(value);
-      const result = await api.submitRating(token, leader.leaderId, value);
+      const result = await api.submitRating(
+        token,
+        leader.leaderId,
+        value,
+        undefined,
+        "leader_profile"
+      );
       setMessage(result.message || "Rating saved");
-      await loadLeaderData();
+      await loadLeaderProfile();
     } catch (error: any) {
       setMessage(error.message || "Failed to save rating");
     }
@@ -495,11 +534,17 @@ function LeaderProfile() {
 
     try {
       setCommentSubmitting(true);
-      await api.createComment(token, leader.leaderId, normalizeTextInput(comment), rating || 0);
+      await api.createComment(
+        token,
+        leader.leaderId,
+        normalizeTextInput(comment),
+        rating || 0,
+        "leader_profile"
+      );
       setMessage("Comment posted");
       setComment("");
       setCommentCooldownUntil(Date.now() + 8000);
-      await loadLeaderData();
+      await loadLeaderProfile();
     } catch (error: any) {
       setMessage(error.message || "Failed to post comment");
     } finally {
@@ -512,7 +557,7 @@ function LeaderProfile() {
 
     try {
       await api.likeComment(token, commentId);
-      await loadLeaderData();
+      await loadLeaderProfile();
     } catch (error: any) {
       setMessage(error.message || "Failed to like comment");
     }
@@ -536,7 +581,7 @@ function LeaderProfile() {
       await api.replyComment(token, commentId, normalizeTextInput(current));
 
       setReplyText((prev) => ({ ...prev, [commentId]: "" }));
-      await loadLeaderData();
+      await loadLeaderProfile();
     } catch (error: any) {
       setMessage(error.message || "Failed to reply");
     } finally {
@@ -744,26 +789,25 @@ function LeaderProfile() {
                 </p>
 
                 <div className="mt-6 flex flex-wrap gap-3">
-                  <button
-                    type="button"
+                  <NepalActionButton
                     onClick={() => document.getElementById("quick-rate-card")?.scrollIntoView({ behavior: "smooth" })}
-                    className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-800"
+                    className="px-5 py-3 text-sm"
                   >
                     Rate Leader
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:-translate-y-0.5 hover:bg-slate-50"
+                  </NepalActionButton>
+                  <NepalActionButton
+                    tone="secondary"
+                    className="px-5 py-3 text-sm"
                   >
                     Follow
-                  </button>
-                  <button
-                    type="button"
+                  </NepalActionButton>
+                  <NepalActionButton
+                    tone="secondary"
                     onClick={() => setMistakeModalOpen(true)}
-                    className="rounded-2xl border border-blue-200 bg-blue-50 px-5 py-3 text-sm font-semibold text-blue-700 transition hover:-translate-y-0.5 hover:bg-blue-100"
+                    className="px-5 py-3 text-sm"
                   >
                     Report Mistake
-                  </button>
+                  </NepalActionButton>
                 </div>
               </div>
             </div>

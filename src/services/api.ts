@@ -59,6 +59,30 @@ function authHeaders(token?: string, isJson = false) {
   };
 }
 
+function getStoredId(storage: Storage, key: string) {
+  const existing = storage.getItem(key);
+  if (existing) return existing;
+
+  const next =
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? crypto.randomUUID()
+      : `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+
+  storage.setItem(key, next);
+  return next;
+}
+
+function getAnalyticsIdentity() {
+  if (typeof window === "undefined") {
+    return { visitorKey: "", sessionId: "" };
+  }
+
+  return {
+    visitorKey: getStoredId(window.localStorage, "analytics-visitor-key"),
+    sessionId: getStoredId(window.sessionStorage, "analytics-session-id"),
+  };
+}
+
 export const api = {
   register: async (name: string, email: string, password: string) => {
     const res = await fetch(`${API_BASE_URL}/auth/register`, {
@@ -202,8 +226,43 @@ export const api = {
     return parseJsonResponse(res);
   },
 
+  getLeadersRankingSummary: async (params?: {
+    role?: string;
+    districtId?: string;
+    province?: string;
+    search?: string;
+    limit?: string;
+  }) => {
+    const res = await fetch(
+      buildUrl("/leaders/ranking-summary", {
+        role: params?.role,
+        districtId: params?.districtId,
+        province: params?.province,
+        search: params?.search,
+        limit: params?.limit,
+      })
+    );
+    return parseJsonResponse(res);
+  },
+
   getLeaderById: async (leaderId: string) => {
     const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`);
+    return parseJsonResponse(res);
+  },
+
+  getLeaderPublicProfile: async (
+    leaderId: string,
+    params?: {
+      sort?: string;
+      limit?: string;
+    }
+  ) => {
+    const res = await fetch(
+      buildUrl(`/leaders/${leaderId}/public-profile`, {
+        sort: params?.sort,
+        limit: params?.limit,
+      })
+    );
     return parseJsonResponse(res);
   },
 
@@ -318,16 +377,48 @@ export const api = {
     return parseJsonResponse(res);
   },
 
+  trackEvent: async (
+    payload: {
+      eventName: string;
+      entityType?: string;
+      entityId?: string;
+      entityName?: string;
+      sourcePage?: string;
+      metadata?: Record<string, string | number | boolean | null | undefined>;
+    },
+    token?: string
+  ) => {
+    try {
+      const { visitorKey, sessionId } = getAnalyticsIdentity();
+
+      const res = await fetch(`${API_BASE_URL}/analytics/events`, {
+        method: "POST",
+        headers: authHeaders(token, true),
+        body: JSON.stringify({
+          ...payload,
+          visitorKey,
+          sessionId,
+        }),
+      });
+
+      return parseJsonResponse(res);
+    } catch (error) {
+      console.error("Analytics tracking failed:", error);
+      return null;
+    }
+  },
+
  createComment: async (
   token: string,
   leaderId: string,
   text: string,
-  rating: number
+  rating: number,
+  sourcePage?: string
 ) => {
   const res = await fetch(`${API_BASE_URL}/comments`, {
     method: "POST",
     headers: authHeaders(token, true),
-    body: JSON.stringify({ leaderId, text, rating }),
+    body: JSON.stringify({ leaderId, text, rating, sourcePage }),
   });
 
   return parseJsonResponse(res);
@@ -375,7 +466,8 @@ replyComment: async (token: string, commentId: string, text: string) => {
     token: string,
     leaderId: string,
     value: number,
-    action?: "like" | "dislike"
+    action?: "like" | "dislike",
+    sourcePage?: string
   ) => {
     const res = await fetch(`${API_BASE_URL}/ratings`, {
       method: "POST",
@@ -384,6 +476,7 @@ replyComment: async (token: string, commentId: string, text: string) => {
         leaderId,
         value,
         reaction: action,
+        sourcePage,
       }),
     });
     return parseJsonResponse(res);
@@ -543,7 +636,7 @@ replyComment: async (token: string, commentId: string, text: string) => {
     return parseJsonResponse(res);
   },
 
-  checkProjectDuplicate: async (params: {
+  checkProjectDuplicate: async (token: string, params: {
     title: string;
     district?: string;
     province?: string;
@@ -553,7 +646,10 @@ replyComment: async (token: string, commentId: string, text: string) => {
         title: params.title,
         district: params.district,
         province: params.province,
-      })
+      }),
+      {
+        headers: authHeaders(token),
+      }
     );
     return parseJsonResponse(res);
   },

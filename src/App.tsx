@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Navigate, Routes, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Projects from "./pages/Projects";
 import Ranking from "./pages/Ranking";
@@ -44,6 +44,8 @@ function App() {
           <Route path="complaints" element={<AdminComplaints />} />
           <Route path="users" element={<AdminUsers />} />
         </Route>
+
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
   );

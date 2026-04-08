@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { useLanguage } from "../context/LanguageContext";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -30,13 +31,15 @@ function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result || ""));
-    reader.onerror = () => reject(new Error("Failed to read the selected image."));
+    reader.onerror = () => reject(new Error("read-file-error"));
     reader.readAsDataURL(file);
   });
 }
 
 function VerificationPage() {
   const { token, user, updateUser } = useAuth();
+  const { section } = useLanguage();
+  const text = section("verification");
 
   const [citizenshipNumber, setCitizenshipNumber] = useState("");
   const [district, setDistrict] = useState("");
@@ -65,14 +68,14 @@ function VerificationPage() {
           setProvince(profileUser.province || "");
         }
       } catch (loadError: unknown) {
-        setError(getErrorMessage(loadError, "Failed to load verification form"));
+        setError(getErrorMessage(loadError, text.errorLoadForm));
       } finally {
         setLoadingProfile(false);
       }
     };
 
     loadProfile();
-  }, [token]);
+  }, [text.errorLoadForm, token]);
 
   const verificationStatus = user?.verificationStatus || "unverified";
 
@@ -86,21 +89,31 @@ function VerificationPage() {
       return "uploading";
     }
 
-    if (verificationStatus === "pending") return "pending verification";
-    if (verificationStatus === "verified") return "verified";
-    if (verificationStatus === "rejected") return "rejected";
+    if (verificationStatus === "pending") return text.pending;
+    if (verificationStatus === "verified") return text.verified;
+    if (verificationStatus === "rejected") return text.rejected;
 
-    return "ready to submit";
-  }, [backUpload.state, frontUpload.state, selfieUpload.state, submitting, verificationStatus]);
+    return text.readyState;
+  }, [
+    backUpload.state,
+    frontUpload.state,
+    selfieUpload.state,
+    submitting,
+    verificationStatus,
+    text.pending,
+    text.readyState,
+    text.rejected,
+    text.verified,
+  ]);
 
   const statusTone =
-    currentFlowState === "verified"
+    currentFlowState === text.verified
       ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-      : currentFlowState === "pending verification"
+      : currentFlowState === text.pending
       ? "bg-amber-50 text-amber-700 border-amber-200"
-      : currentFlowState === "rejected"
+      : currentFlowState === text.rejected
       ? "bg-red-50 text-red-700 border-red-200"
-      : currentFlowState === "uploading"
+      : currentFlowState === text.uploading
       ? "bg-blue-50 text-blue-700 border-blue-200"
       : "bg-slate-50 text-slate-700 border-slate-200";
 
@@ -135,13 +148,13 @@ function VerificationPage() {
 
       if (!ACCEPTED_IMAGE_TYPES.includes(selectedFile.type)) {
         e.target.value = "";
-        setError("Please upload a JPG, PNG, or WEBP image only.");
+        setError(text.errorImageType);
         return;
       }
 
       if (selectedFile.size > MAX_IMAGE_SIZE_BYTES) {
         e.target.value = "";
-        setError("Each image must be 5 MB or smaller.");
+        setError(text.errorImageSize);
         return;
       }
 
@@ -162,7 +175,7 @@ function VerificationPage() {
       } catch (readError: unknown) {
         e.target.value = "";
         setFieldState(field, initialUploadField);
-        setError(getErrorMessage(readError, "Failed to process the selected image."));
+        setError(getErrorMessage(readError, text.errorProcessImage));
       }
     };
 
@@ -170,17 +183,17 @@ function VerificationPage() {
     e.preventDefault();
 
     if (!token) {
-      setError("Please log in first.");
+      setError(text.errorLoginFirst);
       return;
     }
 
     if (!citizenshipNumber.trim()) {
-      setError("Citizenship number is required.");
+      setError(text.errorCitizenRequired);
       return;
     }
 
     if (!frontUpload.dataUrl || !backUpload.dataUrl) {
-      setError("Please upload both front and back citizenship images.");
+      setError(text.errorImagesRequired);
       return;
     }
 
@@ -202,12 +215,12 @@ function VerificationPage() {
         updateUser(result.user);
       }
 
-      setMessage(result?.message || "Verification submitted successfully.");
+      setMessage(result?.message || text.successSubmitted);
       setFrontUpload(initialUploadField);
       setBackUpload(initialUploadField);
       setSelfieUpload(initialUploadField);
     } catch (submitError: unknown) {
-      setError(getErrorMessage(submitError, "Failed to submit verification"));
+      setError(getErrorMessage(submitError, text.errorSubmit));
     } finally {
       setSubmitting(false);
     }
@@ -215,31 +228,31 @@ function VerificationPage() {
 
   const statusDescription =
     currentFlowState === "uploading"
-      ? "Your files are being prepared securely before submission."
+      ? text.descUploading
       : currentFlowState === "pending verification"
-      ? "Your documents are in private review. Only authorized admins or reviewers can access them."
+      ? text.descPending
       : currentFlowState === "verified"
-      ? "Your public profile now shows only a verified badge. The documents remain private."
+      ? text.descVerified
       : currentFlowState === "rejected"
-      ? "Your submission needs another review cycle. Update the files and try again."
-      : "Upload clear document images. They stay private and are never displayed on your public profile.";
+      ? text.descRejected
+      : text.descReady;
 
   const uploadCards = [
     {
       key: "front" as const,
-      label: "Citizenship front image",
+      label: text.front,
       required: true,
       field: frontUpload,
     },
     {
       key: "back" as const,
-      label: "Citizenship back image",
+      label: text.back,
       required: true,
       field: backUpload,
     },
     {
       key: "selfie" as const,
-      label: "Selfie with document (optional)",
+      label: text.selfie,
       required: false,
       field: selfieUpload,
     },
@@ -254,29 +267,28 @@ function VerificationPage() {
           <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
             <div className="max-w-2xl">
               <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                Private identity verification
+                {text.privateIdentity}
               </div>
 
               <h1 className="mt-4 text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
-                Verify your account
+                {text.verifyAccount}
               </h1>
 
               <p className="mt-3 text-sm leading-7 text-slate-600 md:text-base">
-                Submit your nagarikta privately for review. Public visitors only see your
-                verification status, never the uploaded document images.
+                {text.intro}
               </p>
             </div>
 
             <div className={`rounded-2xl border px-4 py-3 text-sm font-semibold ${statusTone}`}>
-              State: {currentFlowState}
+              {text.state}: {currentFlowState}
             </div>
           </div>
 
           <div className="mt-6 rounded-3xl border border-slate-200 bg-slate-50 p-5">
-            <h2 className="text-lg font-bold text-slate-950">Verification flow</h2>
+            <h2 className="text-lg font-bold text-slate-950">{text.flow}</h2>
             <p className="mt-2 text-sm leading-6 text-slate-600">{statusDescription}</p>
             <div className="mt-4 grid gap-3 md:grid-cols-4">
-              {["uploading", "pending verification", "verified", "rejected"].map((state) => (
+              {[text.uploading, text.pending, text.verified, text.rejected].map((state) => (
                 <div
                   key={state}
                   className={`rounded-2xl border px-4 py-3 text-sm ${
@@ -305,21 +317,21 @@ function VerificationPage() {
 
           {loadingProfile ? (
             <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-5 text-sm text-slate-600">
-              Loading verification form...
+              {text.loadingForm}
             </div>
           ) : (
             <form onSubmit={handleSubmit} className="mt-6 space-y-5">
               <div className="grid gap-4 md:grid-cols-2">
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-800">
-                    Citizenship number
+                    {text.citizenshipNumber}
                   </label>
                   <input
                     type="text"
                     value={citizenshipNumber}
                     onChange={(e) => setCitizenshipNumber(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
-                    placeholder="Enter citizenship number"
+                    placeholder={text.enterCitizenship}
                     disabled={verificationStatus === "pending" || verificationStatus === "verified"}
                     required
                   />
@@ -327,36 +339,36 @@ function VerificationPage() {
 
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-800">
-                    Province
+                    {text.province}
                   </label>
                   <input
                     type="text"
                     value={province}
                     onChange={(e) => setProvince(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
-                    placeholder="Enter province"
+                    placeholder={text.enterProvince}
                     disabled={verificationStatus === "pending" || verificationStatus === "verified"}
                   />
                 </div>
 
                 <div>
                   <label className="mb-2 block text-sm font-semibold text-slate-800">
-                    District
+                    {text.district}
                   </label>
                   <input
                     type="text"
                     value={district}
                     onChange={(e) => setDistrict(e.target.value)}
                     className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
-                    placeholder="Enter district"
+                    placeholder={text.enterDistrict}
                     disabled={verificationStatus === "pending" || verificationStatus === "verified"}
                   />
                 </div>
 
                 <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                  <p className="font-semibold text-slate-900">Upload rules</p>
+                  <p className="font-semibold text-slate-900">{text.uploadRules}</p>
                   <p className="mt-2 leading-6">
-                    Accepted: JPG, PNG, WEBP. Maximum size: 5 MB per image.
+                    {text.uploadRulesBody}
                   </p>
                 </div>
               </div>
@@ -378,7 +390,7 @@ function VerificationPage() {
                       {item.field.state}
                     </p>
                     <p className="mt-1 break-all text-sm text-slate-700">
-                      {item.field.fileName || (item.required ? "No file selected yet." : "Optional")}
+                      {item.field.fileName || (item.required ? text.noFile : text.optional)}
                     </p>
                   </div>
                 ))}
@@ -386,16 +398,15 @@ function VerificationPage() {
 
               {user?.verificationNotes ? (
                 <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                  <h3 className="text-base font-bold text-slate-950">Reviewer note</h3>
+                  <h3 className="text-base font-bold text-slate-950">{text.reviewerNote}</h3>
                   <p className="mt-2 text-sm leading-7 text-slate-600">{user.verificationNotes}</p>
                 </div>
               ) : null}
 
               <div className="rounded-3xl border border-slate-200 bg-slate-50 p-5">
-                <h3 className="text-base font-bold text-slate-950">Privacy note</h3>
+                <h3 className="text-base font-bold text-slate-950">{text.privacyNote}</h3>
                 <p className="mt-2 text-sm leading-7 text-slate-600">
-                  Uploaded documents are stored for verification review only. Your public profile
-                  shows status and badges, not the images or citizenship number.
+                  {text.privacyNoteBody}
                 </p>
               </div>
 
@@ -404,7 +415,7 @@ function VerificationPage() {
                   to="/profile"
                   className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-center text-sm font-semibold text-slate-700 transition hover:bg-slate-50"
                 >
-                  Back to profile
+                  {text.backToProfile}
                 </Link>
 
                 <button
@@ -412,7 +423,7 @@ function VerificationPage() {
                   disabled={!canSubmit}
                   className="rounded-2xl bg-slate-950 px-6 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-60"
                 >
-                  {submitting ? "Submitting..." : verificationStatus === "rejected" ? "Resubmit for review" : "Submit for review"}
+                  {submitting ? text.submitting : verificationStatus === "rejected" ? text.resubmit : text.submit}
                 </button>
               </div>
             </form>
@@ -424,3 +435,5 @@ function VerificationPage() {
 }
 
 export default VerificationPage;
+
+

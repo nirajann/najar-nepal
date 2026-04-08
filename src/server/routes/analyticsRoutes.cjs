@@ -7,6 +7,7 @@ const Leader = require("../models/Leader.cjs");
 const Comment = require("../models/Comment.cjs");
 const Rating = require("../models/Rating.cjs");
 const Complaint = require("../models/Complaint.cjs");
+const { AnalyticsEvent } = require("../models/AnalyticsEvent.cjs");
 
 const router = express.Router();
 
@@ -24,11 +25,97 @@ router.get(
   adminMiddleware,
   async (req, res) => {
     try {
-      const [leaders, comments, ratings, complaints] = await Promise.all([
+      const [leaders, comments, ratings, complaints, topViewedLeadersRaw, activeDistricts, eventTotals] = await Promise.all([
         Leader.find({}).lean(),
         Comment.find({}).lean(),
         Rating.find({}).lean(),
         Complaint.find({}).lean(),
+        AnalyticsEvent.aggregate([
+          {
+            $match: {
+              eventName: "leader_profile_viewed",
+              entityId: { $ne: "" },
+            },
+          },
+          {
+            $group: {
+              _id: "$entityId",
+              entityName: { $first: "$entityName" },
+              totalViews: { $sum: 1 },
+              lastViewedAt: { $max: "$occurredAt" },
+              uniqueDaily: {
+                $addToSet: {
+                  visitorKey: "$visitorKey",
+                  dayBucket: "$dayBucket",
+                },
+              },
+              uniqueWeekly: {
+                $addToSet: {
+                  visitorKey: "$visitorKey",
+                  weekBucket: "$weekBucket",
+                },
+              },
+              sourcePages: { $addToSet: "$sourcePage" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              leaderId: "$_id",
+              name: "$entityName",
+              totalViews: 1,
+              lastViewedAt: 1,
+              uniqueDailyViews: { $size: "$uniqueDaily" },
+              uniqueWeeklyViews: { $size: "$uniqueWeekly" },
+              sourcePages: 1,
+            },
+          },
+          { $sort: { totalViews: -1, uniqueWeeklyViews: -1 } },
+          { $limit: 10 },
+        ]),
+        AnalyticsEvent.aggregate([
+          {
+            $match: {
+              eventName: "district_selected",
+              entityId: { $ne: "" },
+            },
+          },
+          {
+            $group: {
+              _id: "$entityId",
+              districtName: { $first: "$entityName" },
+              totalSelections: { $sum: 1 },
+              uniqueDaily: {
+                $addToSet: {
+                  visitorKey: "$visitorKey",
+                  dayBucket: "$dayBucket",
+                },
+              },
+              lastSelectedAt: { $max: "$occurredAt" },
+            },
+          },
+          {
+            $project: {
+              _id: 0,
+              districtId: "$_id",
+              districtName: 1,
+              totalSelections: 1,
+              uniqueDailySelections: { $size: "$uniqueDaily" },
+              lastSelectedAt: 1,
+            },
+          },
+          { $sort: { totalSelections: -1 } },
+          { $limit: 10 },
+        ]),
+        AnalyticsEvent.aggregate([
+          {
+            $group: {
+              _id: "$eventName",
+              total: { $sum: 1 },
+            },
+          },
+          { $sort: { total: -1 } },
+        ]),
       ]);
 
       const leaderMap = new Map();
@@ -161,6 +248,13 @@ router.get(
         },
       ];
 
+      const trackedEvents = {
+        totalEvents: eventTotals.reduce((sum, item) => sum + item.total, 0),
+        totalsByEvent: eventTotals,
+        topViewedLeaders: topViewedLeadersRaw,
+        activeDistricts,
+      };
+
       res.json({
         totals: {
           leaders: leaders.length,
@@ -177,6 +271,7 @@ router.get(
         lowestRated,
         topComplaintDistricts,
         recentActivity,
+        trackedEvents,
       });
     } catch (error) {
       res.status(500).json({

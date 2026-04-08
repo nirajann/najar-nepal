@@ -8,6 +8,15 @@ type Props = {
   district: DistrictInfo | null;
 };
 
+type LeaderCardRef = {
+  leaderId?: string;
+  name?: string;
+  role?: string;
+  party?: string;
+  photo?: string;
+  localLevel?: string;
+} | null | undefined;
+
 function LeaderMiniCard({
   label,
   leader,
@@ -16,14 +25,7 @@ function LeaderMiniCard({
   emptyText,
 }: {
   label: string;
-  leader?: {
-    leaderId?: string;
-    name?: string;
-    role?: string;
-    party?: string;
-    photo?: string;
-    localLevel?: string;
-  } | null;
+  leader?: LeaderCardRef;
   onClick?: () => void;
   viewText: string;
   emptyText: string;
@@ -31,7 +33,7 @@ function LeaderMiniCard({
   const clickable = Boolean(leader?.leaderId && onClick);
 
   return (
-    <div className="rounded-3xl border border-slate-200 bg-slate-50 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
+    <div className="rounded-[24px] border border-slate-200 bg-slate-50/80 p-3 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md">
       <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
         {label}
       </p>
@@ -82,7 +84,7 @@ function LeaderMiniCard({
           ) : null}
         </button>
       ) : (
-        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm text-slate-400">
+        <div className="rounded-2xl border border-dashed border-slate-200 bg-white px-3 py-4 text-sm leading-6 text-slate-500">
           {emptyText}
         </div>
       )}
@@ -90,66 +92,42 @@ function LeaderMiniCard({
   );
 }
 
+function SummaryStat({
+  label,
+  value,
+}: {
+  label: string;
+  value: string | number;
+}) {
+  return (
+    <div className="rounded-2xl bg-white/10 px-3 py-3">
+      <p className="text-[11px] uppercase tracking-wide text-slate-200">{label}</p>
+      <p className="mt-1 text-lg font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function SnapshotRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-start justify-between gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+        {label}
+      </p>
+      <p className="text-right text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
 function SelectedDistrictPanel({ district }: Props) {
   const navigate = useNavigate();
-  const { language } = useLanguage();
-
-  const text =
-    language === "ne"
-      ? {
-          explorer: "जिल्ला अन्वेषण",
-          selectDistrict: "जिल्ला चयन गर्नुहोस्",
-          emptyText:
-            "जिल्ला चयन गरेपछि यहाँ स्थानीय प्रतिनिधि, सार्वजनिक स्कोर र जिल्ला सारांश देखिन्छ।",
-          emptyStep1: "नक्साबाट जिल्ला क्लिक गर्नुहोस्",
-          emptyStep2: "स्थानीय प्रतिनिधि हेर्नुहोस्",
-          emptyStep3: "सार्वजनिक स्कोर बुझ्नुहोस्",
-          emptyStep4: "तल विस्तृत प्रतिक्रिया दिनुहोस्",
-          nationalContext: "राष्ट्रिय सन्दर्भ",
-          nationalHelper:
-            "यो भाग जिल्लाको विकल्प होइन। यो केवल देशव्यापी सानो सन्दर्भ झलक हो।",
-          pmLabel: "प्रधानमन्त्री",
-          nationalSnapshot: "राष्ट्रिय झलक",
-          totalDistricts: "जम्मा जिल्ला",
-          totalProfiles: "नेता प्रोफाइल",
-          selectedDistrict: "चयन गरिएको जिल्ला",
-          localLevels: "स्थानीय तह",
-          publicScore: "सार्वजनिक स्कोर",
-          districtSummary: "जिल्ला सारांश",
-          mp: "सांसद",
-          mayor: "मेयर / अध्यक्ष",
-          minister: "मन्त्री",
-          notLinked: "अझै जडान गरिएको छैन",
-          view: "हेर्नुहोस्",
-          noPrimeMinister: "अहिलेसम्म राष्ट्रिय प्रोफाइल लोड भएको छैन",
-        }
-      : {
-          explorer: "District explorer",
-          selectDistrict: "Select a district",
-          emptyText:
-            "Choose any district on the map to see its local leaders, public score, and quick summary.",
-          emptyStep1: "Pick a district from the map",
-          emptyStep2: "Review the district summary here",
-          emptyStep3: "Use the feedback section below",
-          emptyStep4: "Explore linked leaders if available",
-          nationalContext: "National context",
-          nationalHelper:
-            "This does not replace district data. It is only a small national snapshot.",
-          pmLabel: "Prime Minister",
-          nationalSnapshot: "National snapshot",
-          totalDistricts: "Total districts",
-          totalProfiles: "Leader profiles",
-          selectedDistrict: "Selected district",
-          localLevels: "Local levels",
-          publicScore: "Public score",
-          districtSummary: "District summary",
-          mp: "Member of Parliament",
-          mayor: "Mayor / Chairperson",
-          minister: "Minister",
-          notLinked: "Not linked yet",
-          view: "View",
-          noPrimeMinister: "No national profile loaded yet",
-        };
+  const { section } = useLanguage();
+  const text = section("selectedDistrictPanel");
 
   const [pmLeader, setPmLeader] = useState<any>(null);
   const [leaderCount, setLeaderCount] = useState<number>(0);
@@ -173,7 +151,7 @@ function SelectedDistrictPanel({ district }: Props) {
       }
     };
 
-    loadNationalContext();
+    void loadNationalContext();
   }, []);
 
   return (
@@ -285,8 +263,8 @@ function SelectedDistrictPanel({ district }: Props) {
           </div>
         </div>
       ) : (
-        <div className="space-y-3.5">
-          <div className="rounded-3xl bg-gradient-to-br from-slate-950 via-slate-900 to-blue-900 p-5 text-white shadow-sm">
+        <div className="space-y-4">
+          <div className="rounded-[28px] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-900 p-5 text-white shadow-sm">
             <p className="text-[11px] uppercase tracking-[0.16em] text-blue-100">
               {text.selectedDistrict}
             </p>
@@ -294,72 +272,104 @@ function SelectedDistrictPanel({ district }: Props) {
             <p className="mt-1 text-sm text-slate-200">{district.province}</p>
 
             <div className="mt-4 grid grid-cols-2 gap-3">
-              <div className="rounded-2xl bg-white/10 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-wide text-slate-200">
-                  {text.localLevels}
-                </p>
-                <p className="mt-1 text-lg font-bold text-white">
-                  {district.localLevels.length}
-                </p>
-              </div>
+              <SummaryStat label={text.localLevels} value={district.localLevels.length} />
+              <SummaryStat
+                label={text.publicScore}
+                value={
+                  typeof district.satisfactionScore === "number"
+                    ? district.satisfactionScore
+                    : text.noScore
+                }
+              />
+            </div>
 
-              <div className="rounded-2xl bg-white/10 px-3 py-3">
-                <p className="text-[11px] uppercase tracking-wide text-slate-200">
-                  {text.publicScore}
-                </p>
-                <p className="mt-1 text-lg font-bold text-white">
-                  {district.satisfactionScore ?? 0}
-                </p>
-              </div>
+            <p className="mt-4 text-sm leading-6 text-slate-200">{text.summaryText}</p>
+          </div>
+
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              {text.districtSnapshot}
+            </p>
+
+            <div className="mt-3 space-y-3">
+              <SnapshotRow label={text.selectedDistrict} value={district.name} />
+              <SnapshotRow label={text.provinceLabel} value={district.province || "-"} />
+              <SnapshotRow
+                label={text.localLevels}
+                value={
+                  district.localLevels.length > 0
+                    ? `${district.localLevels.length}`
+                    : text.noLocalLevels
+                }
+              />
+              <SnapshotRow
+                label={text.publicScore}
+                value={
+                  typeof district.satisfactionScore === "number"
+                    ? `${district.satisfactionScore}`
+                    : text.noScore
+                }
+              />
             </div>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-              {text.districtSummary}
-            </p>
-            <p className="mt-2 text-sm leading-6 text-slate-600">
-              {language === "ne"
-                ? "जिल्लासँग सम्बन्धित प्रतिनिधि र सार्वजनिक स्कोर यहाँ देखिन्छ। विस्तृत जिल्ला प्रतिक्रिया तल दिइनेछ।"
-                : "This panel shows linked representatives and the public score for the selected district. Detailed district feedback is shown below the map section."}
-            </p>
+          <div className="rounded-[24px] border border-slate-200 bg-white p-4 shadow-sm">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                {text.representatives}
+              </p>
+              <p className="mt-1 text-sm leading-6 text-slate-600">{text.linkedProfiles}</p>
+            </div>
+
+            <div className="mt-4 space-y-3">
+              <LeaderMiniCard
+                label={text.mp}
+                leader={district.mpLeader}
+                viewText={text.view}
+                emptyText={text.notLinked}
+                onClick={
+                  district.mpLeader?.leaderId
+                    ? () => navigate(`/leader/${district.mpLeader?.leaderId}`)
+                    : undefined
+                }
+              />
+
+              <LeaderMiniCard
+                label={text.mayor}
+                leader={district.mayorLeader}
+                viewText={text.view}
+                emptyText={text.notLinked}
+                onClick={
+                  district.mayorLeader?.leaderId
+                    ? () => navigate(`/leader/${district.mayorLeader?.leaderId}`)
+                    : undefined
+                }
+              />
+
+              <LeaderMiniCard
+                label={text.minister}
+                leader={district.ministerLeader}
+                viewText={text.view}
+                emptyText={text.notLinked}
+                onClick={
+                  district.ministerLeader?.leaderId
+                    ? () => navigate(`/leader/${district.ministerLeader?.leaderId}`)
+                    : undefined
+                }
+              />
+            </div>
           </div>
 
-          <LeaderMiniCard
-            label={text.mp}
-            leader={district.mpLeader}
-            viewText={text.view}
-            emptyText={text.notLinked}
-            onClick={
-              district.mpLeader?.leaderId
-                ? () => navigate(`/leader/${district.mpLeader?.leaderId}`)
-                : undefined
-            }
-          />
-
-          <LeaderMiniCard
-            label={text.mayor}
-            leader={district.mayorLeader}
-            viewText={text.view}
-            emptyText={text.notLinked}
-            onClick={
-              district.mayorLeader?.leaderId
-                ? () => navigate(`/leader/${district.mayorLeader?.leaderId}`)
-                : undefined
-            }
-          />
-
-          <LeaderMiniCard
-            label={text.minister}
-            leader={district.ministerLeader}
-            viewText={text.view}
-            emptyText={text.notLinked}
-            onClick={
-              district.ministerLeader?.leaderId
-                ? () => navigate(`/leader/${district.ministerLeader?.leaderId}`)
-                : undefined
-            }
-          />
+          <div className="rounded-[24px] border border-slate-200 bg-slate-50 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+              {text.publicSignals}
+            </p>
+            <p className="mt-2 text-sm leading-6 text-slate-600">
+              {typeof district.satisfactionScore === "number"
+                ? `${text.districtSummary}: ${district.satisfactionScore}.`
+                : text.noScore}
+            </p>
+          </div>
         </div>
       )}
     </section>

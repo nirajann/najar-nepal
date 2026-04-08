@@ -11,94 +11,9 @@ function getErrorMessage(error: unknown, fallback: string) {
 
 function Profile() {
   const { user, token, updateUser } = useAuth();
-  const { language } = useLanguage();
+  const { section } = useLanguage();
 
-  const text =
-    language === "ne"
-      ? {
-          profileTitle: "प्रयोगकर्ता प्रोफाइल",
-          districtUnset: "जिल्ला सेट गरिएको छैन",
-          notAdded: "थप गरिएको छैन",
-          birthplace: "जन्मस्थान",
-          editProfile: "प्रोफाइल सम्पादन",
-          fullName: "पूरा नाम",
-          username: "प्रयोगकर्ता नाम",
-          email: "इमेल",
-          phone: "फोन",
-          district: "जिल्ला",
-          province: "प्रदेश",
-          profilePhoto: "प्रोफाइल फोटो URL",
-          bio: "परिचय लेख्नुहोस्...",
-          saveProfile: "प्रोफाइल सुरक्षित गर्नुहोस्",
-          saving: "सुरक्षित हुँदैछ...",
-          verificationCenter: "प्रमाणीकरण केन्द्र",
-          publicBadgeActive: "सार्वजनिक ब्याज सक्रिय",
-          whatIsPublic: "सार्वजनिक रूपमा के देखिन्छ",
-          whatIsPublicBody:
-            "तपाईंको प्रमाणीकरण स्थिति र ब्याज मात्र। नागरिकता नम्बर र अपलोड गरिएका कागजातहरू निजी रहन्छन् र अधिकृत समीक्षकले मात्र हेर्न सक्छन्।",
-          updateVerification: "प्रमाणीकरण कागजात अपडेट गर्नुहोस्",
-          viewVerification: "प्रमाणीकरण स्थिति हेर्नुहोस्",
-          manageVerification: "प्रमाणीकरण व्यवस्थापन",
-          startVerification: "प्रमाणीकरण सुरु गर्नुहोस्",
-          citizenBadges: "नागरिक ब्याजहरू",
-          noBadges: "अहिलेसम्म कुनै ब्याज छैन।",
-          privacyNote: "गोपनीयता सूचना",
-          privacyBody:
-            "प्रमाणीकरण कागजातहरू छुट्टै निजी समीक्षा प्रक्रियामा राखिन्छन्। यस पृष्ठमा प्रोफाइल जानकारी र प्रमाणीकरण स्थिति मात्र देखिन्छ, अपलोड गरिएको नागरिकता छवि होइन।",
-          verificationSummaryVerified:
-            "तपाईंको पहिचान प्रमाणित भइसकेको छ। सार्वजनिक प्रयोगकर्ताले केवल ब्याज र स्थिति मात्र देख्छन्।",
-          verificationSummaryPending:
-            "तपाईंका कागजातहरू सुरक्षित रूपमा पठाइएको छ र समीक्षकको अनुमोदनको प्रतीक्षामा छन्।",
-          verificationSummaryRejected:
-            "तपाईंको पछिल्लो प्रमाणीकरण अस्वीकृत भयो। टिप्पणी हेरेर अद्यावधिक कागजात पुनः पठाउन सक्नुहुन्छ।",
-          verificationSummaryDefault:
-            "तपाईंले आफ्नो नागरिकता निजी रूपमा समीक्षाका लागि पठाउन सक्नुहुन्छ। कागजातहरू सार्वजनिक प्रोफाइलमा कहिल्यै देखाइँदैनन्।",
-          updatedSuccess: "प्रोफाइल सफलतापूर्वक अद्यावधिक भयो",
-          updatedFail: "प्रोफाइल अद्यावधिक गर्न सकिएन",
-          wrong: "केही गल्ती भयो",
-        }
-      : {
-          profileTitle: "User Profile",
-          districtUnset: "District not set",
-          notAdded: "Not added",
-          birthplace: "Birthplace",
-          editProfile: "Edit Profile",
-          fullName: "Full name",
-          username: "Username",
-          email: "Email",
-          phone: "Phone",
-          district: "District",
-          province: "Province",
-          profilePhoto: "Profile photo URL",
-          bio: "Write your bio...",
-          saveProfile: "Save Profile",
-          saving: "Saving...",
-          verificationCenter: "Verification Center",
-          publicBadgeActive: "Public badge active",
-          whatIsPublic: "What is public",
-          whatIsPublicBody:
-            "Only your verification status and badge. Your citizenship number and uploaded images remain private and are only available to authorized reviewers.",
-          updateVerification: "Update Verification Documents",
-          viewVerification: "View Verification Status",
-          manageVerification: "Manage Verification",
-          startVerification: "Start Verification",
-          citizenBadges: "Citizen Badges",
-          noBadges: "No badges yet.",
-          privacyNote: "Privacy Note",
-          privacyBody:
-            "Verification documents are handled in a separate private review flow. This page only shows profile information and verification status, never the uploaded nagarikta images themselves.",
-          verificationSummaryVerified:
-            "Your identity has been verified. Public visitors only see your badge and status.",
-          verificationSummaryPending:
-            "Your documents are safely submitted and waiting for reviewer approval.",
-          verificationSummaryRejected:
-            "Your last verification submission was rejected. You can review the notes and submit updated documents.",
-          verificationSummaryDefault:
-            "You can submit your nagarikta privately for review. Documents are never shown on your public profile.",
-          updatedSuccess: "Profile updated successfully",
-          updatedFail: "Failed to update profile",
-          wrong: "Something went wrong",
-        };
+  const text = section("profile");
 
   const [form, setForm] = useState({
     name: "",
@@ -197,7 +112,7 @@ function Profile() {
 
                 <div>
                   <div className="flex flex-wrap gap-2 mb-3">
-                    <VerificationBadge status={verificationStatus} language={language} />
+                    <VerificationBadge status={verificationStatus} labels={{ unverified: text.badgeUnverified, pending: text.badgePending, verified: text.badgeVerified, rejected: text.badgeRejected }} />
                     {badges.map((badge) => (
                       <span
                         key={badge}
@@ -326,7 +241,7 @@ function Profile() {
               <h2 className="text-2xl font-bold text-slate-900 mb-4">{text.verificationCenter}</h2>
 
               <div className="flex items-center gap-3">
-                <VerificationBadge status={verificationStatus} language={language} />
+                <VerificationBadge status={verificationStatus} labels={{ unverified: text.badgeUnverified, pending: text.badgePending, verified: text.badgeVerified, rejected: text.badgeRejected }} />
                 {verificationStatus === "verified" ? (
                   <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
                     {text.publicBadgeActive}
@@ -395,23 +310,16 @@ function Profile() {
 
 function VerificationBadge({
   status,
-  language,
+  labels,
 }: {
   status: "unverified" | "pending" | "verified" | "rejected";
-  language: "en" | "ne";
+  labels: Record<string, string>;
 }) {
   const styles = {
     unverified: "bg-slate-200 text-slate-700",
     pending: "bg-yellow-100 text-yellow-700",
     verified: "bg-green-100 text-green-700",
     rejected: "bg-red-100 text-red-700",
-  };
-
-  const labels = {
-    unverified: language === "ne" ? "अप्रमाणित" : "Unverified",
-    pending: language === "ne" ? "समीक्षामा" : "Pending Review",
-    verified: language === "ne" ? "प्रमाणित" : "Verified",
-    rejected: language === "ne" ? "अस्वीकृत" : "Rejected",
   };
 
   return (
@@ -422,3 +330,7 @@ function VerificationBadge({
 }
 
 export default Profile;
+
+
+
+

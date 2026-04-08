@@ -11,6 +11,37 @@ const {
 
 const router = express.Router();
 
+function escapeRegex(value = "") {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function normalizeManualStatus(value = "") {
+  const normalized = String(value).trim().toUpperCase().replace(/\s+/g, "_");
+  if (normalized === "IN_PROGRESS") return "IN_PROGRESS";
+  if (normalized === "COMPLETED") return "COMPLETED";
+  if (normalized === "BROKEN") return "BROKEN";
+  if (normalized === "STALLED") return "STALLED";
+  return "NOT_STARTED";
+}
+
+function mapProjectResponse(project) {
+  const plain = project.toObject ? project.toObject() : project;
+  const finalStatus = plain.finalStatus || computeFinalStatus(plain);
+  const dueDate = plain.dueDate || null;
+
+  return {
+    ...plain,
+    id: plain.projectId,
+    titleEn: plain.titleEn || plain.title || "",
+    titleNp: plain.titleNp || "",
+    source: plain.source || plain.sourceName || "",
+    updatedAt: plain.lastUpdated || (plain.updatedAtManual ? new Date(plain.updatedAtManual).toISOString().slice(0, 10) : ""),
+    progressSummary: plain.progressSummary || plain.summary || plain.description || "",
+    status: finalStatus,
+    daysText: getDaysText(dueDate),
+  };
+}
+
 function getDomainFromUrl(url) {
   try {
     return new URL(url).hostname.replace(/^www\./, "");
@@ -35,18 +66,39 @@ async function refreshProjectStatus(projectId) {
   return project;
 }
 
-router.get("/", async (_req, res) => {
+router.get("/", async (req, res) => {
   try {
-    const projects = await Project.find().sort({ projectId: 1 });
+    const { status, district, province, search, limit = "200" } = req.query;
+    const filter = {};
+    const parsedLimit = Math.min(Math.max(Number(limit) || 50, 1), 200);
 
-    const enriched = projects.map((project) => {
-      const plain = project.toObject();
-      return {
-        ...plain,
-        status: plain.finalStatus,
-        daysText: getDaysText(plain.dueDate),
-      };
-    });
+    if (status) {
+      filter.finalStatus = normalizeManualStatus(status);
+    }
+
+    if (district) {
+      filter.district = { $regex: escapeRegex(district), $options: "i" };
+    }
+
+    if (province) {
+      filter.province = { $regex: escapeRegex(province), $options: "i" };
+    }
+
+    if (search) {
+      filter.$or = [
+        { projectId: { $regex: escapeRegex(search), $options: "i" } },
+        { title: { $regex: escapeRegex(search), $options: "i" } },
+        { titleEn: { $regex: escapeRegex(search), $options: "i" } },
+        { titleNp: { $regex: escapeRegex(search), $options: "i" } },
+        { category: { $regex: escapeRegex(search), $options: "i" } },
+      ];
+    }
+
+    const projects = await Project.find(filter)
+      .sort({ updatedAtManual: -1, updatedAt: -1, projectId: 1 })
+      .limit(parsedLimit);
+
+    const enriched = projects.map(mapProjectResponse);
 
     res.json(enriched);
   } catch (error) {
@@ -73,11 +125,7 @@ router.get("/:projectId", async (req, res) => {
     });
 
     res.json({
-      project: {
-        ...project.toObject(),
-        status: project.finalStatus,
-        daysText: getDaysText(project.dueDate),
-      },
+      project: mapProjectResponse(project),
       sources,
     });
   } catch (error) {
@@ -90,9 +138,14 @@ router.get("/:projectId", async (req, res) => {
 
 router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
   try {
+    if (!req.body?.title?.trim()) {
+      return res.status(400).json({ message: "Project title is required" });
+    }
+
     const project = await Project.create({
       ...req.body,
       updatedAtManual: req.body.updatedAtManual || new Date(),
+      manualStatus: normalizeManualStatus(req.body.manualStatus || req.body.status),
     });
 
     project.finalStatus = computeFinalStatus(project);
@@ -117,6 +170,10 @@ router.put("/:projectId", authMiddleware, adminMiddleware, async (req, res) => {
       {
         ...req.body,
         updatedAtManual: new Date(),
+        manualStatus:
+          req.body.manualStatus || req.body.status
+            ? normalizeManualStatus(req.body.manualStatus || req.body.status)
+            : undefined,
       },
       { new: true }
     );
@@ -143,6 +200,16 @@ router.put("/:projectId", authMiddleware, adminMiddleware, async (req, res) => {
 router.post("/:projectId/source", authMiddleware, async (req, res) => {
   try {
     const { url, title, publishedAt, summary, note } = req.body;
+
+    if (!url || typeof url !== "string") {
+      return res.status(400).json({ message: "Source URL is required" });
+    }
+
+    try {
+      new URL(url);
+    } catch {
+      return res.status(400).json({ message: "Source URL is invalid" });
+    }
 
     const project = await Project.findOne({ projectId: req.params.projectId });
     if (!project) {

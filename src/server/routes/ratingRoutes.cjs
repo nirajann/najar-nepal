@@ -2,12 +2,30 @@ const express = require("express");
 const Rating = require("../models/Rating.cjs");
 const Leader = require("../models/Leader.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
+const { recordAnalyticsEvent } = require("../utils/analyticsEventLogger.cjs");
 
 const router = express.Router();
 
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const { leaderId, value, reaction, comment } = req.body;
+    const numericValue = Number(value || 0);
+
+    if (!leaderId || typeof leaderId !== "string") {
+      return res.status(400).json({ message: "Leader ID is required" });
+    }
+
+    if (Number.isNaN(numericValue) || numericValue < 0 || numericValue > 5) {
+      return res.status(400).json({ message: "Rating value must be between 0 and 5" });
+    }
+
+    if (reaction && reaction !== "like" && reaction !== "dislike") {
+      return res.status(400).json({ message: "Invalid reaction value" });
+    }
+
+    if (comment && typeof comment === "string" && comment.length > 300) {
+      return res.status(400).json({ message: "Rating comment must be under 300 characters" });
+    }
 
     const leader = await Leader.findOne({ leaderId });
     if (!leader) {
@@ -19,12 +37,25 @@ router.post("/", authMiddleware, async (req, res) => {
       {
         userId: req.user.id,
         leaderId,
-        value,
+        value: numericValue,
         reaction,
         comment,
       },
       { new: true, upsert: true, setDefaultsOnInsert: true }
     );
+
+    await recordAnalyticsEvent({
+      eventName: "leader_rating_submitted",
+      userId: req.user.id,
+      entityType: "leader",
+      entityId: leaderId,
+      entityName: leader.name,
+      sourcePage: typeof req.body?.sourcePage === "string" ? req.body.sourcePage : "leader_profile",
+      metadata: {
+        ratingValue: Number(value || 0),
+        reaction: typeof reaction === "string" ? reaction : "",
+      },
+    });
 
     res.status(201).json({
       message: "Rating saved successfully",

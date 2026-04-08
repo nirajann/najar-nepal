@@ -130,6 +130,12 @@ function NepalMap({
             "Choose a district from the map, then review the summary on the right.",
           guideShort:
             "Search and province filters update the map instantly.",
+          filtersTitle: "Search and filter",
+          filtersText: "Start with a district search or narrow the map by province.",
+          resultCount: "Visible districts",
+          quickTip: "Tip",
+          quickTipText: "Click any district to open its summary and linked public data.",
+          provinceLabel: "Province filter",
           legendTitle: "Satisfaction signal",
           legendHigh: "High",
           legendMid: "Medium",
@@ -446,7 +452,7 @@ function NepalMap({
       className="pointer-events-none relative z-0 isolate overflow-hidden rounded-[28px] border border-slate-200 bg-white p-4 shadow-sm [contain:layout_paint] md:p-5"
       ref={wrapperRef}
     >
-      <div className="pointer-events-auto mb-5 space-y-5">
+      <div className="pointer-events-auto mb-5 space-y-4">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-2xl">
             <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
@@ -476,75 +482,112 @@ function NepalMap({
           </button>
         </div>
 
-        <div className="grid gap-3 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-start">
+        <div className="grid gap-3">
           <div className="rounded-[26px] border border-slate-200 bg-slate-50/70 p-3 md:p-4">
-            <div className="flex flex-wrap items-center gap-2 text-xs">
-              <span className="rounded-full bg-slate-100 px-3 py-1.5 font-medium text-slate-600">
-                {text.districts}: {totalDistricts}
-              </span>
+            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] xl:items-start">
+              <div>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="rounded-full bg-white px-3 py-1.5 font-medium text-slate-600 shadow-sm">
+                    {text.resultCount || "Visible districts"}: {totalDistricts}
+                  </span>
 
-              {selectedDistrict && (
-                <span className="rounded-full bg-blue-100 px-3 py-1.5 font-medium text-blue-700">
-                  {text.selected}: {selectedDistrict.name}
-                </span>
-              )}
+                  {selectedDistrict && (
+                    <span className="rounded-full bg-blue-100 px-3 py-1.5 font-medium text-blue-700">
+                      {text.selected}: {selectedDistrict.name}
+                    </span>
+                  )}
 
-              {districtLoading && (
-                <span className="rounded-full bg-amber-100 px-3 py-1.5 font-medium text-amber-700">
-                  {text.loading}
-                </span>
-              )}
-            </div>
+                  {districtLoading && (
+                    <span className="rounded-full bg-amber-100 px-3 py-1.5 font-medium text-amber-700">
+                      {text.loading}
+                    </span>
+                  )}
+                </div>
 
-            <div className="mt-3 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-start">
-              <input
-                type="text"
-                placeholder={text.searchPlaceholder}
-                value={searchText}
-                onChange={(e) => setSearchText(e.target.value)}
-                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-base outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
-              />
+                <div className="mt-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                    {text.filtersTitle || "Search and filter"}
+                  </p>
+                  <p className="mt-1 text-sm text-slate-600">
+                    {text.filtersText || "Start with a district search or narrow the map by province."}
+                  </p>
+                </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white px-3 py-3 lg:max-w-[320px]">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  {text.guideTitle}
-                </p>
-                <p className="mt-2 text-sm leading-6 text-slate-600">{text.guideText}</p>
-                <p className="mt-1 text-xs leading-5 text-slate-500">{text.guideShort}</p>
+                <div className="mt-3">
+                  <input
+                    type="text"
+                    placeholder={text.searchPlaceholder}
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3.5 text-base outline-none transition focus:border-slate-300 focus:ring-2 focus:ring-slate-900/5"
+                  />
+                </div>
+              </div>
+
+              <div className="rounded-2xl border border-slate-200 bg-white px-4 py-4">
+                <div className="flex items-start gap-3">
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-blue-50 text-sm font-bold text-blue-700">
+                    i
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                      {text.guideTitle}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-slate-600">{text.guideText}</p>
+                    <p className="mt-1 text-xs leading-5 text-slate-500">{text.guideShort}</p>
+                  </div>
+                </div>
               </div>
             </div>
 
-            <div className="mt-3 flex flex-wrap gap-2">
+            <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-3 py-3">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
+                  {text.provinceLabel || "Province filter"}
+                </p>
+
+                <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => setSelectedProvince("ALL")}
                 className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
                   selectedProvince === "ALL"
                     ? "bg-slate-950 text-white"
-                    : "bg-white text-slate-700 hover:bg-slate-100"
+                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
                 }`}
               >
                 {text.allProvinces}
               </button>
 
-              {provinceButtons.map((province, index) => (
-                <button
-                  key={province.id}
-                  onClick={() => setSelectedProvince(province.rawName)}
-                  className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
-                    selectedProvince === province.rawName
-                      ? "bg-slate-950 text-white"
-                      : index > 5 && !isMobile
-                      ? "hidden bg-white text-slate-700 hover:bg-slate-100 sm:inline-flex"
-                      : "bg-white text-slate-700 hover:bg-slate-100"
-                  }`}
-                >
-                  {province.name}
-                </button>
-              ))}
+              <button
+                className="hidden rounded-full bg-blue-50 px-3 py-2 text-xs font-medium text-blue-700 xl:inline-flex"
+                type="button"
+              >
+                {(text.quickTip || "Tip")}: {text.quickTipText || "Click any district to open its summary and linked public data."}
+              </button>
+                </div>
+              </div>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {provinceButtons.map((province, index) => (
+                  <button
+                    key={province.id}
+                    onClick={() => setSelectedProvince(province.rawName)}
+                    className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                      selectedProvince === province.rawName
+                        ? "bg-slate-950 text-white"
+                        : index > 5 && !isMobile
+                        ? "hidden bg-slate-100 text-slate-700 hover:bg-slate-200 sm:inline-flex"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {province.name}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs xl:justify-end">
+          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-xs">
             <p className="mr-1 font-semibold uppercase tracking-wide text-slate-500">
               {text.legendTitle}
             </p>

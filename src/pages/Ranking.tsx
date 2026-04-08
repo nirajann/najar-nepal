@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
+import { NepalActionButton, NepalActionLink } from "../components/NepalDesignSystem";
 import { api } from "../services/api";
+import { useLanguage } from "../context/LanguageContext";
 
 type LeaderDistrict =
   | string
@@ -31,9 +32,8 @@ type Leader = {
 type LeaderStats = {
   likes?: number;
   dislikes?: number;
-  votes?: number;
   comments?: number;
-  rating?: number;
+  averageRating?: number;
   engagementScore?: number;
   totalReactions?: number;
   ratingCount?: number;
@@ -132,8 +132,8 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
     const likes = raw.likes ?? 0;
     const dislikes = raw.dislikes ?? 0;
     const comments = raw.comments ?? 0;
-    const rating = raw.rating ?? 0;
-    const ratingCount = raw.ratingCount ?? raw.votes ?? 0;
+    const rating = raw.averageRating ?? 0;
+    const ratingCount = raw.ratingCount ?? 0;
     const totalReactions = raw.totalReactions ?? likes + dislikes;
     const engagementCount =
       raw.engagementScore ?? likes + comments + ratingCount - dislikes;
@@ -145,7 +145,6 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
         dislikes,
         comments,
         rating,
-        votes: raw.votes ?? ratingCount,
         ratingCount,
         totalReactions,
         engagementScore: engagementCount,
@@ -228,6 +227,27 @@ function getScoreTone(score: number) {
   return "text-slate-700";
 }
 
+function translateRankingSignal(value: string, text: Record<string, string>) {
+  const map: Record<string, string> = {
+    "Rising This Week": text.trendRising,
+    "Steady Attention": text.trendSteady,
+    "Building Interest": text.trendBuilding,
+    "Limited recent data": text.trendLimited,
+    "Trusted by Community": text.trustTrusted,
+    "Most Discussed": text.trustDiscussed,
+    "Verified Profile": text.trustVerified,
+    "Emerging Profile": text.trustEmerging,
+    "Emerging profile": text.dataEmerging,
+    "Developing signal": text.dataDeveloping,
+    "Established signal": text.dataEstablished,
+    "Most Trusted": text.badgeMostTrusted,
+    "Strong Public Signal": text.badgeStrongSignal,
+    "Community Watchlist": text.badgeWatchlist,
+  };
+
+  return map[value] || value;
+}
+
 function ScoreBadge({
   score,
   large = false,
@@ -235,6 +255,8 @@ function ScoreBadge({
   score: number;
   large?: boolean;
 }) {
+  const { section } = useLanguage();
+  const text = section("ranking");
   const tone = getScoreTone(score);
   const sizeClass = large ? "h-20 w-20 md:h-24 md:w-24" : "h-14 w-14";
   const numberClass = large ? "text-2xl md:text-[28px]" : "text-base";
@@ -246,7 +268,7 @@ function ScoreBadge({
       <div className="absolute inset-2 rounded-full border border-dashed border-blue-200/80" />
       <div className="relative text-center">
         <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-slate-400">
-          Score
+          {text.score}
         </p>
         <p className={`mt-1 ${numberClass} font-extrabold tracking-tight ${tone}`}>
           {score}
@@ -263,6 +285,8 @@ function FeaturedLeaderCard({
   item: RankedLeader;
   rank: number;
 }) {
+  const { section } = useLanguage();
+  const text = section("ranking");
   const { leader, stats, publicScore, trendLabel, trustLabel, dataLabel } = item;
   const featureBadge = getFeaturedBadge(item, rank);
   const isFirst = rank === 1;
@@ -280,19 +304,19 @@ function FeaturedLeaderCard({
         <div className="min-w-0">
           <div className="flex flex-wrap items-center gap-2">
             <span className="rounded-full border border-slate-200 bg-white/90 px-3 py-1.5 text-xs font-semibold text-slate-600 shadow-sm">
-              Top #{rank}
+              {text.topRank} #{rank}
             </span>
             <span
               className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${featureBadge.tone}`}
             >
-              {featureBadge.label}
+              {translateRankingSignal(featureBadge.label, text)}
             </span>
           </div>
           <h2 className="mt-2.5 text-lg font-extrabold tracking-tight text-slate-950 md:text-xl">
             {leader.name}
           </h2>
           <p className="mt-1 text-sm font-semibold text-blue-600">
-            {leader.currentStatus || "Current"} {roleLabel(leader.role)}
+            {leader.currentStatus || text.current} {roleLabel(leader.role)}
           </p>
           <p className="mt-1 truncate text-sm text-slate-600">
             {getDistrictName(leader.district)}, {getProvinceName(leader)}
@@ -304,28 +328,32 @@ function FeaturedLeaderCard({
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-          {trustLabel}
+          {translateRankingSignal(trustLabel, text)}
         </span>
-        <p className="text-sm text-slate-500">{dataLabel}</p>
+        <p className="text-sm text-slate-500">{translateRankingSignal(dataLabel, text)}</p>
       </div>
 
       <div className="mt-4 grid grid-cols-3 gap-2">
         <MetricTile
-          label="Rating"
+          label={text.rating}
           value={roundValue(stats.rating)}
-          helper={`${stats.ratingCount} ratings`}
+          helper={`${stats.ratingCount} ${text.ratings}`}
         />
-        <MetricTile label="Comments" value={stats.comments} helper="public" />
-        <MetricTile label="Engagement" value={item.engagementCount} helper={trendLabel} />
+        <MetricTile label={text.comments} value={stats.comments} helper={text.badge} />
+        <MetricTile
+          label={text.engagement}
+          value={item.engagementCount}
+          helper={translateRankingSignal(trendLabel, text)}
+        />
       </div>
 
       <div className="mt-4">
-        <Link
+        <NepalActionLink
           to={`/leader/${leader.leaderId}`}
-          className="inline-flex rounded-2xl bg-slate-950 px-4 py-2 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+          className="min-h-[44px] px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
         >
-          Go to Profile
-        </Link>
+          {text.goToProfile}
+        </NepalActionLink>
       </div>
     </article>
   );
@@ -338,6 +366,8 @@ function LeaderListRow({
   item: RankedLeader;
   rank: number;
 }) {
+  const { section } = useLanguage();
+  const text = section("ranking");
   const { leader, stats, publicScore, trendLabel, trustLabel, dataLabel } = item;
 
   return (
@@ -375,28 +405,30 @@ function LeaderListRow({
 
         <div className="flex flex-wrap gap-2 lg:block">
           <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-            {trustLabel}
+            {translateRankingSignal(trustLabel, text)}
           </span>
-          <p className="mt-1 hidden text-xs text-slate-500 lg:block">{dataLabel}</p>
+          <p className="mt-1 hidden text-xs text-slate-500 lg:block">
+            {translateRankingSignal(dataLabel, text)}
+          </p>
         </div>
 
-        <LeaderboardMetric label="Score" value={publicScore} strong />
+        <LeaderboardMetric label={text.score} value={publicScore} strong />
         <LeaderboardMetric
-          label="Rating"
+          label={text.rating}
           value={roundValue(stats.rating)}
           helper={`${stats.ratingCount}`}
         />
-        <LeaderboardMetric label="Comments" value={stats.comments} />
-        <LeaderboardMetric label="Engagement" value={item.engagementCount} />
-        <LeaderboardMetric label="Trend" value={trendLabel} compact />
+        <LeaderboardMetric label={text.comments} value={stats.comments} />
+        <LeaderboardMetric label={text.engagement} value={item.engagementCount} />
+        <LeaderboardMetric label={text.tableTrend} value={translateRankingSignal(trendLabel, text)} compact />
 
         <div className="flex lg:justify-end">
-          <Link
+          <NepalActionLink
             to={`/leader/${leader.leaderId}`}
-            className="rounded-2xl bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition duration-300 hover:-translate-y-0.5 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-slate-300"
+            className="min-h-[44px] px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-slate-300"
           >
-            Profile
-          </Link>
+            {text.profile}
+          </NepalActionLink>
         </div>
       </div>
     </article>
@@ -454,6 +486,8 @@ function LeaderboardMetric({
 }
 
 function Ranking() {
+  const { section } = useLanguage();
+  const text = section("ranking");
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [statsMap, setStatsMap] = useState<Record<string, LeaderStats>>({});
   const [loading, setLoading] = useState(true);
@@ -462,6 +496,7 @@ function Ranking() {
   const [error, setError] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+  const trackedFilterRef = useRef("");
 
   useEffect(() => {
     const loadRankingData = async () => {
@@ -469,54 +504,22 @@ function Ranking() {
         setLoading(true);
         setError("");
 
-        const res = await api.getLeaders();
+        const res = await api.getLeadersRankingSummary({ limit: "250" });
         const leaderItems = Array.isArray(res) ? res : res?.leaders || [];
         setLeaders(leaderItems);
-
-        const statEntries = await Promise.all(
-          leaderItems.map(async (leader: Leader) => {
-            try {
-              const stats = await api.getLeaderStats(leader.leaderId);
-              return [
-                leader.leaderId,
-                {
-                  likes: stats?.likes || 0,
-                  dislikes: stats?.dislikes || 0,
-                  votes: stats?.votes || stats?.ratingCount || 0,
-                  ratingCount: stats?.ratingCount || stats?.votes || 0,
-                  comments: stats?.comments || 0,
-                  rating: stats?.averageRating || stats?.rating || 0,
-                  totalReactions:
-                    stats?.totalReactions ??
-                    (stats?.likes || 0) + (stats?.dislikes || 0),
-                  engagementScore:
-                    stats?.engagementScore ??
-                    (stats?.likes || 0) +
-                      (stats?.votes || stats?.ratingCount || 0) +
-                      (stats?.comments || 0) -
-                      (stats?.dislikes || 0),
-                },
-              ] as const;
-            } catch {
-              return [
-                leader.leaderId,
-                {
-                  likes: 0,
-                  dislikes: 0,
-                  votes: 0,
-                  ratingCount: 0,
-                  comments: 0,
-                  rating: 0,
-                  totalReactions: 0,
-                  engagementScore: 0,
-                },
-              ] as const;
-            }
-          })
+        setStatsMap(
+          Object.fromEntries(
+            leaderItems.map((leader: Leader & { stats?: LeaderStats }) => [
+              leader.leaderId,
+              leader.stats || {},
+            ])
+          )
         );
-
-        setStatsMap(Object.fromEntries(statEntries));
-        setLastUpdated(new Date().toLocaleString());
+        setLastUpdated(
+          res?.generatedAt
+            ? new Date(res.generatedAt).toLocaleString()
+            : new Date().toLocaleString()
+        );
       } catch (err: any) {
         setError(err.message || "Failed to load ranking data");
       } finally {
@@ -533,6 +536,30 @@ function Ranking() {
     );
     return ["All", ...roles];
   }, [leaders]);
+
+  useEffect(() => {
+    const signature = `${selectedRole}::${sortBy}`;
+
+    if (!trackedFilterRef.current) {
+      trackedFilterRef.current = signature;
+      return;
+    }
+
+    if (trackedFilterRef.current === signature) return;
+    trackedFilterRef.current = signature;
+
+    void api.trackEvent({
+      eventName: "ranking_filter_used",
+      entityType: "ranking",
+      entityId: "leaders-ranking",
+      entityName: `${text.title} filters`,
+      sourcePage: "ranking",
+      metadata: {
+        selectedRole,
+        sortBy,
+      },
+    });
+  }, [selectedRole, sortBy, text.title]);
 
   const rankedLeaders = useMemo(() => {
     const filtered =
@@ -575,27 +602,22 @@ function Ranking() {
           <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
             <div className="max-w-3xl">
               <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                Civic ranking
+                {text.badge}
               </div>
 
               <h1 className="mt-2.5 text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
-                Leaders Ranking
+                {text.title}
               </h1>
 
               <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500">
-                Compare Nepal&apos;s public leaders by score, ratings, discussion, and engagement.
+                {text.subtitle}
               </p>
 
               {showHowItWorks && (
                 <div className="mt-3 rounded-3xl border border-slate-200 bg-white/80 p-4">
-                  <p className="text-sm font-semibold text-slate-900">
-                    Ranking method
-                  </p>
+                  <p className="text-sm font-semibold text-slate-900">{text.methodTitle}</p>
                   <p className="mt-2 text-sm leading-6 text-slate-600">
-                    Public Score combines four signals: rating quality, discussion
-                    activity, engagement, and reaction strength. Ratings are confidence-weighted
-                    so 1–2 votes do not dominate the leaderboard. Leaders with very little data
-                    are shown as emerging profiles instead of pretending high precision.
+                    {text.methodText}
                   </p>
                 </div>
               )}
@@ -603,7 +625,7 @@ function Ranking() {
 
             <div className="grid gap-2 sm:grid-cols-3 xl:w-[540px]">
               <div className="rounded-3xl border border-slate-200 bg-white/90 px-4 py-2.5 text-slate-700 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">Visible leaders</p>
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500">{text.visibleLeaders}</p>
                 <p className="mt-1 text-xl font-extrabold text-slate-950">
                   {rankedLeaders.length}
                 </p>
@@ -614,16 +636,16 @@ function Ranking() {
                 onChange={(e) => setSortBy(e.target.value as SortOption)}
                 className="rounded-3xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-slate-400"
               >
-                <option>Public Score</option>
-                <option>Highest Rated</option>
-                <option>Most Discussed</option>
-                <option>Most Engaged</option>
-                <option>Lowest Rated</option>
+                <option>{text.sortPublic}</option>
+                <option>{text.sortHighest}</option>
+                <option>{text.sortDiscussed}</option>
+                <option>{text.sortEngaged}</option>
+                <option>{text.sortLowest}</option>
               </select>
 
               {lastUpdated ? (
                 <div className="rounded-3xl border border-slate-200/80 bg-white/80 px-4 py-2.5 text-sm text-slate-600">
-                  Last updated: <span className="font-semibold text-slate-900">{lastUpdated}</span>
+                  {text.lastUpdated}: <span className="font-semibold text-slate-900">{lastUpdated}</span>
                 </div>
               ) : (
                 <div />
@@ -634,27 +656,24 @@ function Ranking() {
           <div className="mt-4 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex flex-wrap gap-2">
             {roleTabs.map((role) => (
-              <button
+              <NepalActionButton
                 key={role}
                 onClick={() => setSelectedRole(role)}
-                className={`rounded-full px-4 py-2.5 text-sm font-semibold transition ${
-                  selectedRole === role
-                    ? "bg-slate-950 text-white shadow-sm"
-                    : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
+                tone={selectedRole === role ? "primary" : "secondary"}
+                className="min-h-[42px] px-4 py-2.5 text-sm"
               >
-                {role === "All" ? "All Leaders" : roleLabel(role)}
-              </button>
+                {role === "All" ? text.allLeaders : roleLabel(role)}
+              </NepalActionButton>
             ))}
             </div>
 
-            <button
-              type="button"
+            <NepalActionButton
               onClick={() => setShowHowItWorks((prev) => !prev)}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition duration-300 hover:-translate-y-0.5 hover:bg-slate-50"
+              tone="secondary"
+              className="min-h-[42px] px-4 py-2 text-sm"
             >
-              {showHowItWorks ? "Hide ranking method" : "How ranking works"}
-            </button>
+              {showHowItWorks ? text.howHide : text.howShow}
+            </NepalActionButton>
           </div>
 
           {error ? (
@@ -682,20 +701,25 @@ function Ranking() {
                 ))}
               </div>
             </div>
+          ) : rankedLeaders.length === 0 ? (
+            <div className="mt-6 rounded-[28px] border border-dashed border-slate-200 bg-white px-6 py-12 text-center">
+              <h2 className="text-xl font-bold text-slate-900">{text.emptyTitle}</h2>
+              <p className="mt-2 text-sm text-slate-500">
+                {text.emptyBody}
+              </p>
+            </div>
           ) : (
             <div className="mt-6 space-y-6">
               <section>
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-950 md:text-xl">
-                      Top leaders
-                    </h2>
+                    <h2 className="text-lg font-bold text-slate-950 md:text-xl">{text.topTitle}</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Featured by current ranking
+                      {text.topBody}
                     </p>
                   </div>
                   <div className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 md:inline-flex">
-                    Public leaderboard spotlight
+                    {text.spotlight}
                   </div>
                 </div>
 
@@ -713,27 +737,25 @@ function Ranking() {
               <section className="rounded-[30px] border border-slate-200 bg-white/75 p-4 shadow-sm md:p-5">
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-950 md:text-xl">
-                      Full leaderboard
-                    </h2>
+                    <h2 className="text-lg font-bold text-slate-950 md:text-xl">{text.fullTitle}</h2>
                     <p className="mt-1 text-sm text-slate-500">
-                      Public Score with supporting proof metrics
+                      {text.fullBody}
                     </p>
                   </div>
                   <p className="hidden text-sm text-slate-500 md:block">
-                    Compact view for faster comparison
+                    {text.compactView}
                   </p>
                 </div>
 
                 <div className="mb-3 hidden rounded-2xl border border-slate-200 bg-slate-50/90 px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(120px,0.8fr)_repeat(4,minmax(90px,0.7fr))_minmax(120px,0.9fr)_auto] lg:gap-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Leader</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Signal</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Score</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Avg rating</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Comments</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Engagement</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">Trend</p>
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-right text-slate-500">Action</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableLeader}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableSignal}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableScore}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableAvgRating}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableComments}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableEngagement}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">{text.tableTrend}</p>
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-right text-slate-500">{text.tableAction}</p>
                 </div>
 
                 <div className="space-y-3">
@@ -755,3 +777,5 @@ function Ranking() {
 }
 
 export default Ranking;
+
+

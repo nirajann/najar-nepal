@@ -1,16 +1,95 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
+import { NepalActionButton } from "../components/NepalDesignSystem";
 import ProjectDetailModal from "../components/ProjectDetailModal";
-import {
-  categoryProgress,
-  projectItems,
-  trackerSummary,
-  type ProjectItem,
-  type ProjectStatus,
-} from "../data/projectsTrackerData";
+import { api } from "../services/api";
+import { useLanguage } from "../context/LanguageContext";
+type ProjectStatus =
+  | "NOT_STARTED"
+  | "IN_PROGRESS"
+  | "COMPLETED"
+  | "BROKEN"
+  | "STALLED";
+
+type ProjectItem = {
+  id: string;
+  category: string;
+  titleNp: string;
+  titleEn: string;
+  status: ProjectStatus;
+  daysText: string;
+  source?: string;
+  updatedAt: string;
+  priority?: "low" | "medium" | "high";
+  progressSummary?: string;
+  evidenceText?: string;
+  whatIsThis?: string;
+  impactOnPeople?: string;
+  whyNeeded?: string;
+  dueDate?: string;
+  district?: string;
+  province?: string;
+  progress?: number;
+  sources?: Array<{
+    sourceName?: string;
+    title?: string;
+    url?: string;
+    publishedAt?: string | null;
+    summary?: string;
+    note?: string;
+  }>;
+};
 
 type FilterStatus = "ALL" | ProjectStatus;
 type SortType = "default" | "urgent" | "updated";
+
+function toProjectStatus(value?: string): ProjectStatus {
+  if (value === "IN_PROGRESS") return "IN_PROGRESS";
+  if (value === "COMPLETED") return "COMPLETED";
+  if (value === "BROKEN") return "BROKEN";
+  if (value === "STALLED") return "STALLED";
+  return "NOT_STARTED";
+}
+
+function getPriority(progress: number, status: ProjectStatus, daysText: string) {
+  if (status === "BROKEN" || daysText.includes("overdue")) return "high";
+  if (status === "IN_PROGRESS" || progress >= 40) return "medium";
+  return "low";
+}
+
+function normalizeProjectRecord(raw: any): ProjectItem {
+  const status = toProjectStatus(raw?.status);
+  const progress = typeof raw?.progress === "number" ? raw.progress : 0;
+  const updatedAt = raw?.updatedAt || raw?.lastUpdated || "";
+  const dueDate =
+    typeof raw?.dueDate === "string"
+      ? raw.dueDate
+      : raw?.dueDate
+      ? new Date(raw.dueDate).toISOString().slice(0, 10)
+      : "";
+
+  return {
+    id: raw?.id || raw?.projectId || "",
+    category: raw?.category || "General",
+    titleNp: raw?.titleNp || raw?.title || "",
+    titleEn: raw?.titleEn || raw?.title || "",
+    status,
+    daysText: raw?.daysText || "No deadline",
+    source: raw?.source || raw?.sourceName || "",
+    updatedAt,
+    priority: getPriority(progress, status, raw?.daysText || ""),
+    progressSummary: raw?.progressSummary || raw?.summary || raw?.description || "",
+    evidenceText: raw?.evidenceText || "",
+    whatIsThis: raw?.whatIsThis || "",
+    impactOnPeople: raw?.impactOnPeople || "",
+    whyNeeded: raw?.whyNeeded || "",
+    dueDate,
+    district: raw?.district || "",
+    province: raw?.province || "",
+    progress,
+    sources: Array.isArray(raw?.sources) ? raw.sources : [],
+  };
+}
 
 function useInViewOnce<T extends HTMLElement>() {
   const ref = useRef<T | null>(null);
@@ -95,6 +174,11 @@ function RevealSection({
 }
 
 function Projects() {
+  const { section } = useLanguage();
+  const text = section("projects");
+  const [projects, setProjects] = useState<ProjectItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState<FilterStatus>("ALL");
   const [searchText, setSearchText] = useState("");
   const [sortBy, setSortBy] = useState<SortType>("default");
@@ -104,11 +188,34 @@ function Projects() {
   const [progressReady, setProgressReady] = useState(false);
   const statsRef = useRef<HTMLDivElement | null>(null);
   const progressRef = useRef<HTMLDivElement | null>(null);
+  const trackedProjectRef = useRef("");
+  const trackedSearchRef = useRef("");
 
   useEffect(() => {
     const id = window.setTimeout(() => setHeaderReady(true), 40);
     return () => window.clearTimeout(id);
   }, []);
+
+  useEffect(() => {
+    const loadProjects = async () => {
+      try {
+        setLoading(true);
+        setError("");
+        const res = await api.getProjects();
+        const nextProjects = (Array.isArray(res) ? res : res?.projects || []).map(
+          normalizeProjectRecord
+        );
+        setProjects(nextProjects);
+      } catch (loadError: any) {
+        setProjects([]);
+        setError(loadError.message || text.loadFailed);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    void loadProjects();
+  }, [text.loadFailed]);
 
   useEffect(() => {
     const node = statsRef.current;
@@ -146,8 +253,48 @@ function Projects() {
     return () => observer.disconnect();
   }, [progressReady]);
 
+  useEffect(() => {
+    if (!selectedProject?.id) return;
+    if (trackedProjectRef.current === selectedProject.id) return;
+
+    trackedProjectRef.current = selectedProject.id;
+
+    void api.trackEvent({
+      eventName: "project_viewed",
+      entityType: "project",
+      entityId: selectedProject.id,
+      entityName: selectedProject.titleEn,
+      sourcePage: "projects",
+      metadata: {
+        category: selectedProject.category,
+        status: selectedProject.status,
+      },
+    });
+  }, [selectedProject]);
+
+  useEffect(() => {
+    const query = searchText.trim();
+    if (query.length < 2) return;
+    if (trackedSearchRef.current === query.toLowerCase()) return;
+
+    trackedSearchRef.current = query.toLowerCase();
+
+    void api.trackEvent({
+      eventName: "search_used",
+      entityType: "project",
+      entityId: "projects-search",
+      entityName: "Projects search",
+      sourcePage: "projects",
+      metadata: {
+        queryLength: query.length,
+        statusFilter,
+        sortBy,
+      },
+    });
+  }, [searchText, sortBy, statusFilter]);
+
   const filteredProjects = useMemo(() => {
-    const filtered = projectItems.filter((item) => {
+    const filtered = projects.filter((item) => {
       const matchesStatus =
         statusFilter === "ALL" ? true : item.status === statusFilter;
 
@@ -177,7 +324,52 @@ function Projects() {
     }
 
     return filtered;
-  }, [statusFilter, searchText, sortBy]);
+  }, [projects, statusFilter, searchText, sortBy]);
+
+  const trackerSummary = useMemo(() => {
+    const total = projects.length;
+    const completed = projects.filter((item) => item.status === "COMPLETED").length;
+    const inProgress = projects.filter((item) => item.status === "IN_PROGRESS").length;
+    const broken = projects.filter((item) => item.status === "BROKEN").length;
+    const stalled = projects.filter((item) => item.status === "STALLED").length;
+    const notStarted = projects.filter((item) => item.status === "NOT_STARTED").length;
+    const overallProgress =
+      total > 0
+        ? Math.round(
+            projects.reduce((sum, item) => sum + (typeof item.progress === "number" ? item.progress : 0), 0) /
+              total
+          )
+        : 0;
+
+    return {
+      total,
+      completed,
+      inProgress,
+      broken,
+      stalled,
+      notStarted,
+      overallProgress,
+    };
+  }, [projects]);
+
+  const categoryProgress = useMemo(() => {
+    const map = new Map<string, { name: string; done: number; total: number; percent: number }>();
+
+    projects.forEach((project) => {
+      const key = project.category || "General";
+      const current = map.get(key) || { name: key, done: 0, total: 0, percent: 0 };
+      current.total += 1;
+      if (project.status === "COMPLETED") current.done += 1;
+      map.set(key, current);
+    });
+
+    return Array.from(map.values())
+      .map((item) => ({
+        ...item,
+        percent: item.total > 0 ? Math.round((item.done / item.total) * 100) : 0,
+      }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }, [projects]);
 
   return (
     <div className="min-h-screen bg-slate-100">
@@ -195,15 +387,15 @@ function Projects() {
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4">
             <div>
               <h1 className="text-3xl md:text-5xl font-extrabold text-slate-900 mb-2">
-                Public Projects Tracker
+                {text.title}
               </h1>
               <p className="text-slate-500 text-base md:text-lg">
-                Easy public dashboard to track commitments, progress, delays, and accountability
+                {text.subtitle}
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-4">
-              <p className="text-sm text-slate-500">Overall Progress</p>
+              <p className="text-sm text-slate-500">{text.overallProgress}</p>
               <p className="text-3xl font-extrabold text-slate-900 mt-1">
                 <CountUpValue value={trackerSummary.overallProgress} start={headerReady} />%
               </p>
@@ -214,17 +406,17 @@ function Projects() {
             ref={statsRef}
             className="mt-6 grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4"
           >
-            <SummaryCard label="Total" value={trackerSummary.total} index={0} start={statsReady} />
-            <SummaryCard label="Completed" value={trackerSummary.completed} index={1} start={statsReady} />
-            <SummaryCard label="In Progress" value={trackerSummary.inProgress} index={2} start={statsReady} />
-            <SummaryCard label="Broken" value={trackerSummary.broken} index={3} start={statsReady} />
-            <SummaryCard label="Stalled" value={trackerSummary.stalled} index={4} start={statsReady} />
-            <SummaryCard label="Not Started" value={trackerSummary.notStarted} index={5} start={statsReady} />
+            <SummaryCard label={text.total} value={trackerSummary.total} index={0} start={statsReady} />
+            <SummaryCard label={text.completed} value={trackerSummary.completed} index={1} start={statsReady} />
+            <SummaryCard label={text.inProgress} value={trackerSummary.inProgress} index={2} start={statsReady} />
+            <SummaryCard label={text.broken} value={trackerSummary.broken} index={3} start={statsReady} />
+            <SummaryCard label={text.stalled} value={trackerSummary.stalled} index={4} start={statsReady} />
+            <SummaryCard label={text.notStarted} value={trackerSummary.notStarted} index={5} start={statsReady} />
           </div>
 
           <div ref={progressRef} className="mt-6">
             <div className="flex justify-between text-sm text-slate-600 mb-2">
-              <span>National commitment progress</span>
+              <span>{text.nationalCommitmentProgress}</span>
               <span>
                 <CountUpValue value={trackerSummary.overallProgress} start={progressReady} />%
               </span>
@@ -246,7 +438,7 @@ function Projects() {
           className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8"
         >
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-5">
-            Tracking System
+            {text.trackingSystem}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-5 gap-4">
@@ -283,7 +475,7 @@ function Projects() {
           className="bg-white rounded-3xl border border-slate-200 shadow-sm p-6 md:p-8"
         >
           <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900 mb-5">
-            Progress by Category
+                {text.progressByCategory}
           </h2>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -299,7 +491,7 @@ function Projects() {
                   </p>
                 </div>
 
-                <p className="text-sm text-slate-500 mb-3">{item.percent}% complete</p>
+                <p className="text-sm text-slate-500 mb-3">{item.percent}{text.completeSuffix}</p>
 
                 <div className="h-3 rounded-full bg-slate-200 overflow-hidden">
                   <div
@@ -322,52 +514,52 @@ function Projects() {
           <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl md:text-3xl font-extrabold text-slate-900">
-                Track Commitments
+                {text.trackCommitments}
               </h2>
               <p className="text-slate-500 mt-1">
-                Click any promise to open full details, evidence, and public impact
+                {text.trackBody}
               </p>
             </div>
 
             <div className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-slate-600">
-              Showing <span className="font-bold text-slate-900">{filteredProjects.length}</span> items
+              {text.showing} <span className="font-bold text-slate-900">{filteredProjects.length}</span> {text.items}
             </div>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-4 mb-6">
             <div className="flex flex-wrap gap-3">
               <FilterButton active={statusFilter === "ALL"} onClick={() => setStatusFilter("ALL")}>
-                All
+                {text.filterAll}
               </FilterButton>
               <FilterButton
                 active={statusFilter === "NOT_STARTED"}
                 onClick={() => setStatusFilter("NOT_STARTED")}
               >
-                Not Started
+                {text.filterNotStarted}
               </FilterButton>
               <FilterButton
                 active={statusFilter === "IN_PROGRESS"}
                 onClick={() => setStatusFilter("IN_PROGRESS")}
               >
-                In Progress
+                {text.filterInProgress}
               </FilterButton>
               <FilterButton
                 active={statusFilter === "COMPLETED"}
                 onClick={() => setStatusFilter("COMPLETED")}
               >
-                Completed
+                {text.filterCompleted}
               </FilterButton>
               <FilterButton
                 active={statusFilter === "BROKEN"}
                 onClick={() => setStatusFilter("BROKEN")}
               >
-                Broken
+                {text.filterBroken}
               </FilterButton>
               <FilterButton
                 active={statusFilter === "STALLED"}
                 onClick={() => setStatusFilter("STALLED")}
               >
-                Stalled
+                {text.filterStalled}
               </FilterButton>
             </div>
 
@@ -376,29 +568,64 @@ function Projects() {
               onChange={(e) => setSortBy(e.target.value as SortType)}
               className="rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="default">Sort: Default</option>
-              <option value="urgent">Sort: Urgent / Overdue</option>
-              <option value="updated">Sort: Recently Updated</option>
+              <option value="default">{text.sortDefault}</option>
+              <option value="urgent">{text.sortUrgent}</option>
+              <option value="updated">{text.sortUpdated}</option>
             </select>
           </div>
 
           <input
             type="text"
-            placeholder="Search by ID, category, Nepali title, or English title..."
+            placeholder={text.searchPlaceholder}
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full mb-6 rounded-2xl border border-slate-300 px-5 py-4 text-base outline-none focus:ring-2 focus:ring-blue-500"
           />
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-            {filteredProjects.map((project) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                onClick={() => setSelectedProject(project)}
-              />
-            ))}
-          </div>
+          {error ? (
+            <div className="rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+              {error}
+            </div>
+          ) : loading ? (
+            <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
+              {Array.from({ length: 4 }).map((_, index) => (
+                <div
+                  key={`project-skeleton-${index}`}
+                  className="rounded-3xl border border-slate-200 bg-slate-50 p-5"
+                >
+                  <div className="animate-pulse space-y-4">
+                    <div className="flex justify-between gap-4">
+                      <div className="space-y-2">
+                        <div className="h-3 w-16 rounded bg-slate-200" />
+                        <div className="h-6 w-40 rounded bg-slate-200" />
+                      </div>
+                      <div className="h-8 w-28 rounded-full bg-slate-200" />
+                    </div>
+                    <div className="h-5 w-48 rounded bg-slate-200" />
+                    <div className="h-4 w-full rounded bg-slate-200" />
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="h-16 rounded-2xl bg-slate-200" />
+                      <div className="h-16 rounded-2xl bg-slate-200" />
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : filteredProjects.length > 0 ? (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              {filteredProjects.map((project) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  onClick={() => setSelectedProject(project)}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="rounded-2xl border border-slate-200 bg-slate-50 px-5 py-8 text-center text-sm text-slate-600">
+              {text.noMatch}
+            </div>
+          )}
         </RevealSection>
       </main>
 
@@ -477,16 +704,13 @@ function FilterButton({
   onClick: () => void;
 }) {
   return (
-    <button
+    <NepalActionButton
       onClick={onClick}
-      className={`px-5 py-3 rounded-full font-semibold transition ${
-        active
-          ? "bg-blue-600 text-white shadow"
-          : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-      }`}
+      tone={active ? "primary" : "secondary"}
+      className="min-h-[44px] px-5 py-3 font-semibold"
     >
       {children}
-    </button>
+    </NepalActionButton>
   );
 }
 

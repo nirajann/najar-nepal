@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { api } from "../../services/api";
 import { useAuth } from "../../context/AuthContext";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
@@ -96,21 +96,18 @@ function AdminProjects() {
     "Broken",
   ];
 
-  const loadProjects = async () => {
+  const loadProjects = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-    if (!token) {
-  setProjects([]);
-  setLoading(false);
-  return;
-}
+      if (!token) {
+        setProjects([]);
+        setLoading(false);
+        return;
+      }
 
-const res = await api.getAdminProjects(token, {
-  search: searchText || undefined,
-  status: selectedStatus !== "ALL" ? selectedStatus : undefined,
-});
+      const res = await api.getAdminProjects(token);
 
       setProjects(Array.isArray(res) ? res : res?.projects || []);
     } catch (err: any) {
@@ -119,12 +116,12 @@ const res = await api.getAdminProjects(token, {
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
- useEffect(() => {
-  if (!token) return;
-  loadProjects();
-}, [token]);
+  useEffect(() => {
+    if (!token) return;
+    void loadProjects();
+  }, [loadProjects, token]);
 
   useEffect(() => {
     const runDuplicateCheck = async () => {
@@ -138,7 +135,7 @@ const res = await api.getAdminProjects(token, {
         return;
       }
 
-      if (!api.checkProjectDuplicate) {
+      if (!api.checkProjectDuplicate || !token) {
         setDuplicateInfo(null);
         return;
       }
@@ -146,7 +143,7 @@ const res = await api.getAdminProjects(token, {
       try {
         setDuplicateLoading(true);
 
-        const res = await api.checkProjectDuplicate({
+        const res = await api.checkProjectDuplicate(token, {
           title: debouncedTitle.trim(),
           district: form.district || undefined,
           province: form.province || undefined,
@@ -161,7 +158,7 @@ const res = await api.getAdminProjects(token, {
     };
 
     runDuplicateCheck();
-  }, [debouncedTitle, form.district, form.province, editingProjectId]);
+  }, [debouncedTitle, form.district, form.province, editingProjectId, token]);
 
   const filteredProjects = useMemo(() => {
     return projects.filter((project) => {

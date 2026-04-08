@@ -2,13 +2,15 @@ const express = require("express");
 const Comment = require("../models/Comment.cjs");
 const Leader = require("../models/Leader.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
+const { recordAnalyticsEvent } = require("../utils/analyticsEventLogger.cjs");
 
 const router = express.Router();
 
 router.get("/:leaderId", async (req, res) => {
   try {
     const { leaderId } = req.params;
-    const { sort = "newest" } = req.query;
+    const { sort = "newest", limit = "50" } = req.query;
+    const parsedLimit = Math.min(Math.max(Number(limit) || 50, 1), 100);
 
     const leader = await Leader.findOne({ leaderId });
     if (!leader) {
@@ -25,7 +27,7 @@ router.get("/:leaderId", async (req, res) => {
       sortOption = { rating: -1, createdAt: -1 };
     }
 
-    const comments = await Comment.find({ leaderId }).sort(sortOption);
+    const comments = await Comment.find({ leaderId }).sort(sortOption).limit(parsedLimit);
     res.json(comments);
   } catch (error) {
     res.status(500).json({ message: "Failed to fetch comments", error: error.message });
@@ -35,6 +37,19 @@ router.get("/:leaderId", async (req, res) => {
 router.post("/", authMiddleware, async (req, res) => {
   try {
     const { leaderId, text, rating } = req.body;
+    const normalizedText = typeof text === "string" ? text.trim() : "";
+
+    if (!leaderId || typeof leaderId !== "string") {
+      return res.status(400).json({ message: "Leader ID is required" });
+    }
+
+    if (!normalizedText || normalizedText.length < 3) {
+      return res.status(400).json({ message: "Comment text is too short" });
+    }
+
+    if (normalizedText.length > 300) {
+      return res.status(400).json({ message: "Comment text must be under 300 characters" });
+    }
 
     const leader = await Leader.findOne({ leaderId });
     if (!leader) {
@@ -45,8 +60,21 @@ router.post("/", authMiddleware, async (req, res) => {
       leaderId,
       userId: req.user.id,
       userName: req.user.name || "User",
-      text,
-      rating: rating || 0,
+      text: normalizedText,
+      rating: Number(rating || 0),
+    });
+
+    await recordAnalyticsEvent({
+      eventName: "leader_comment_submitted",
+      userId: req.user.id,
+      entityType: "leader",
+      entityId: leaderId,
+      entityName: leader.name,
+      sourcePage: typeof req.body?.sourcePage === "string" ? req.body.sourcePage : "leader_profile",
+      metadata: {
+        hasRating: Number(rating || 0) > 0,
+        textLength: typeof text === "string" ? text.length : 0,
+      },
     });
 
     res.status(201).json({

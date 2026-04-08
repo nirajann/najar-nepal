@@ -9,7 +9,25 @@ connectDB();
 
 const app = express();
 
-app.use(cors());
+const allowedOrigins = (process.env.CORS_ORIGINS || process.env.CORS_ORIGIN || "")
+  .split(",")
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
+app.disable("x-powered-by");
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || allowedOrigins.length === 0 || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(new Error("CORS origin not allowed"));
+    },
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
+  })
+);
 app.use(express.json({ limit: "20mb" }));
 
 app.get("/", (req, res) => {
@@ -25,6 +43,7 @@ app.use("/api/complaints", require("./routes/complaintRoutes.cjs"));
 app.use("/api/reports", require("./routes/reportRoutes.cjs"));
 app.use("/api/projects", require("./routes/projectRoutes.cjs"));
 app.use("/api/comments", require("./routes/commentRoutes.cjs"));
+app.use("/api/analytics", require("./routes/analyticsEventRoutes.cjs"));
 app.use("/api/admin/projects", require("./routes/projectAdminRoutes.cjs"));
 app.use("/api/admin/analytics", require("./routes/analyticsRoutes.cjs"));
 app.use("/api/admin/complaints", require("./routes/complaintRoutes.cjs"));
