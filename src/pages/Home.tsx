@@ -912,7 +912,7 @@ function Home() {
                 {text.heroBadge}
               </div>
 
-              <h1 className="mt-4 text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
+             <h1 className="mt-4 max-w-4xl text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
                 {text.heroTitle}
               </h1>
 
