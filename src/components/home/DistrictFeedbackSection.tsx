@@ -101,34 +101,17 @@ function ScoreField({
   const tone = getScoreTone(value);
 
   return (
-    <div className="rounded-3xl border border-blue-100 bg-white p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
-      <div className="mb-3 flex items-center justify-between gap-3">
-        <div>
-          <p className="text-sm font-semibold text-slate-900">{label}</p>
-          <p className="mt-1 text-xs text-slate-500">0 low - 100 strong</p>
-        </div>
+    <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <p className="text-sm font-semibold text-slate-900">{label}</p>
 
-        <span className={`rounded-full border px-3 py-1.5 text-sm font-bold ${tone.chip}`}>
+        <span className={`rounded-full border px-2.5 py-1 text-sm font-bold ${tone.chip}`}>
           {value}
         </span>
       </div>
 
-      <div className={`mb-3 h-2.5 overflow-hidden rounded-full ${tone.track}`}>
+      <div className={`mb-2 h-2 overflow-hidden rounded-full ${tone.track}`}>
         <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${value}%` }} />
-      </div>
-
-      <div className="mb-3 grid grid-cols-5 gap-1">
-        {Array.from({ length: 5 }).map((_, index) => {
-          const active = value >= (index + 1) * 20;
-          return (
-            <span
-              key={`${label}-${index}`}
-              className={`h-2 rounded-full transition ${
-                active ? tone.bar : "bg-slate-200"
-              }`}
-            />
-          );
-        })}
       </div>
 
       <input
@@ -140,10 +123,9 @@ function ScoreField({
         className="w-full accent-blue-600"
       />
 
-      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
-        <span>0</span>
-        <span>50</span>
-        <span>100</span>
+      <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
+        <span>0 low</span>
+        <span>100 strong</span>
       </div>
     </div>
   );
@@ -158,7 +140,7 @@ function OverallScoreCard({
 }) {
   if (state.status === "idle") {
     return (
-      <div className="rounded-[24px] border border-slate-200 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -171,7 +153,7 @@ function OverallScoreCard({
 
   if (state.status === "loading") {
     return (
-      <div className="rounded-[24px] border border-blue-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-3 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -183,7 +165,7 @@ function OverallScoreCard({
 
   if (state.status === "error") {
     return (
-      <div className="rounded-[24px] border border-red-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[22px] border border-red-100 bg-white px-4 py-3 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -195,7 +177,7 @@ function OverallScoreCard({
 
   if (state.status === "empty") {
     return (
-      <div className="rounded-[24px] border border-blue-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+      <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-3 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -212,7 +194,7 @@ function OverallScoreCard({
   }
 
   return (
-    <div className="rounded-[24px] border border-blue-100 bg-white px-5 py-4 shadow-sm lg:min-w-[220px]">
+    <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-3 shadow-sm">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         {title}
       </p>
@@ -518,15 +500,17 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
 
   return (
     <section className="relative z-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm [contain:layout_paint] md:p-6">
-      <div className="rounded-[28px] border border-blue-100 bg-gradient-to-b from-slate-50 to-white p-5 shadow-sm">
-        <div className="flex flex-col gap-5 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <h3 className="text-xl font-bold tracking-tight text-slate-950">
-              {text.districtFeedback}
-            </h3>
-            <p className="mt-2 text-sm leading-7 text-slate-600">{text.helperText}</p>
+      <div className="rounded-[28px] border border-blue-100 bg-gradient-to-b from-slate-50 to-white p-4 shadow-sm md:p-5">
+        <div>
+          <h3 className="text-xl font-bold tracking-tight text-slate-950">
+            {text.districtFeedback}
+          </h3>
+          <p className="mt-1.5 text-sm leading-6 text-slate-600">{text.helperText}</p>
+        </div>
 
-            <div className="mt-4 flex flex-wrap gap-2">
+        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
+          <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+            <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
                 {text.verifiedOnly}
               </span>
@@ -534,19 +518,29 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
                 {text.updateLater}
               </span>
             </div>
+
+            <p className="mt-3 text-sm text-slate-600">
+              {isAuthenticated
+                ? isVerifiedUser
+                  ? hasPreviousSubmission
+                    ? text.alreadySubmitted
+                    : text.firstSubmit
+                  : text.verifiedOnly
+                : text.loginRequired}
+            </p>
           </div>
 
           <OverallScoreCard title={text.aggregateScore} state={scoreState} />
         </div>
 
-        <div className="mt-5 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-          {isAuthenticated
-            ? isVerifiedUser
-              ? hasPreviousSubmission
-                ? text.alreadySubmitted
-                : text.firstSubmit
-              : text.verifiedOnly
-            : text.loginRequired}
+        <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
+          {scoreState.status === "ready"
+            ? `${text.contributors}: ${scoreState.contributors}`
+            : scoreState.status === "empty"
+            ? `${text.contributors}: ${scoreState.contributors} · ${text.noSummary}`
+            : scoreState.status === "loading"
+            ? `${text.aggregateScore}...`
+            : text.aggregateHelper}
         </div>
 
         {myFeedbackState.status === "error" ? (
@@ -561,7 +555,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           </div>
         ) : null}
 
-        <div className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="mt-4 grid grid-cols-1 gap-3 md:grid-cols-2">
           <ScoreField
             label={text.transportation}
             value={form.transportation}
@@ -600,49 +594,49 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           />
         </div>
 
-        <div className="mt-6 rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-6 py-5 text-white shadow-sm">
-          <div className="flex items-center justify-between gap-4">
-            <div>
+        <div className="mt-4 rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-4 py-4 text-white shadow-sm">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
                 {text.aggregateScore}
               </p>
-              <p className="mt-2 text-sm text-slate-300">{text.aggregateHelper}</p>
+              <div className="mt-2 flex items-end gap-3">
+                <p className="text-4xl font-extrabold tracking-tight md:text-5xl">{overallValue}</p>
+                <p className="pb-1 text-sm text-slate-300">{text.aggregateHelper}</p>
+              </div>
             </div>
 
-            <div className="text-right">
-              <p className="text-5xl font-extrabold tracking-tight">{overallValue}</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <button
+                onClick={handleReset}
+                disabled={!hasChanges || saving}
+                className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {text.reset}
+              </button>
+
+              <button
+                onClick={handleSave}
+                disabled={
+                  !isAuthenticated ||
+                  !isVerifiedUser ||
+                  saving ||
+                  myFeedbackState.status === "loading" ||
+                  !hasChanges
+                }
+                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? text.saving : text.saveFeedback}
+              </button>
             </div>
           </div>
-          <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/10">
+
+          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
             <div
               className={`h-full rounded-full ${getScoreTone(overallValue).bar}`}
               style={{ width: `${Math.max(8, Math.min(overallValue, 100))}%` }}
             />
           </div>
-        </div>
-
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:justify-end">
-          <button
-            onClick={handleReset}
-            disabled={!hasChanges || saving}
-            className="rounded-2xl border border-slate-200 bg-white px-5 py-3 text-sm font-semibold text-slate-700 transition hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {text.reset}
-          </button>
-
-          <button
-            onClick={handleSave}
-            disabled={
-              !isAuthenticated ||
-              !isVerifiedUser ||
-              saving ||
-              myFeedbackState.status === "loading" ||
-              !hasChanges
-            }
-            className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving ? text.saving : text.saveFeedback}
-          </button>
         </div>
 
         {scoreState.status === "empty" ? (

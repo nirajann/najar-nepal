@@ -23,6 +23,7 @@ type Props = {
   districtScores: Record<string, number>;
   totalDistricts: string | number;
   onReset: () => void;
+  summarySlot?: React.ReactNode;
 };
 
 type TooltipState = {
@@ -139,6 +140,7 @@ function NepalMap({
   districtScores,
   totalDistricts,
   onReset,
+  summarySlot,
 }: Props) {
   const { language } = useLanguage();
 
@@ -170,6 +172,7 @@ function NepalMap({
           title: "Nepal Leader Explorer",
           subtitle:
             "Search for a district, filter by province, or tap the map to explore local public information.",
+          mobileEmpty: "Tap a district to see leaders and public satisfaction.",
           reset: "Reset",
           districts: "Districts",
           selected: "Selected",
@@ -560,31 +563,50 @@ function NepalMap({
     return { high, medium, low };
   }, [districts, selectedProvince, searchText, districtScores]);
 
+  const uniqueProvinceButtons = useMemo(() => {
+    const seen = new Set<string>();
+
+    return provinceButtons.filter((province) => {
+      const key = province.rawName.trim().toUpperCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [provinceButtons]);
+
   return (
     <section
-      className="pointer-events-none relative z-0 isolate overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_22px_52px_rgba(15,23,42,0.1)] [contain:layout_paint] md:p-5"
+      className="pointer-events-none relative z-0 isolate overflow-hidden rounded-[28px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_20px_44px_rgba(15,23,42,0.08)] [contain:layout_paint] md:rounded-[30px] md:p-4"
       ref={wrapperRef}
     >
-      <div className="pointer-events-auto mb-5 space-y-4">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="max-w-2xl">
-            <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-              {text.liveMap}
+      <div className="pointer-events-auto mb-3 space-y-2.5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+                {text.liveMap}
+              </div>
+              <span className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-slate-700 shadow-sm">
+                {text.resultCount || "Visible districts"}: {totalDistricts}
+              </span>
+              {selectedDistrict ? (
+                <span className="rounded-full bg-blue-100 px-3 py-1.5 text-xs font-medium text-blue-700">
+                  {text.selected}: {selectedDistrict.name}
+                </span>
+              ) : null}
+              {districtLoading ? (
+                <span className="rounded-full bg-amber-100 px-3 py-1.5 text-xs font-medium text-amber-700">
+                  {text.loading}
+                </span>
+              ) : null}
             </div>
 
-            <h1 className="mt-3 text-[24px] font-extrabold tracking-tight text-slate-950 md:text-[32px]">
+            <h2 className="mt-2 text-xl font-extrabold tracking-tight text-slate-950 md:text-[28px]">
               {text.title}
-            </h1>
-
-            <p className="mt-2 text-sm leading-6 text-slate-600 md:text-base">
-              {text.subtitle}
+            </h2>
+            <p className="mt-1 hidden text-sm leading-6 text-slate-700 md:block">
+              {text.filtersText || "Search and province filters update the map instantly."}
             </p>
-
-            {isMobile ? (
-              <p className="mt-3 rounded-2xl bg-blue-50 px-4 py-3 text-xs font-medium text-blue-800">
-                {text.mobileHint}
-              </p>
-            ) : null}
           </div>
 
           <button
@@ -595,144 +617,112 @@ function NepalMap({
           </button>
         </div>
 
-        <div className="grid gap-3">
-          <div className="rounded-[28px] border border-blue-100 bg-[linear-gradient(180deg,#f9fbff_0%,#f4f8ff_100%)] p-3 md:p-4">
-            <div className="grid gap-4 xl:grid-cols-[minmax(0,1.2fr)_minmax(300px,0.8fr)] xl:items-start">
-              <div>
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <span className="rounded-full bg-white px-3 py-1.5 font-medium text-slate-700 shadow-sm">
-                    {text.resultCount || "Visible districts"}: {totalDistricts}
-                  </span>
-
-                  {selectedDistrict && (
-                    <span className="rounded-full bg-blue-100 px-3 py-1.5 font-medium text-blue-700">
-                      {text.selected}: {selectedDistrict.name}
-                    </span>
-                  )}
-
-                  {districtLoading && (
-                    <span className="rounded-full bg-amber-100 px-3 py-1.5 font-medium text-amber-700">
-                      {text.loading}
-                    </span>
-                  )}
-                </div>
-
-                <div className="mt-3">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                    {text.filtersTitle || "Search and filter"}
-                  </p>
-                  <p className="mt-1 text-sm text-slate-700">
-                    {text.filtersText || "Start with a district search or narrow the map by province."}
-                  </p>
-                </div>
-
-                <div className="mt-3">
-                  <input
-                    type="text"
-                    placeholder={text.searchPlaceholder}
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    className="w-full rounded-2xl border border-blue-100 bg-white px-4 py-3.5 text-base outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  />
-                </div>
-              </div>
-
-              <div className="rounded-2xl border border-blue-100 bg-white px-4 py-4 shadow-sm">
-                <div className="flex items-start gap-3">
-                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-2xl bg-[linear-gradient(135deg,#dbeafe_0%,#bfdbfe_100%)] text-sm font-bold text-blue-700">
-                    i
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                      {text.guideTitle}
-                    </p>
-                    <p className="mt-1 text-sm leading-6 text-slate-700">{text.guideText}</p>
-                    <p className="mt-1 text-xs leading-5 text-slate-500">{text.guideShort}</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4 rounded-2xl border border-blue-100 bg-white px-3 py-3 shadow-sm">
-              <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
-                  {text.provinceLabel || "Province filter"}
-                </p>
-
-                <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => setSelectedProvince("ALL")}
-                className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
-                  selectedProvince === "ALL"
-                    ? "bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white shadow-[0_10px_20px_rgba(29,78,216,0.2)]"
-                    : "bg-blue-50 text-blue-800 hover:bg-blue-100"
-                }`}
-              >
-                {text.allProvinces}
-              </button>
-
-              <button
-                className="hidden rounded-full bg-red-50 px-3 py-2 text-xs font-medium text-red-700 xl:inline-flex"
-                type="button"
-              >
-                {(text.quickTip || "Tip")}: {text.quickTipText || "Click any district to open its summary and linked public data."}
-              </button>
-                </div>
-              </div>
-
-              <div className="mt-3 flex flex-wrap gap-2">
-                {provinceButtons.map((province, index) => (
-                  <button
-                    key={province.id}
-                    onClick={() => setSelectedProvince(province.rawName)}
-                    className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
-                      selectedProvince === province.rawName
-                        ? "bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white shadow-[0_10px_20px_rgba(29,78,216,0.2)]"
-                        : index > 5 && !isMobile
-                        ? "hidden bg-blue-50 text-blue-800 hover:bg-blue-100 sm:inline-flex"
-                        : "bg-blue-50 text-blue-800 hover:bg-blue-100"
-                    }`}
-                  >
-                    {province.name}
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-blue-100 bg-white px-3 py-3 text-xs shadow-sm">
-            <p className="mr-1 font-semibold uppercase tracking-wide text-slate-600">
-              {text.legendTitle}
-            </p>
-            <span className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-teal-700">
-              <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
-              {text.legendHigh} 71-100
-              <span className="text-slate-500">({scoreBands.high})</span>
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-amber-700">
-              <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
-              {text.legendMid} 41-70
-              <span className="text-slate-500">({scoreBands.medium})</span>
-            </span>
-            <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-rose-700">
-              <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
-              {text.legendLow} 0-40
-              <span className="text-slate-500">({scoreBands.low})</span>
-            </span>
-          </div>
-        </div>
       </div>
 
-      <div className="pointer-events-auto relative z-0 overflow-hidden rounded-[26px] border border-blue-100 bg-[radial-gradient(circle_at_top,_rgba(219,234,254,0.45),_#f8fbff_60%,_#ffffff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.75),0_18px_40px_rgba(15,23,42,0.08)] [contain:layout_paint] transition duration-300">
-        {districtLoading ? (
-          <div className="skeleton-shimmer h-[320px] md:h-[520px] xl:h-[600px]" />
-        ) : (
-          <svg
-            ref={svgRef}
-            className="relative z-0 block w-full overflow-hidden touch-manipulation select-none"
-            style={{ height: `${mapHeight}px` }}
-          />
-        )}
+      <div className="pointer-events-auto grid gap-4 xl:grid-cols-[minmax(0,1.6fr)_360px] xl:items-start">
+        <div className="relative z-0 overflow-hidden rounded-[24px] bg-[radial-gradient(circle_at_top,_rgba(219,234,254,0.55),_#f8fbff_52%,_#ffffff_100%)] shadow-[inset_0_1px_0_rgba(255,255,255,0.85),0_18px_36px_rgba(15,23,42,0.08)] [contain:layout_paint] transition duration-300 before:pointer-events-none before:absolute before:inset-x-8 before:bottom-1 before:h-8 before:rounded-full before:bg-[radial-gradient(circle,rgba(37,99,235,0.12),transparent_70%)] before:blur-xl">
+          <div className="absolute inset-x-0 top-0 h-24 bg-[linear-gradient(180deg,rgba(255,255,255,0.75),transparent)]" />
+          <div className="relative z-10 border-b border-blue-100/80 bg-white/80 px-3 py-3 backdrop-blur-sm md:px-4 md:py-4">
+            <div className="flex flex-col gap-3">
+              <div className="order-1 grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center">
+                <input
+                  type="text"
+                  placeholder={text.searchPlaceholder}
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  className="w-full rounded-2xl border border-blue-100 bg-white px-4 py-3 text-base outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+
+                <div className="hidden flex-wrap items-center gap-2 text-xs md:flex">
+                  <span className="font-semibold uppercase tracking-wide text-slate-600">
+                    {text.legendTitle}
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-teal-50 px-3 py-1.5 text-teal-700">
+                    <span className="h-2.5 w-2.5 rounded-full bg-teal-500" />
+                    {text.legendHigh} 71-100
+                    <span className="text-slate-500">({scoreBands.high})</span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-amber-50 px-3 py-1.5 text-amber-700">
+                    <span className="h-2.5 w-2.5 rounded-full bg-yellow-400" />
+                    {text.legendMid} 41-70
+                    <span className="text-slate-500">({scoreBands.medium})</span>
+                  </span>
+                  <span className="inline-flex items-center gap-2 rounded-full bg-rose-50 px-3 py-1.5 text-rose-700">
+                    <span className="h-2.5 w-2.5 rounded-full bg-red-500" />
+                    {text.legendLow} 0-40
+                    <span className="text-slate-500">({scoreBands.low})</span>
+                  </span>
+                </div>
+              </div>
+
+              <div className="order-2 -mx-1 overflow-x-auto px-1 [scrollbar-width:none]">
+                <div className="flex min-w-max gap-2">
+                  <button
+                    onClick={() => setSelectedProvince("ALL")}
+                    className={`rounded-full px-3.5 py-2 text-sm font-medium transition ${
+                      selectedProvince === "ALL"
+                        ? "bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white shadow-[0_10px_20px_rgba(29,78,216,0.2)]"
+                        : "bg-white text-blue-800 hover:bg-blue-100"
+                    }`}
+                  >
+                    {text.allProvinces}
+                  </button>
+
+                  {uniqueProvinceButtons.map((province) => (
+                    <button
+                      key={province.rawName}
+                      onClick={() => setSelectedProvince(province.rawName)}
+                      className={`rounded-full px-3.5 py-2 text-sm font-medium whitespace-nowrap transition ${
+                        selectedProvince === province.rawName
+                          ? "bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] text-white shadow-[0_10px_20px_rgba(29,78,216,0.2)]"
+                          : "bg-white text-blue-800 hover:bg-blue-100"
+                      }`}
+                    >
+                      {province.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="order-3 flex flex-wrap items-center gap-2 text-[11px] md:hidden">
+                <span className="font-semibold uppercase tracking-wide text-slate-600">
+                  {text.legendTitle}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-teal-50 px-2.5 py-1 text-teal-700">
+                  <span className="h-2 w-2 rounded-full bg-teal-500" />
+                  {text.legendHigh}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-amber-700">
+                  <span className="h-2 w-2 rounded-full bg-yellow-400" />
+                  {text.legendMid}
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-rose-50 px-2.5 py-1 text-rose-700">
+                  <span className="h-2 w-2 rounded-full bg-red-500" />
+                  {text.legendLow}
+                </span>
+              </div>
+            </div>
+          </div>
+          {districtLoading ? (
+            <div className="skeleton-shimmer h-[300px] md:h-[460px] xl:h-[520px]" />
+          ) : (
+            <svg
+              ref={svgRef}
+              className="relative z-0 block w-full overflow-hidden touch-manipulation select-none"
+              style={{ height: `${mapHeight}px` }}
+            />
+          )}
+        </div>
+
+        {summarySlot ? (
+          <div className="xl:max-h-[520px] xl:overflow-auto xl:pr-1">
+            {summarySlot}
+          </div>
+        ) : isMobile ? (
+          <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-4 text-sm text-slate-700 shadow-sm">
+            {text.mobileEmpty}
+          </div>
+        ) : null}
       </div>
 
       {!isMobile && tooltip.visible && (

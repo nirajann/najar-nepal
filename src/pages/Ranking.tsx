@@ -54,7 +54,7 @@ type RankedLeader = {
   weightedRating: number;
   engagementCount: number;
   trendLabel: string;
-  trustLabel: string;
+  signalLabel: string;
   dataLabel: string;
 };
 
@@ -106,24 +106,24 @@ function getConfidenceWeight(ratingCount: number) {
 
 function getTrendLabel(comments: number, engagementCount: number, ratingCount: number) {
   const activity = comments + engagementCount + ratingCount;
-  if (activity >= 40) return "Rising This Week";
-  if (activity >= 18) return "Steady Attention";
-  if (activity >= 8) return "Building Interest";
+  if (activity >= 40) return "High recent activity";
+  if (activity >= 18) return "Steady public activity";
+  if (activity >= 8) return "Building activity";
   return "Limited recent data";
 }
 
-function getTrustLabel(avgRating: number, ratingCount: number, commentCount: number, verified?: boolean) {
-  if (verified && avgRating >= 4.2 && ratingCount >= 8) return "Trusted by Community";
-  if (commentCount >= 12) return "Most Discussed";
-  if (verified) return "Verified Profile";
-  return "Emerging Profile";
+function getSignalLabel(avgRating: number, ratingCount: number, commentCount: number, verified?: boolean) {
+  if (verified && avgRating >= 4.2 && ratingCount >= 8) return "High confidence profile";
+  if (commentCount >= 12) return "High discussion volume";
+  if (verified) return "Verified profile";
+  return "Developing profile";
 }
 
 function getDataLabel(ratingCount: number, commentCount: number) {
   const total = ratingCount + commentCount;
-  if (total < 4) return "Emerging profile";
-  if (total < 10) return "Developing signal";
-  return "Established signal";
+  if (total < 4) return "Limited profile data";
+  if (total < 10) return "Developing public signal";
+  return "Established public signal";
 }
 
 function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderStats>) {
@@ -181,7 +181,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
         stats.engagementScore,
         stats.ratingCount
       ),
-      trustLabel: getTrustLabel(
+      signalLabel: getSignalLabel(
         stats.averageRating,
         stats.ratingCount,
         stats.comments,
@@ -195,27 +195,27 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
 function getFeaturedBadge(item: RankedLeader, rank: number): FeaturedBadge {
   if (rank === 1) {
     return {
-      label: "Most Trusted",
+      label: "Highest public score",
       tone: "border-amber-200 bg-amber-50 text-amber-800",
     };
   }
 
-  if (item.trendLabel === "Rising This Week") {
+  if (item.trendLabel === "High recent activity") {
     return {
-      label: "Rising This Week",
+      label: "High recent activity",
       tone: "border-rose-200 bg-rose-50 text-rose-700",
     };
   }
 
-  if (item.trustLabel === "Most Discussed" || item.stats.comments >= 12) {
+  if (item.signalLabel === "High discussion volume" || item.stats.comments >= 12) {
     return {
-      label: "Most Discussed",
+      label: "High discussion volume",
       tone: "border-blue-200 bg-blue-50 text-blue-700",
     };
   }
 
   return {
-    label: rank === 2 ? "Strong Public Signal" : "Community Watchlist",
+    label: rank === 2 ? "Stronger data signal" : "Visible public profile",
     tone: "border-slate-200 bg-slate-100 text-slate-700",
   };
 }
@@ -229,20 +229,20 @@ function getScoreTone(score: number) {
 
 function translateRankingSignal(value: string, text: Record<string, string>) {
   const map: Record<string, string> = {
-    "Rising This Week": text.trendRising,
-    "Steady Attention": text.trendSteady,
-    "Building Interest": text.trendBuilding,
+    "High recent activity": text.trendRising,
+    "Steady public activity": text.trendSteady,
+    "Building activity": text.trendBuilding,
     "Limited recent data": text.trendLimited,
-    "Trusted by Community": text.trustTrusted,
-    "Most Discussed": text.trustDiscussed,
-    "Verified Profile": text.trustVerified,
-    "Emerging Profile": text.trustEmerging,
-    "Emerging profile": text.dataEmerging,
-    "Developing signal": text.dataDeveloping,
-    "Established signal": text.dataEstablished,
-    "Most Trusted": text.badgeMostTrusted,
-    "Strong Public Signal": text.badgeStrongSignal,
-    "Community Watchlist": text.badgeWatchlist,
+    "High confidence profile": text.trustTrusted,
+    "High discussion volume": text.trustDiscussed,
+    "Verified profile": text.trustVerified,
+    "Developing profile": text.trustEmerging,
+    "Limited profile data": text.dataEmerging,
+    "Developing public signal": text.dataDeveloping,
+    "Established public signal": text.dataEstablished,
+    "Highest public score": text.badgeMostTrusted,
+    "Stronger data signal": text.badgeStrongSignal,
+    "Visible public profile": text.badgeWatchlist,
   };
 
   return map[value] || value;
@@ -322,7 +322,7 @@ function FeaturedLeaderCard({
 }) {
   const { section } = useLanguage();
   const text = section("ranking");
-  const { leader, stats, publicScore, trendLabel, trustLabel, dataLabel } = item;
+  const { leader, stats, publicScore, trendLabel, signalLabel, dataLabel } = item;
   const featureBadge = getFeaturedBadge(item, rank);
   const isFirst = rank === 1;
   const sparkTone = publicScore >= 70 ? "blue" : publicScore >= 45 ? "amber" : "red";
@@ -371,7 +371,7 @@ function FeaturedLeaderCard({
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
         <span className="rounded-full bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-          {translateRankingSignal(trustLabel, text)}
+          {translateRankingSignal(signalLabel, text)}
         </span>
         <p className="text-sm text-slate-600">{translateRankingSignal(dataLabel, text)}</p>
       </div>
@@ -423,7 +423,7 @@ function LeaderListRow({
 }) {
   const { section } = useLanguage();
   const text = section("ranking");
-  const { leader, stats, publicScore, trendLabel, trustLabel, dataLabel } = item;
+  const { leader, stats, publicScore, trendLabel, signalLabel, dataLabel } = item;
 
   return (
     <article className="rounded-[22px] border border-blue-100/80 bg-white/95 px-4 py-3 shadow-[0_10px_24px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-0.5 hover:border-blue-200 hover:shadow-[0_16px_34px_rgba(15,23,42,0.1)]">
@@ -460,7 +460,7 @@ function LeaderListRow({
 
         <div className="flex flex-wrap gap-2 lg:block">
           <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-            {translateRankingSignal(trustLabel, text)}
+            {translateRankingSignal(signalLabel, text)}
           </span>
           <p className="mt-1 hidden text-xs text-slate-600 lg:block">
             {translateRankingSignal(dataLabel, text)}
@@ -548,6 +548,7 @@ function Ranking() {
   const [loading, setLoading] = useState(true);
   const [selectedRole, setSelectedRole] = useState("All");
   const [sortBy, setSortBy] = useState<SortOption>("Public Score");
+  const [searchText, setSearchText] = useState("");
   const [error, setError] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
@@ -593,7 +594,7 @@ function Ranking() {
   }, [leaders]);
 
   useEffect(() => {
-    const signature = `${selectedRole}::${sortBy}`;
+    const signature = `${selectedRole}::${sortBy}::${searchText.trim().toLowerCase()}`;
 
     if (!trackedFilterRef.current) {
       trackedFilterRef.current = signature;
@@ -612,15 +613,32 @@ function Ranking() {
       metadata: {
         selectedRole,
         sortBy,
+        searchLength: searchText.trim().length,
       },
     });
-  }, [selectedRole, sortBy, text.title]);
+  }, [selectedRole, sortBy, searchText, text.title]);
 
   const rankedLeaders = useMemo(() => {
-    const filtered =
+    const roleFiltered =
       selectedRole === "All"
         ? leaders
         : leaders.filter((leader) => leader.role === selectedRole);
+
+    const query = searchText.trim().toLowerCase();
+    const filtered = !query
+      ? roleFiltered
+      : roleFiltered.filter((leader) => {
+          const districtName = getDistrictName(leader.district).toLowerCase();
+          const provinceName = getProvinceName(leader).toLowerCase();
+
+          return (
+            leader.name.toLowerCase().includes(query) ||
+            roleLabel(leader.role).toLowerCase().includes(query) ||
+            districtName.includes(query) ||
+            provinceName.includes(query) ||
+            (leader.party || "").toLowerCase().includes(query)
+          );
+        });
 
     const computed = buildRankedLeaders(filtered, statsMap);
 
@@ -643,7 +661,7 @@ function Ranking() {
 
       return b.publicScore - a.publicScore;
     });
-  }, [leaders, statsMap, selectedRole, sortBy]);
+  }, [leaders, statsMap, selectedRole, sortBy, searchText]);
 
   const featured = rankedLeaders.slice(0, 3);
   const remaining = rankedLeaders.slice(3);
@@ -654,81 +672,114 @@ function Ranking() {
 
       <main className="mx-auto max-w-[1380px] px-4 py-4 md:px-6">
         <section className="surface-shell p-4 md:p-5 lg:p-6">
-          <div className="flex flex-col gap-3 xl:flex-row xl:items-end xl:justify-between">
-            <div className="max-w-3xl">
-              <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">
-                {text.badge}
-              </div>
-
-              <h1 className="mt-2.5 text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
-                {text.title}
-              </h1>
-
-              <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
-                {text.subtitle}
-              </p>
-
-              {showHowItWorks && (
-                <div className="mt-3 rounded-3xl border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f7fbff_100%)] p-4">
-                  <p className="text-sm font-semibold text-slate-950">{text.methodTitle}</p>
-                  <p className="mt-2 text-sm leading-6 text-slate-600">
-                    {text.methodText}
-                  </p>
+          <div className="border-b border-blue-100/80 pb-4">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+              <div className="max-w-3xl">
+                <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">
+                  {text.badge}
                 </div>
-              )}
-            </div>
 
-            <div className="grid gap-2 sm:grid-cols-3 xl:w-[540px]">
-              <div className="rounded-3xl border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] px-4 py-2.5 text-slate-700 shadow-sm">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-600">{text.visibleLeaders}</p>
-                <p className="mt-1 text-xl font-extrabold text-slate-950">
-                  {rankedLeaders.length}
+                <div className="mt-2 flex flex-wrap items-center gap-2.5">
+                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
+                    {text.title}
+                  </h1>
+                  <button
+                    type="button"
+                    onClick={() => setShowHowItWorks((prev) => !prev)}
+                    className="inline-flex min-h-[36px] items-center rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 transition hover:border-blue-200 hover:text-slate-900"
+                  >
+                    {showHowItWorks ? text.howHide : text.howShow}
+                  </button>
+                </div>
+
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                  {text.subtitle}
                 </p>
               </div>
 
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value as SortOption)}
-                className="rounded-3xl border border-blue-100 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-              >
-                <option>{text.sortPublic}</option>
-                <option>{text.sortHighest}</option>
-                <option>{text.sortDiscussed}</option>
-                <option>{text.sortEngaged}</option>
-                <option>{text.sortLowest}</option>
-              </select>
-
-              {lastUpdated ? (
-                <div className="rounded-3xl border border-blue-100/80 bg-white/90 px-4 py-2.5 text-sm text-slate-600">
-                  {text.lastUpdated}: <span className="font-semibold text-slate-900">{lastUpdated}</span>
-                </div>
-              ) : (
-                <div />
-              )}
+              <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 lg:justify-end">
+                <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 font-medium text-slate-700">
+                  {text.visibleLeaders}: <span className="font-semibold text-slate-950">{rankedLeaders.length}</span>
+                </span>
+                {lastUpdated ? (
+                  <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5">
+                    {text.lastUpdated}: <span className="font-semibold text-slate-900">{lastUpdated}</span>
+                  </span>
+                ) : null}
+              </div>
             </div>
+
+            {showHowItWorks && (
+              <div className="mt-3 rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-3">
+                <p className="text-sm font-semibold text-slate-950">{text.methodTitle}</p>
+                <p className="mt-1.5 text-sm leading-6 text-slate-600">
+                  {text.methodText}
+                </p>
+              </div>
+            )}
           </div>
 
-          <div className="mt-4 flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex flex-wrap gap-2">
-            {roleTabs.map((role) => (
-              <NepalActionButton
-                key={role}
-                onClick={() => setSelectedRole(role)}
-                tone={selectedRole === role ? "primary" : "secondary"}
-                className="min-h-[42px] px-4 py-2.5 text-sm"
-              >
-                {role === "All" ? text.allLeaders : roleLabel(role)}
-              </NepalActionButton>
-            ))}
-            </div>
+          <div className="mt-4 rounded-[24px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+              <div className="min-w-0 lg:max-w-[320px] lg:flex-1">
+                <label className="sr-only" htmlFor="ranking-search">
+                  {text.searchLabel || "Search profiles"}
+                </label>
+                <input
+                  id="ranking-search"
+                  type="search"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder={
+                    text.searchPlaceholder ||
+                    "Search by leader, role, district, province, or party..."
+                  }
+                  className="h-11 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                />
+              </div>
 
-            <NepalActionButton
-              onClick={() => setShowHowItWorks((prev) => !prev)}
-              tone="secondary"
-              className="min-h-[42px] px-4 py-2 text-sm"
-            >
-              {showHowItWorks ? text.howHide : text.howShow}
-            </NepalActionButton>
+              <div className="min-w-0 lg:flex-[1.4]">
+                <div className="flex gap-2 overflow-x-auto pb-1">
+                  {roleTabs.map((role) => (
+                    <NepalActionButton
+                      key={role}
+                      onClick={() => setSelectedRole(role)}
+                      tone={selectedRole === role ? "primary" : "secondary"}
+                      className="min-h-[40px] shrink-0 px-4 py-2 text-sm"
+                    >
+                      {role === "All" ? text.allLeaders : roleLabel(role)}
+                    </NepalActionButton>
+                  ))}
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row lg:ml-auto">
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as SortOption)}
+                  className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                >
+                  <option>{text.sortPublic}</option>
+                  <option>{text.sortHighest}</option>
+                  <option>{text.sortDiscussed}</option>
+                  <option>{text.sortEngaged}</option>
+                  <option>{text.sortLowest}</option>
+                </select>
+
+                {(selectedRole !== "All" || searchText.trim()) ? (
+                  <NepalActionButton
+                    onClick={() => {
+                      setSelectedRole("All");
+                      setSearchText("");
+                    }}
+                    tone="secondary"
+                    className="min-h-[40px] px-4 py-2 text-sm"
+                  >
+                    {text.clearFilters || "Clear filters"}
+                  </NepalActionButton>
+                ) : null}
+              </div>
+            </div>
           </div>
 
           {error ? (
@@ -773,7 +824,7 @@ function Ranking() {
                       {text.topBody}
                     </p>
                   </div>
-                  <div className="hidden rounded-full border border-blue-100 bg-white px-4 py-2 text-xs font-semibold text-blue-700 md:inline-flex">
+                  <div className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 md:inline-flex">
                     {text.spotlight}
                   </div>
                 </div>

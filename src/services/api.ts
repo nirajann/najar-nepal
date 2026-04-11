@@ -1,5 +1,9 @@
+
+// const API_BASE_URL=("http://localhost:5000/api");
 const API_BASE_URL =
   (import.meta.env.VITE_API_BASE_URL || "https://najar-nepal-api.onrender.com/api").replace(/\/+$/, "");
+
+
 
 
 type UnauthorizedHandler = (() => void) | null;

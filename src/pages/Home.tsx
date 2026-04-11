@@ -122,11 +122,13 @@ function LiveStat({
       : "border-slate-200 bg-white";
 
   return (
-    <div className={`rounded-[22px] border px-4 py-4 shadow-sm ${toneClass}`}>
-      <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-700">
+    <div className={`rounded-2xl border px-3 py-3 shadow-sm md:px-4 md:py-4 ${toneClass}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-700 md:text-[11px]">
         {label}
       </p>
-      <p className="mt-2 text-2xl font-extrabold tracking-tight text-slate-950">{value}</p>
+      <p className="mt-1.5 text-xl font-extrabold tracking-tight text-slate-950 md:mt-2 md:text-2xl">
+        {value}
+      </p>
     </div>
   );
 }
@@ -145,14 +147,13 @@ function UtilityCard({
   return (
     <Link
       to={href}
-      className="group relative overflow-hidden rounded-[28px] border border-blue-100 bg-white p-5 shadow-[0_16px_34px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_24px_44px_rgba(15,23,42,0.10)]"
+      className="group relative overflow-hidden rounded-[24px] border border-blue-100 bg-white p-4 shadow-[0_14px_28px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_20px_38px_rgba(15,23,42,0.09)] md:rounded-[28px] md:p-5"
     >
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
       <h3 className="text-lg font-bold text-slate-950">{title}</h3>
       <p className="mt-2 text-sm leading-6 text-slate-700">{text}</p>
-      <div className="mt-4 inline-flex items-center gap-2 text-sm font-semibold text-slate-900">
-        <span>{cta}</span>
-        <span className="text-red-500 transition group-hover:translate-x-0.5">→</span>
+      <div className="mt-4 inline-flex items-center text-sm font-semibold text-slate-900 transition group-hover:text-blue-700">
+        {cta}
       </div>
     </Link>
   );
@@ -178,201 +179,94 @@ function FeaturedLeadersPanel({
 }) {
   const { section } = useLanguage();
   const content = section("home");
-  const primaryLeader = leaders[0];
-  const supportingLeaders = leaders.slice(1, 4);
 
   return (
-    <section className="mt-8 overflow-hidden rounded-[30px] border border-blue-100 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.07)]">
+    <section className="mt-8 overflow-hidden rounded-[26px] border border-blue-100 bg-white shadow-[0_16px_34px_rgba(15,23,42,0.06)] md:rounded-[30px]">
       <DhakaBorder />
-      <div className="p-5 md:p-6">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <div className="p-4 md:p-5">
+        <div className="flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
           <div>
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">
               {content.featuredProfilesEyebrow}
             </p>
-            <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950">
+            <h2 className="mt-1.5 text-xl font-bold tracking-tight text-slate-950 md:text-2xl">
               {content.featuredProfilesTitle}
             </h2>
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-700">
+            <p className="mt-1 max-w-2xl text-sm leading-6 text-slate-700">
               {content.featuredProfilesHelper}
             </p>
           </div>
           {!loading && leaders.length > 0 ? (
-            <div className="inline-flex items-center gap-2 self-start rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-              <span className="h-2 w-2 rounded-full bg-red-500" />
-              <span>
-                {leaders.length} {content.featuredProfilesVisibleCount}
-              </span>
+            <div className="inline-flex items-center gap-1.5 self-start rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+              <span>{leaders.length}</span>
+              <span>{content.featuredProfilesVisibleCount}</span>
             </div>
           ) : null}
         </div>
 
-        <div className="mt-6">
+        <div className="mt-4">
           {loading ? (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.9fr)]">
-              <div className="rounded-[26px] border border-slate-200 bg-slate-50 p-5 animate-pulse">
-                <div className="flex gap-4">
-                  <div className="h-16 w-16 rounded-[20px] bg-slate-200" />
-                  <div className="flex-1 space-y-3">
-                    <div className="h-4 w-24 rounded bg-slate-200" />
-                    <div className="h-6 w-48 rounded bg-slate-200" />
-                    <div className="h-4 w-36 rounded bg-slate-200" />
-                    <div className="h-20 rounded-2xl bg-slate-200" />
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="rounded-[22px] border border-slate-200 bg-slate-50 p-4 animate-pulse">
+                  <div className="flex items-center gap-3">
+                    <div className="h-14 w-14 rounded-[18px] bg-slate-200" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-28 rounded bg-slate-200" />
+                      <div className="h-3 w-16 rounded bg-slate-200" />
+                    </div>
                   </div>
                 </div>
-              </div>
-              <div className="space-y-3">
-                {Array.from({ length: 3 }).map((_, i) => (
-                  <div key={i} className="rounded-[22px] border border-slate-200 bg-slate-50 p-4 animate-pulse">
-                    <div className="flex gap-3">
-                      <div className="h-12 w-12 rounded-2xl bg-slate-200" />
-                      <div className="flex-1 space-y-2">
-                        <div className="h-4 w-24 rounded bg-slate-200" />
-                        <div className="h-3 w-20 rounded bg-slate-200" />
-                        <div className="h-3 w-28 rounded bg-slate-200" />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+              ))}
             </div>
           ) : leaders.length > 0 ? (
-            <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(280px,0.9fr)]">
-              {primaryLeader ? (
-                <article className="group relative overflow-hidden rounded-[28px] border border-blue-100 bg-[linear-gradient(145deg,#ffffff_0%,#f8fbff_100%)] p-5 shadow-[0_18px_34px_rgba(15,23,42,0.06)] transition duration-300 hover:-translate-y-1 hover:shadow-[0_26px_48px_rgba(15,23,42,0.10)] md:p-6">
-                  <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 to-blue-600" />
-                  <div className="flex flex-col gap-5">
-                    <div className="flex flex-col gap-4 sm:flex-row">
-                      {primaryLeader.photo ? (
-                        <img
-                          src={primaryLeader.photo}
-                          alt={primaryLeader.name}
-                          className="h-20 w-20 rounded-[22px] border border-white/80 object-cover shadow-sm"
-                        />
-                      ) : (
-                        <div className="flex h-20 w-20 items-center justify-center rounded-[22px] bg-blue-50 text-2xl font-bold text-blue-700 ring-1 ring-blue-100">
-                          {primaryLeader.name.charAt(0)}
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-600">
-                            {content.featuredProfilesFeaturedLabel}
-                          </span>
-                          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold text-blue-700">
-                            {content.featuredProfilesPublicLabel}
-                          </span>
-                        </div>
-
-                        <h3 className="mt-3 text-2xl font-bold tracking-tight text-slate-950">
-                          {primaryLeader.name}
-                        </h3>
-                        <p className="mt-1 text-sm font-semibold text-slate-700">
-                          {primaryLeader.role}
-                        </p>
-
-                        <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-3">
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                              {content.featuredProfilesLocationLabel}
-                            </p>
-                            <p className="mt-1 text-sm font-medium text-slate-700">
-                              {primaryLeader.districtName}
-                              {primaryLeader.province ? `, ${primaryLeader.province}` : ""}
-                            </p>
-                          </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                              {content.featuredProfilesRoleLabel}
-                            </p>
-                            <p className="mt-1 text-sm font-medium text-slate-700">
-                              {primaryLeader.role}
-                            </p>
-                          </div>
-                          <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500">
-                              {primaryLeader.party
-                                ? content.featuredProfilesPartyLabel
-                                : content.featuredProfilesProfileLabel}
-                            </p>
-                            <p className="mt-1 text-sm font-medium text-slate-700">
-                              {primaryLeader.party || content.featuredProfilesProfileReady}
-                            </p>
-                          </div>
-                        </div>
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+              {leaders.map((leader, index) => (
+                <Link
+                  key={leader.leaderId}
+                  to={`/leader/${leader.leaderId}`}
+                  className={`group rounded-[22px] border p-4 shadow-[0_12px_24px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(15,23,42,0.09)] ${
+                    index === 0
+                      ? "border-blue-200 bg-[linear-gradient(160deg,#ffffff_0%,#f5f9ff_100%)]"
+                      : "border-slate-200 bg-white"
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    {leader.photo ? (
+                      <img
+                        src={leader.photo}
+                        alt={leader.name}
+                        className="h-14 w-14 rounded-[18px] border border-slate-200 object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-14 w-14 items-center justify-center rounded-[18px] bg-blue-50 text-lg font-bold text-blue-700 ring-1 ring-blue-100">
+                        {leader.name.charAt(0)}
                       </div>
-                    </div>
+                    )}
 
-                    <div className="flex flex-col gap-4 border-t border-slate-200 pt-4 sm:flex-row sm:items-center sm:justify-between">
-                      <p className="max-w-lg text-sm leading-6 text-slate-700">
-                        {content.featuredProfilesHelper}
-                      </p>
-                      <Link
-                        to={`/leader/${primaryLeader.leaderId}`}
-                        className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700"
-                      >
-                        <span>{content.featuredProfilesAction}</span>
-                        <span>→</span>
-                      </Link>
+                    <div className="min-w-0 flex-1">
+                      <div className="inline-flex rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.12em] text-blue-700">
+                        {index === 0
+                          ? content.featuredProfilesFeaturedLabel
+                          : content.featuredProfilesPublicLabel}
+                      </div>
+                      <h3 className="mt-2 line-clamp-2 text-base font-bold tracking-tight text-slate-950">
+                        {leader.name}
+                      </h3>
+                      <p className="mt-1 text-sm font-medium text-slate-700">{leader.role}</p>
                     </div>
                   </div>
-                </article>
-              ) : null}
 
-              <div className="flex flex-col gap-3">
-                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-500">
-                  {content.featuredProfilesSupportingTitle}
-                </p>
-                {supportingLeaders.map((leader, index) => (
-                  <article
-                    key={leader.leaderId}
-                    className="group rounded-[22px] border border-slate-200 bg-slate-50/80 p-4 transition duration-300 hover:-translate-y-0.5 hover:bg-white hover:shadow-sm"
-                  >
-                    <div className="flex items-start gap-3">
-                      {leader.photo ? (
-                        <img
-                          src={leader.photo}
-                          alt={leader.name}
-                          className="h-14 w-14 rounded-[18px] object-cover"
-                        />
-                      ) : (
-                        <div
-                          className={`flex h-14 w-14 items-center justify-center rounded-[18px] text-base font-bold ring-1 ${
-                            index % 2 === 0
-                              ? "bg-blue-50 text-blue-700 ring-blue-100"
-                              : "bg-red-50 text-red-600 ring-red-100"
-                          }`}
-                        >
-                          {leader.name.charAt(0)}
-                        </div>
-                      )}
-
-                      <div className="min-w-0 flex-1">
-                        <span className="inline-flex items-center rounded-full border border-slate-200 bg-white px-2.5 py-1 text-[11px] font-semibold text-slate-700">
-                          {content.featuredProfilesPublicLabel}
-                        </span>
-                        <h3 className="mt-2 truncate text-base font-bold text-slate-950">
-                          {leader.name}
-                        </h3>
-                        <p className="text-sm font-medium text-slate-600">{leader.role}</p>
-                        <p className="mt-2 text-xs text-slate-600">
-                          {leader.districtName}
-                          {leader.province ? `, ${leader.province}` : ""}
-                        </p>
-                      </div>
-                    </div>
-
-                    <Link
-                      to={`/leader/${leader.leaderId}`}
-                      className="mt-4 inline-flex items-center text-sm font-semibold text-slate-950 transition hover:text-blue-700"
-                    >
-                      <span>{content.featuredProfilesAction}</span>
-                      <span>→</span>
-                    </Link>
-                  </article>
-                ))}
-              </div>
+                  <div className="mt-4 flex items-center justify-between border-t border-slate-200 pt-3">
+                    <p className="truncate pr-3 text-xs font-medium text-slate-600">
+                      {leader.districtName}
+                    </p>
+                    <span className="text-sm font-semibold text-slate-900 transition group-hover:text-blue-700">
+                      {content.featuredProfilesAction}
+                    </span>
+                  </div>
+                </Link>
+              ))}
             </div>
           ) : (
             <div className="rounded-[22px] border border-slate-200 bg-slate-50/70 p-5 text-sm text-slate-700">
@@ -441,7 +335,7 @@ function HeroVisual({
 }) {
   const { section } = useLanguage();
   const uiText = section("home");
-  const [activeIndex, setActiveIndex] = useState(0);
+  const [rotatingIndex, setRotatingIndex] = useState(0);
 
   const selectedIndex = useMemo(() => {
     if (!selectedDistrictId) return -1;
@@ -449,34 +343,35 @@ function HeroVisual({
   }, [items, selectedDistrictId]);
 
   useEffect(() => {
-    if (selectedIndex >= 0) {
-      setActiveIndex(selectedIndex);
+    if (items.length <= 1) {
       return;
     }
 
-    if (items.length <= 1) {
-      setActiveIndex(0);
+    if (selectedIndex >= 0) {
       return;
     }
 
     const intervalId = window.setInterval(() => {
-      setActiveIndex((current) => (current + 1) % items.length);
+      setRotatingIndex((current) => (current + 1) % items.length);
     }, 5200);
 
     return () => window.clearInterval(intervalId);
   }, [items.length, selectedIndex]);
 
+  const activeIndex =
+    selectedIndex >= 0 ? selectedIndex : Math.min(rotatingIndex, Math.max(items.length - 1, 0));
+
   if (loading) {
     return (
-      <div className="relative overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.10)] md:p-5">
+      <div className="relative overflow-hidden rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_16px_34px_rgba(15,23,42,0.10)] md:rounded-[30px] md:p-4">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
-        <div className="space-y-4">
+        <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
             <div className="skeleton-shimmer h-6 w-28 rounded-full" />
             <div className="skeleton-shimmer h-4 w-24 rounded-full" />
           </div>
-          <div className="rounded-[26px] border border-blue-100 bg-white p-4 shadow-sm">
-            <div className="skeleton-shimmer h-[280px] rounded-[22px]" />
+          <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm md:rounded-[26px] md:p-4">
+            <div className="skeleton-shimmer h-[220px] rounded-[18px] md:h-[250px] md:rounded-[22px]" />
           </div>
         </div>
       </div>
@@ -487,14 +382,14 @@ function HeroVisual({
 
   if (!activeItem) {
     return (
-      <div className="relative overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.10)] md:p-5">
+      <div className="relative overflow-hidden rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_16px_34px_rgba(15,23,42,0.10)] md:rounded-[30px] md:p-4">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
-        <div className="rounded-[26px] border border-blue-100 bg-white p-4 shadow-sm">
-          <div className="rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-5 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)]">
+        <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm md:rounded-[26px] md:p-4">
+          <div className="rounded-[20px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-4 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)] md:rounded-[24px] md:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
               {uiText.heroPreviewLabel}
             </p>
-            <p className="mt-4 text-sm leading-7 text-slate-200">
+            <p className="mt-3 text-sm leading-6 text-slate-200">
               {uiText.heroPreviewFallback}
             </p>
           </div>
@@ -523,10 +418,10 @@ function HeroVisual({
         };
 
   return (
-    <div className="relative overflow-hidden rounded-[30px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_18px_40px_rgba(15,23,42,0.10)] md:p-5">
+    <div className="relative overflow-hidden rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_16px_34px_rgba(15,23,42,0.10)] md:rounded-[30px] md:p-4">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
       <div className="relative">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-3 flex items-center justify-between gap-3">
           <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-blue-700">
             {uiText.heroPreviewLabel}
           </span>
@@ -535,10 +430,10 @@ function HeroVisual({
           </span>
         </div>
 
-        <div className="rounded-[26px] border border-blue-100 bg-white p-4 shadow-sm">
-          <div className="grid gap-4 lg:grid-cols-[1.1fr_0.9fr]">
-            <div className="rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-4 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)]">
-              <div className="mb-4 flex items-center justify-between">
+        <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm md:rounded-[26px] md:p-4">
+          <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
+            <div className="rounded-[20px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-3.5 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)] md:rounded-[24px] md:p-4">
+              <div className="mb-3 flex items-center justify-between">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
                   {uiText.heroPreviewMapLabel}
                 </p>
@@ -547,7 +442,7 @@ function HeroVisual({
                 </span>
               </div>
 
-              <div className="relative h-[230px] overflow-hidden rounded-[20px] border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,0.92),rgba(15,23,42,0.98))]">
+              <div className="relative h-[180px] overflow-hidden rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(30,41,59,0.92),rgba(15,23,42,0.98))] md:h-[210px] md:rounded-[20px]">
                 <svg viewBox="0 0 420 240" className="absolute inset-0 h-full w-full" fill="none">
                   <path
                     d="M36 146L84 128L122 112L166 98L214 84L250 92L288 78L328 84L356 70L386 78L364 101L328 113L292 126L256 134L214 142L176 156L138 170L96 178L54 172L36 146Z"
@@ -559,20 +454,20 @@ function HeroVisual({
                   <circle cx={activeItem.markerX} cy={activeItem.markerY} r="14" fill={accent.dot} opacity="0.16" />
                 </svg>
 
-                <div className="absolute bottom-4 left-4 right-4 grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[18px] border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
+                <div className="absolute bottom-3 left-3 right-3 grid gap-2.5 sm:grid-cols-2 md:bottom-4 md:left-4 md:right-4 md:gap-3">
+                  <div className="rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
                       {uiText.heroPreviewDistrictLabel}
                     </p>
-                    <h3 className="mt-1 text-xl font-bold text-white">{activeItem.districtName}</h3>
+                    <h3 className="mt-1 text-lg font-bold text-white md:text-xl">{activeItem.districtName}</h3>
                     <p className="text-sm text-slate-200">{activeItem.province}</p>
                   </div>
 
-                  <div className="rounded-[18px] border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
+                  <div className="rounded-2xl border border-white/10 bg-white/8 p-3 backdrop-blur-sm">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
                       {uiText.heroPreviewTrustLabel}
                     </p>
-                    <p className="mt-1 text-2xl font-extrabold text-white">
+                    <p className="mt-1 text-xl font-extrabold text-white md:text-2xl">
                       {typeof activeItem.score === "number" ? `${activeItem.score}/100` : "--"}
                     </p>
                     <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/10">
@@ -591,27 +486,27 @@ function HeroVisual({
               </div>
             </div>
 
-            <div className="space-y-3">
-              <div className="rounded-[22px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-4 shadow-sm">
+            <div className="space-y-2.5">
+              <div className="rounded-[20px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3.5 shadow-sm md:rounded-[22px] md:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
                   {uiText.heroPreviewLeaderLabel}
                 </p>
-                <div className="mt-3 flex items-start gap-3">
+                <div className="mt-2.5 flex items-start gap-3">
                   <div className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent.badge}`}>
                     {activeItem.leaderName.charAt(0)}
                   </div>
                   <div className="min-w-0">
                     <h3 className="truncate text-base font-bold text-slate-950">{activeItem.leaderName}</h3>
-                    <p className="mt-1 text-sm font-medium text-slate-700">{activeItem.liveSignal}</p>
+                    <p className="mt-1 text-sm font-medium leading-5 text-slate-700">{activeItem.liveSignal}</p>
                   </div>
                 </div>
               </div>
 
-              <div className="rounded-[22px] border border-blue-100 bg-white p-4 shadow-sm">
+              <div className="rounded-[20px] border border-blue-100 bg-white p-3.5 shadow-sm md:rounded-[22px] md:p-4">
                 <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
                   {uiText.heroPreviewActivityLabel}
                 </p>
-                <div className="mt-3 rounded-2xl bg-slate-50 px-3 py-3">
+                <div className="mt-2.5 rounded-2xl bg-slate-50 px-3 py-3">
                   <p className="text-sm leading-6 text-slate-700">{activeItem.activitySummary}</p>
                 </div>
               </div>
@@ -949,41 +844,41 @@ function Home() {
       <NepalPatternBackdrop />
       <Navbar />
 
-      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-4 md:px-5 md:py-6">
-        <section className="rounded-[34px] border border-blue-100 bg-white p-5 shadow-[0_18px_44px_rgba(15,23,42,0.08)] md:p-8">
-          <div className="grid items-start gap-6 xl:grid-cols-[1.12fr_0.88fr] xl:gap-8">
-            <div className="max-w-3xl pt-1">
+      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-3 md:px-5 md:py-5">
+        <section className="rounded-[28px] border border-blue-100 bg-white p-4 shadow-[0_18px_40px_rgba(15,23,42,0.08)] md:rounded-[34px] md:p-6">
+          <div className="grid items-start gap-4 xl:grid-cols-[1.08fr_0.92fr] xl:gap-6">
+            <div className="max-w-3xl pt-0.5">
               <div className="inline-flex rounded-full border border-red-100 bg-red-50/70 px-3 py-1 text-[11px] font-semibold text-red-600">
                 {text.heroBadge}
               </div>
 
-              <h1 className="mt-4 max-w-4xl text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">
+              <h1 className="mt-3 max-w-4xl text-[2rem] font-extrabold tracking-tight text-slate-950 sm:text-[2.35rem] md:mt-4 md:text-5xl xl:text-6xl">
                 {text.heroTitle}
               </h1>
 
-              <p className="mt-4 max-w-2xl text-lg font-semibold leading-8 text-slate-700 md:text-[21px]">
+              <p className="mt-3 max-w-2xl text-base font-semibold leading-7 text-slate-700 md:mt-4 md:text-lg md:leading-8">
                 {text.heroSupportLine}
               </p>
 
-              <div className="mt-7 max-w-2xl rounded-[26px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-3.5 shadow-[0_14px_34px_rgba(15,23,42,0.06)]">
-                <div className="flex flex-col gap-3 sm:flex-row">
+              <div className="mt-5 max-w-2xl rounded-[22px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-2.5 shadow-[0_14px_30px_rgba(15,23,42,0.06)] md:mt-6 md:rounded-[26px] md:p-3">
+                <div className="flex flex-col gap-2.5 sm:flex-row">
                   <input
                     type="search"
                     value={searchText}
                     onChange={(event) => setSearchText(event.target.value)}
                     placeholder={text.heroSearchPlaceholder}
-                    className="h-14 flex-1 rounded-2xl border border-blue-200 bg-white px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-4 focus:ring-blue-100"
+                    className="h-12 flex-1 rounded-2xl border border-blue-200 bg-white px-4 text-base text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-4 focus:ring-blue-100 md:h-14"
                   />
                   <NepalAnchorButton
                     href="#district-map"
-                    className="min-h-[56px] justify-center whitespace-nowrap px-6 text-sm shadow-[0_14px_24px_rgba(15,23,42,0.14)]"
+                    className="min-h-[48px] justify-center whitespace-nowrap px-5 text-sm shadow-[0_14px_24px_rgba(15,23,42,0.14)] md:min-h-[54px] md:px-6"
                   >
                     {text.heroSearchAction}
                   </NepalAnchorButton>
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-2.5 md:mt-5 md:gap-3">
                 <NepalAnchorButton href="#district-map">
                   {text.primaryCta}
                 </NepalAnchorButton>
@@ -994,7 +889,7 @@ function Home() {
 
                 <a
                   href="#district-map"
-                  className="inline-flex items-center px-1 py-3 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
+                  className="inline-flex items-center px-1 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
                 >
                   {text.seeHowItWorks}
                 </a>
@@ -1010,7 +905,7 @@ function Home() {
             />
           </div>
 
-          <div className="mt-7 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="mt-5 grid grid-cols-2 gap-2.5 md:mt-6 md:gap-3 md:grid-cols-4">
             <LiveStat label={text.liveStatsUpdated} value={new Date().toLocaleDateString()} />
             <LiveStat label={text.liveStatsDistricts} value={String(filteredDistrictsCount)} tone="blue" />
             <LiveStat label={text.liveStatsProfiles} value={`${leaderCount}+`} />
@@ -1018,59 +913,51 @@ function Home() {
           </div>
         </section>
 
-        <FeaturedLeadersPanel leaders={featuredLeaders} loading={loadingDistricts} />
-
-        <section className="mt-10">
-          <div
-            id="district-map"
-            className="grid grid-cols-1 gap-5 xl:grid-cols-[minmax(0,1.9fr)_420px]"
-          >
-            <div className="min-w-0">
-              <NepalMap
-                districts={districts}
-                districtLoading={loadingDistricts}
-                setSelectedDistrict={setSelectedDistrict}
-                selectedDistrict={selectedDistrict}
-                selectedProvince={selectedProvince}
-                searchText={searchText}
-                setSearchText={setSearchText}
-                provinceButtons={provinceButtons}
-                setSelectedProvince={setSelectedProvince}
-                districtScores={districtScores}
-                totalDistricts={loadingDistricts ? "..." : filteredDistrictsCount}
-                onReset={() => {
-                  setSearchText("");
-                  setSelectedProvince("ALL");
-                  setSelectedDistrict(null);
-                }}
-              />
-            </div>
-
-            <Suspense fallback={<SidePanelSkeleton />}>
-              <div className="xl:sticky xl:top-24 xl:self-start">
-                <SelectedDistrictPanel district={selectedDistrict} />
-              </div>
-            </Suspense>
+        <section className="mt-6 md:mt-8">
+          <div id="district-map">
+            <NepalMap
+              districts={districts}
+              districtLoading={loadingDistricts}
+              setSelectedDistrict={setSelectedDistrict}
+              selectedDistrict={selectedDistrict}
+              selectedProvince={selectedProvince}
+              searchText={searchText}
+              setSearchText={setSearchText}
+              provinceButtons={provinceButtons}
+              setSelectedProvince={setSelectedProvince}
+              districtScores={districtScores}
+              totalDistricts={loadingDistricts ? "..." : filteredDistrictsCount}
+              onReset={() => {
+                setSearchText("");
+                setSelectedProvince("ALL");
+                setSelectedDistrict(null);
+              }}
+              summarySlot={
+                <Suspense fallback={<SidePanelSkeleton />}>
+                  <SelectedDistrictPanel district={selectedDistrict} embedded />
+                </Suspense>
+              }
+            />
           </div>
         </section>
 
-        <section className="mt-12">
-          <div className="mb-4">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-950">
+        <section id="district-insights" className="mt-8 md:mt-10">
+          <div className="mb-3 md:mb-4">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
               {text.lowerSectionTitle}
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-700">
               {text.lowerSectionText}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+          <div className="grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)] xl:gap-5">
             <div>
-              <div className="mb-3">
-                <h3 className="text-xl font-bold tracking-tight text-slate-950">
+              <div className="mb-2.5">
+                <h3 className="text-lg font-bold tracking-tight text-slate-950 md:text-xl">
                   {text.feedbackTitle}
                 </h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
+                <p className="mt-1 text-sm leading-6 text-slate-700">
                   {text.feedbackText}
                 </p>
               </div>
@@ -1084,11 +971,11 @@ function Home() {
             </div>
 
             <div>
-              <div className="mb-3">
-                <h3 className="text-xl font-bold tracking-tight text-slate-950">
+              <div className="mb-2.5">
+                <h3 className="text-lg font-bold tracking-tight text-slate-950 md:text-xl">
                   {text.districtDetailsTitle}
                 </h3>
-                <p className="mt-1 text-sm leading-6 text-slate-600">
+                <p className="mt-1 text-sm leading-6 text-slate-700">
                   {text.districtDetailsText}
                 </p>
               </div>
@@ -1100,17 +987,19 @@ function Home() {
           </div>
         </section>
 
-        <section className="mt-12">
-          <div className="mb-4">
-            <h2 className="text-3xl font-bold tracking-tight text-slate-950">
+        <FeaturedLeadersPanel leaders={featuredLeaders} loading={loadingDistricts} />
+
+        <section className="mt-8 md:mt-10">
+          <div className="mb-3 md:mb-4">
+            <h2 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
               {text.exploreMoreTitle}
             </h2>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+            <p className="mt-1.5 max-w-3xl text-sm leading-6 text-slate-700">
               {text.exploreMoreText}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 md:gap-4">
             <UtilityCard
               title={text.card1Title}
               text={text.card1Text}
