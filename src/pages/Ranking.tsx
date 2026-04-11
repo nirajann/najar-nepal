@@ -313,6 +313,56 @@ function ScoreBadge({
   );
 }
 
+function MetricTile({
+  label,
+  value,
+  helper,
+}: {
+  label: string;
+  value: string | number;
+  helper?: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-blue-100/80 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-3 py-2.5">
+      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-1 text-base font-bold text-slate-950">{value}</p>
+      {helper ? <p className="mt-1 text-xs text-slate-600">{helper}</p> : null}
+    </div>
+  );
+}
+
+function LeaderboardMetric({
+  label,
+  value,
+  helper,
+  strong = false,
+  compact = false,
+}: {
+  label: string;
+  value: string | number;
+  helper?: string;
+  strong?: boolean;
+  compact?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
+        {label}
+      </p>
+      <p
+        className={`mt-1 truncate ${
+          compact ? "text-sm font-semibold" : strong ? "text-lg font-extrabold" : "text-base font-bold"
+        } text-slate-950`}
+      >
+        {value}
+      </p>
+      {helper ? <p className="mt-0.5 text-xs text-slate-600">{helper}</p> : null}
+    </div>
+  );
+}
+
 function FeaturedLeaderCard({
   item,
   rank,
@@ -490,56 +540,6 @@ function LeaderListRow({
   );
 }
 
-function MetricTile({
-  label,
-  value,
-  helper,
-}: {
-  label: string;
-  value: string | number;
-  helper?: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-blue-100/80 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-3 py-2.5">
-      <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-600">
-        {label}
-      </p>
-      <p className="mt-1 text-base font-bold text-slate-950">{value}</p>
-      {helper ? <p className="mt-1 text-xs text-slate-600">{helper}</p> : null}
-    </div>
-  );
-}
-
-function LeaderboardMetric({
-  label,
-  value,
-  helper,
-  strong = false,
-  compact = false,
-}: {
-  label: string;
-  value: string | number;
-  helper?: string;
-  strong?: boolean;
-  compact?: boolean;
-}) {
-  return (
-    <div className="min-w-0">
-      <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-slate-500">
-        {label}
-      </p>
-      <p
-        className={`mt-1 truncate ${
-          compact ? "text-sm font-semibold" : strong ? "text-lg font-extrabold" : "text-base font-bold"
-        } text-slate-950`}
-      >
-        {value}
-      </p>
-      {helper ? <p className="mt-0.5 text-xs text-slate-600">{helper}</p> : null}
-    </div>
-  );
-}
-
 function Ranking() {
   const { section } = useLanguage();
   const text = section("ranking");
@@ -672,15 +672,15 @@ function Ranking() {
 
       <main className="mx-auto max-w-[1380px] px-4 py-4 md:px-6">
         <section className="surface-shell p-4 md:p-5 lg:p-6">
-          <div className="border-b border-blue-100/80 pb-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div className="rounded-[28px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_16px_34px_rgba(15,23,42,0.06)] md:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl">
                 <div className="inline-flex rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 shadow-sm">
                   {text.badge}
                 </div>
 
                 <div className="mt-2 flex flex-wrap items-center gap-2.5">
-                  <h1 className="text-3xl font-extrabold tracking-tight text-slate-950 md:text-4xl">
+                  <h1 className="bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#1d4ed8_100%)] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent md:text-4xl">
                     {text.title}
                   </h1>
                   <button
@@ -710,74 +710,74 @@ function Ranking() {
             </div>
 
             {showHowItWorks && (
-              <div className="mt-3 rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] px-4 py-3">
+              <div className="mt-4 rounded-2xl border border-blue-100 bg-white px-4 py-3">
                 <p className="text-sm font-semibold text-slate-950">{text.methodTitle}</p>
                 <p className="mt-1.5 text-sm leading-6 text-slate-600">
                   {text.methodText}
                 </p>
               </div>
             )}
-          </div>
 
-          <div className="mt-4 rounded-[24px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-              <div className="min-w-0 lg:max-w-[320px] lg:flex-1">
-                <label className="sr-only" htmlFor="ranking-search">
-                  {text.searchLabel || "Search profiles"}
-                </label>
-                <input
-                  id="ranking-search"
-                  type="search"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
-                  placeholder={
-                    text.searchPlaceholder ||
-                    "Search by leader, role, district, province, or party..."
-                  }
-                  className="h-11 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                />
-              </div>
-
-              <div className="min-w-0 lg:flex-[1.4]">
-                <div className="flex gap-2 overflow-x-auto pb-1">
-                  {roleTabs.map((role) => (
-                    <NepalActionButton
-                      key={role}
-                      onClick={() => setSelectedRole(role)}
-                      tone={selectedRole === role ? "primary" : "secondary"}
-                      className="min-h-[40px] shrink-0 px-4 py-2 text-sm"
-                    >
-                      {role === "All" ? text.allLeaders : roleLabel(role)}
-                    </NepalActionButton>
-                  ))}
+            <div className="mt-4 rounded-[24px] border border-blue-100/80 bg-white p-3 shadow-sm">
+              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
+                <div className="min-w-0 lg:max-w-[320px] lg:flex-1">
+                  <label className="sr-only" htmlFor="ranking-search">
+                    {text.searchLabel || "Search profiles"}
+                  </label>
+                  <input
+                    id="ranking-search"
+                    type="search"
+                    value={searchText}
+                    onChange={(e) => setSearchText(e.target.value)}
+                    placeholder={
+                      text.searchPlaceholder ||
+                      "Search by leader, role, district, province, or party..."
+                    }
+                    className="h-11 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                  />
                 </div>
-              </div>
 
-              <div className="flex flex-col gap-2 sm:flex-row lg:ml-auto">
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                >
-                  <option>{text.sortPublic}</option>
-                  <option>{text.sortHighest}</option>
-                  <option>{text.sortDiscussed}</option>
-                  <option>{text.sortEngaged}</option>
-                  <option>{text.sortLowest}</option>
-                </select>
+                <div className="min-w-0 lg:flex-[1.4]">
+                  <div className="flex gap-2 overflow-x-auto pb-1">
+                    {roleTabs.map((role) => (
+                      <NepalActionButton
+                        key={role}
+                        onClick={() => setSelectedRole(role)}
+                        tone={selectedRole === role ? "primary" : "secondary"}
+                        className="min-h-[40px] shrink-0 px-4 py-2 text-sm"
+                      >
+                        {role === "All" ? text.allLeaders : roleLabel(role)}
+                      </NepalActionButton>
+                    ))}
+                  </div>
+                </div>
 
-                {(selectedRole !== "All" || searchText.trim()) ? (
-                  <NepalActionButton
-                    onClick={() => {
-                      setSelectedRole("All");
-                      setSearchText("");
-                    }}
-                    tone="secondary"
-                    className="min-h-[40px] px-4 py-2 text-sm"
+                <div className="flex flex-col gap-2 sm:flex-row lg:ml-auto">
+                  <select
+                    value={sortBy}
+                    onChange={(e) => setSortBy(e.target.value as SortOption)}
+                    className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   >
-                    {text.clearFilters || "Clear filters"}
-                  </NepalActionButton>
-                ) : null}
+                    <option>{text.sortPublic}</option>
+                    <option>{text.sortHighest}</option>
+                    <option>{text.sortDiscussed}</option>
+                    <option>{text.sortEngaged}</option>
+                    <option>{text.sortLowest}</option>
+                  </select>
+
+                  {(selectedRole !== "All" || searchText.trim()) ? (
+                    <NepalActionButton
+                      onClick={() => {
+                        setSelectedRole("All");
+                        setSearchText("");
+                      }}
+                      tone="secondary"
+                      className="min-h-[40px] px-4 py-2 text-sm"
+                    >
+                      {text.clearFilters || "Clear filters"}
+                    </NepalActionButton>
+                  ) : null}
+                </div>
               </div>
             </div>
           </div>

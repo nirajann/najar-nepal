@@ -245,6 +245,8 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
         citizenshipNumber: "Citizenship number",
         enterCitizenship: "Enter citizenship number",
         province: "Province",
+        nav_support: "Support",
+        
         enterProvince: "Enter province",
         district: "District",
         enterDistrict: "Enter district",
@@ -421,6 +423,7 @@ export const translations: Record<AppLanguage, TranslationDictionary> = {
       nav_profile: "प्रोफाइल",
       nav_login: "लगइन",
       nav_logout: "लगआउट",
+      nav_support: "सहयोग",
       nav_language_en: "English",
       nav_language_ne: "नेपाली",
       misc_loading: "लोड हुँदैछ...",

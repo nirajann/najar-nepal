@@ -16,12 +16,13 @@ function Navbar() {
   const location = useLocation();
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const navLinks = [
-    { label: t("nav_home"), to: "/" },
-    { label: t("nav_explore_map"), href: "/#district-map" },
-    { label: t("nav_projects"), to: "/projects" },
-    { label: t("nav_ranking"), to: "/ranking" },
-  ];
+const navLinks = [
+  { label: t("nav_home"), to: "/" },
+  { label: t("nav_explore_map"), href: "/#district-map" },
+  { label: t("nav_projects"), to: "/projects" },
+  { label: t("nav_ranking"), to: "/ranking" },
+  { label: t("support"), to: "/support" },
+];
 
   const isActive = (path?: string, href?: string) => {
     if (href) {
@@ -215,6 +216,7 @@ function Navbar() {
                   >
                     {user?.name || t("nav_profile")}
                   </Link>
+                  
                   <NepalActionButton
                     onClick={() => {
                       logoutUser();
@@ -230,6 +232,8 @@ function Navbar() {
                   {t("nav_login")}
                 </NepalActionLink>
               )}
+
+              
             </div>
           </div>
         </div>

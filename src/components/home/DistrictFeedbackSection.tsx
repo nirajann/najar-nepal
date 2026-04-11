@@ -69,6 +69,7 @@ function getScoreTone(value: number) {
       bar: "bg-[linear-gradient(90deg,#2563eb_0%,#0f766e_100%)]",
       track: "bg-emerald-100",
       text: "text-emerald-700",
+      card: "border-emerald-100 bg-emerald-50/40",
     };
   }
 
@@ -78,6 +79,7 @@ function getScoreTone(value: number) {
       bar: "bg-[linear-gradient(90deg,#f59e0b_0%,#f97316_100%)]",
       track: "bg-amber-100",
       text: "text-amber-700",
+      card: "border-amber-100 bg-amber-50/40",
     };
   }
 
@@ -86,6 +88,7 @@ function getScoreTone(value: number) {
     bar: "bg-[linear-gradient(90deg,#ef4444_0%,#dc2626_100%)]",
     track: "bg-red-100",
     text: "text-red-700",
+    card: "border-red-100 bg-red-50/40",
   };
 }
 
@@ -101,16 +104,19 @@ function ScoreField({
   const tone = getScoreTone(value);
 
   return (
-    <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
-      <div className="mb-2 flex items-center justify-between gap-3">
-        <p className="text-sm font-semibold text-slate-900">{label}</p>
+    <div className="group rounded-[22px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md md:p-4">
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-slate-950">{label}</p>
+          <p className="mt-1 text-[11px] text-slate-400">0 low · 100 strong</p>
+        </div>
 
-        <span className={`rounded-full border px-2.5 py-1 text-sm font-bold ${tone.chip}`}>
+        <span className={`shrink-0 rounded-full border px-3 py-1 text-sm font-bold ${tone.chip}`}>
           {value}
         </span>
       </div>
 
-      <div className={`mb-2 h-2 overflow-hidden rounded-full ${tone.track}`}>
+      <div className={`mb-3 h-2.5 overflow-hidden rounded-full ${tone.track}`}>
         <div className={`h-full rounded-full ${tone.bar}`} style={{ width: `${value}%` }} />
       </div>
 
@@ -123,9 +129,10 @@ function ScoreField({
         className="w-full accent-blue-600"
       />
 
-      <div className="mt-1.5 flex items-center justify-between text-[11px] text-slate-400">
-        <span>0 low</span>
-        <span>100 strong</span>
+      <div className="mt-2 flex items-center justify-between text-[11px] text-slate-400">
+        <span>0</span>
+        <span>50</span>
+        <span>100</span>
       </div>
     </div>
   );
@@ -140,7 +147,7 @@ function OverallScoreCard({
 }) {
   if (state.status === "idle") {
     return (
-      <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-4 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -153,7 +160,7 @@ function OverallScoreCard({
 
   if (state.status === "loading") {
     return (
-      <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-4 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -165,11 +172,11 @@ function OverallScoreCard({
 
   if (state.status === "error") {
     return (
-      <div className="rounded-[22px] border border-red-100 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-[22px] border border-red-100 bg-white px-4 py-4 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
-        <p className="mt-3 text-4xl font-extrabold tracking-tight text-slate-400">N/A</p>
+        <p className="mt-2 text-4xl font-extrabold tracking-tight text-slate-400">N/A</p>
         <p className="mt-2 text-xs leading-5 text-red-600">Unable to load score</p>
       </div>
     );
@@ -177,7 +184,7 @@ function OverallScoreCard({
 
   if (state.status === "empty") {
     return (
-      <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-3 shadow-sm">
+      <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-4 shadow-sm">
         <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
           {title}
         </p>
@@ -194,7 +201,7 @@ function OverallScoreCard({
   }
 
   return (
-    <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-3 shadow-sm">
+    <div className="rounded-[22px] border border-blue-100 bg-white px-4 py-4 shadow-sm">
       <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">
         {title}
       </p>
@@ -347,9 +354,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           });
         }
       } catch (error) {
-        if (summaryRequestIdRef.current !== requestId) {
-          return;
-        }
+        if (summaryRequestIdRef.current !== requestId) return;
 
         console.error("Failed to load district feedback summary:", error);
         setScoreState({
@@ -389,9 +394,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           hasSavedFeedback: Boolean(data?.hasFeedback),
         });
       } catch (error) {
-        if (myFeedbackRequestIdRef.current !== requestId) {
-          return;
-        }
+        if (myFeedbackRequestIdRef.current !== requestId) return;
 
         console.error("Failed to load my district feedback:", error);
         applyFeedbackForm(null);
@@ -422,6 +425,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
   }, [form, initialForm]);
 
   const hasPreviousSubmission = myFeedbackState.hasSavedFeedback;
+  const overallTone = getScoreTone(overallValue);
 
   const handleSave = async () => {
     if (!districtId || !districtName) return;
@@ -448,9 +452,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
 
       const nextSummary = result?.summary || null;
       const nextScore =
-        typeof nextSummary?.score === "number"
-          ? nextSummary.score
-          : null;
+        typeof nextSummary?.score === "number" ? nextSummary.score : null;
       const nextContributors =
         typeof nextSummary?.verifiedContributors === "number"
           ? nextSummary.verifiedContributors
@@ -500,26 +502,28 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
 
   return (
     <section className="relative z-0 rounded-[28px] border border-slate-200 bg-white p-5 shadow-sm [contain:layout_paint] md:p-6">
-      <div className="rounded-[28px] border border-blue-100 bg-gradient-to-b from-slate-50 to-white p-4 shadow-sm md:p-5">
-        <div>
-          <h3 className="text-xl font-bold tracking-tight text-slate-950">
-            {text.districtFeedback}
-          </h3>
-          <p className="mt-1.5 text-sm leading-6 text-slate-600">{text.helperText}</p>
+      <div className="rounded-[28px] border border-blue-100 bg-gradient-to-b from-slate-50 via-white to-white p-4 shadow-sm md:p-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+          <div>
+            <h3 className="text-xl font-bold tracking-tight text-slate-950">
+              {text.districtFeedback}
+            </h3>
+            <p className="mt-1.5 text-sm leading-6 text-slate-600">{text.helperText}</p>
+          </div>
+
+          <div className="flex flex-wrap gap-2">
+            <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
+              {text.verifiedOnly}
+            </span>
+            <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
+              {text.updateLater}
+            </span>
+          </div>
         </div>
 
-        <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1.2fr)_minmax(260px,0.8fr)]">
-          <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-3 shadow-sm">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="rounded-full border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700">
-                {text.verifiedOnly}
-              </span>
-              <span className="rounded-full border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600">
-                {text.updateLater}
-              </span>
-            </div>
-
-            <p className="mt-3 text-sm text-slate-600">
+        <div className="mt-4 grid gap-3 xl:grid-cols-[minmax(0,1.15fr)_minmax(280px,0.85fr)]">
+          <div className="rounded-[22px] border border-slate-200 bg-white px-4 py-4 shadow-sm">
+            <p className="text-sm leading-6 text-slate-700">
               {isAuthenticated
                 ? isVerifiedUser
                   ? hasPreviousSubmission
@@ -528,19 +532,19 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
                   : text.verifiedOnly
                 : text.loginRequired}
             </p>
+
+            <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-sm text-slate-600">
+              {scoreState.status === "ready"
+                ? `${text.contributors}: ${scoreState.contributors}`
+                : scoreState.status === "empty"
+                ? `${text.contributors}: ${scoreState.contributors} · ${text.noSummary}`
+                : scoreState.status === "loading"
+                ? `${text.aggregateScore}...`
+                : text.aggregateHelper}
+            </div>
           </div>
 
           <OverallScoreCard title={text.aggregateScore} state={scoreState} />
-        </div>
-
-        <div className="mt-4 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-600">
-          {scoreState.status === "ready"
-            ? `${text.contributors}: ${scoreState.contributors}`
-            : scoreState.status === "empty"
-            ? `${text.contributors}: ${scoreState.contributors} · ${text.noSummary}`
-            : scoreState.status === "loading"
-            ? `${text.aggregateScore}...`
-            : text.aggregateHelper}
         </div>
 
         {myFeedbackState.status === "error" ? (
@@ -559,9 +563,7 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           <ScoreField
             label={text.transportation}
             value={form.transportation}
-            onChange={(value) =>
-              setForm((prev) => ({ ...prev, transportation: value }))
-            }
+            onChange={(value) => setForm((prev) => ({ ...prev, transportation: value }))}
           />
           <ScoreField
             label={text.roads}
@@ -576,16 +578,12 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           <ScoreField
             label={text.cleanliness}
             value={form.cleanliness}
-            onChange={(value) =>
-              setForm((prev) => ({ ...prev, cleanliness: value }))
-            }
+            onChange={(value) => setForm((prev) => ({ ...prev, cleanliness: value }))}
           />
           <ScoreField
             label={text.publicServices}
             value={form.publicServices}
-            onChange={(value) =>
-              setForm((prev) => ({ ...prev, publicServices: value }))
-            }
+            onChange={(value) => setForm((prev) => ({ ...prev, publicServices: value }))}
           />
           <ScoreField
             label={text.scenery}
@@ -594,48 +592,50 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
           />
         </div>
 
-        <div className="mt-4 rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] px-4 py-4 text-white shadow-sm">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="min-w-0">
-              <p className="text-xs font-semibold uppercase tracking-wide text-slate-300">
-                {text.aggregateScore}
-              </p>
-              <div className="mt-2 flex items-end gap-3">
-                <p className="text-4xl font-extrabold tracking-tight md:text-5xl">{overallValue}</p>
-                <p className="pb-1 text-sm text-slate-300">{text.aggregateHelper}</p>
+        <div className="mt-4 overflow-hidden rounded-[24px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] text-white shadow-sm">
+          <div className="p-4 md:p-5">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="min-w-0">
+                <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
+                  {text.aggregateScore}
+                </p>
+                <div className="mt-2 flex flex-wrap items-end gap-x-3 gap-y-1">
+                  <p className="text-4xl font-extrabold tracking-tight md:text-5xl">{overallValue}</p>
+                  <p className="pb-1 text-sm text-slate-300">{text.aggregateHelper}</p>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                <button
+                  onClick={handleReset}
+                  disabled={!hasChanges || saving}
+                  className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {text.reset}
+                </button>
+
+                <button
+                  onClick={handleSave}
+                  disabled={
+                    !isAuthenticated ||
+                    !isVerifiedUser ||
+                    saving ||
+                    myFeedbackState.status === "loading" ||
+                    !hasChanges
+                  }
+                  className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {saving ? text.saving : text.saveFeedback}
+                </button>
               </div>
             </div>
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              <button
-                onClick={handleReset}
-                disabled={!hasChanges || saving}
-                className="rounded-2xl border border-white/15 bg-white/5 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {text.reset}
-              </button>
-
-              <button
-                onClick={handleSave}
-                disabled={
-                  !isAuthenticated ||
-                  !isVerifiedUser ||
-                  saving ||
-                  myFeedbackState.status === "loading" ||
-                  !hasChanges
-                }
-                className="rounded-2xl bg-blue-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {saving ? text.saving : text.saveFeedback}
-              </button>
+            <div className="mt-4 h-2.5 overflow-hidden rounded-full bg-white/10">
+              <div
+                className={`h-full rounded-full ${overallTone.bar}`}
+                style={{ width: `${Math.max(8, Math.min(overallValue, 100))}%` }}
+              />
             </div>
-          </div>
-
-          <div className="mt-3 h-2.5 overflow-hidden rounded-full bg-white/10">
-            <div
-              className={`h-full rounded-full ${getScoreTone(overallValue).bar}`}
-              style={{ width: `${Math.max(8, Math.min(overallValue, 100))}%` }}
-            />
           </div>
         </div>
 

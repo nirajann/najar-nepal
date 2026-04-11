@@ -14,6 +14,7 @@ import AdminComplaints from "./components/admin/AdminComplaints";
 import AdminUsers from "./components/admin/AdminUsers";
 import Profile from "./pages/Profile";
 import VerificationPage from "./pages/VerificationPage";
+import Support from "./pages/Support";
 
 function App() {
   return (
@@ -26,7 +27,17 @@ function App() {
         <Route path="/leader/:id" element={<LeaderProfile />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/profile" element={<Profile />} />
-
+<Route path="/support" element={<Support />} />
+<Route path="/support/report-issue" element={<div>Report Issue Page</div>} />
+<Route path="/support/corrections" element={<div>Corrections Page</div>} />
+<Route path="/support/contact" element={<div>Contact Page</div>} />
+<Route path="/support/volunteer" element={<div>Volunteer Page</div>} />
+<Route path="/support/donate" element={<div>Donate Page</div>} />
+<Route path="/support/faq" element={<div>FAQ Page</div>} />
+<Route path="/about" element={<div className="p-10">About Page</div>} />
+<Route path="/methodology" element={<div className="p-10">Methodology Page</div>} />
+<Route path="/privacy" element={<div className="p-10">Privacy Page</div>} />
+<Route path="/contact" element={<div className="p-10">Contact Page</div>} />
         <Route
           path="/verification"
           element={
