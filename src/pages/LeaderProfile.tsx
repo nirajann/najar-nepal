@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { NepalActionButton } from "../components/NepalDesignSystem";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
@@ -320,6 +321,101 @@ function ProgressBar({
   );
 }
 
+function InfoBlock({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f2f7ff_100%)] px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function OverviewCard({ title, text }: { title: string; text: string }) {
+  return (
+    <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-5 py-4">
+      <p className="text-sm font-semibold text-slate-900">{title}</p>
+      <p className="mt-2 text-sm leading-7 text-slate-700">{text}</p>
+    </div>
+  );
+}
+
+function DetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function SignalStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function BadgePill({ text }: { text: string }) {
+  return (
+    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700">
+      {text}
+    </span>
+  );
+}
+
+function StatCard({ label, value }: { label: string; value: string | number }) {
+  return (
+    <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(15,23,42,0.1)]">
+      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
+        {label}
+      </p>
+      <p className="mt-2 text-xl font-extrabold text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function CommentFilterTabs({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (next: string) => void;
+}) {
+  const options = [
+    { value: "newest", label: "Newest" },
+    { value: "liked", label: "Top liked" },
+    { value: "highest-rated", label: "Highest rated" },
+    { value: "lowest-rated", label: "Lowest rated" },
+  ];
+
+  return (
+    <div className="inline-flex rounded-2xl border border-blue-100 bg-blue-50/60 p-1">
+      {options.map((option) => (
+        <button
+          key={option.value}
+          type="button"
+          onClick={() => onChange(option.value)}
+          className={`rounded-xl px-3 py-2 text-xs font-semibold transition ${
+            value === option.value
+              ? "bg-slate-950 text-white shadow-sm"
+              : "text-slate-600 hover:text-slate-900"
+          }`}
+        >
+          {option.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function LeaderProfile() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -349,11 +445,13 @@ function LeaderProfile() {
 
   const [commentsList, setCommentsList] = useState<CommentItem[]>([]);
   const [commentsLoading, setCommentsLoading] = useState(false);
+  const [commentsRefreshing, setCommentsRefreshing] = useState(false);
   const [commentSort, setCommentSort] = useState("newest");
 
   const [replyText, setReplyText] = useState<Record<string, string>>({});
   const [replySubmitting, setReplySubmitting] = useState<Record<string, boolean>>({});
   const [replyError, setReplyError] = useState<Record<string, string>>({});
+  const [expandedReplies, setExpandedReplies] = useState<Record<string, boolean>>({});
 
   const [reportOpenFor, setReportOpenFor] = useState<string | null>(null);
   const [reportReason, setReportReason] =
@@ -381,7 +479,7 @@ function LeaderProfile() {
     return true;
   };
 
-  const loadLeaderProfile = useCallback(async () => {
+  const loadLeaderOnly = useCallback(async () => {
     if (!id) {
       setLeader(null);
       setLeaderLoading(false);
@@ -390,17 +488,15 @@ function LeaderProfile() {
 
     try {
       setLeaderLoading(true);
-      setCommentsLoading(true);
       setMessage("");
 
       const data = await api.getLeaderPublicProfile(id, {
-        sort: commentSort,
+        sort: "newest",
         limit: "50",
       });
 
       const nextLeader = data?.leader || null;
       const nextStats = data?.stats || {};
-      const nextComments = Array.isArray(data?.comments) ? data.comments : [];
 
       setLeader(nextLeader);
       setStats({
@@ -412,10 +508,8 @@ function LeaderProfile() {
         dislikePercentage: nextStats.dislikePercentage ?? "0.0",
         ratingCount: nextStats.ratingCount ?? 0,
       });
-      setCommentsList(nextComments);
     } catch (error: any) {
       setLeader(null);
-      setCommentsList([]);
       setStats({
         likes: 0,
         dislikes: 0,
@@ -428,9 +522,41 @@ function LeaderProfile() {
       setMessage(error.message || "Leader not found");
     } finally {
       setLeaderLoading(false);
-      setCommentsLoading(false);
     }
-  }, [commentSort, id]);
+  }, [id]);
+
+  const loadCommentsOnly = useCallback(
+    async (softRefresh = false) => {
+      if (!id) {
+        setCommentsList([]);
+        setCommentsLoading(false);
+        return;
+      }
+
+      try {
+        if (softRefresh) {
+          setCommentsRefreshing(true);
+        } else {
+          setCommentsLoading(true);
+        }
+
+        const data = await api.getLeaderPublicProfile(id, {
+          sort: commentSort,
+          limit: "50",
+        });
+
+        const nextComments = Array.isArray(data?.comments) ? data.comments : [];
+        setCommentsList(nextComments);
+      } catch (error: any) {
+        setCommentsList([]);
+        setMessage(error.message || "Failed to load comments");
+      } finally {
+        setCommentsLoading(false);
+        setCommentsRefreshing(false);
+      }
+    },
+    [id, commentSort]
+  );
 
   const loadComplaintHistory = useCallback(async () => {
     if (!token || !leaderId) {
@@ -448,13 +574,28 @@ function LeaderProfile() {
   }, [leaderId, token]);
 
   useEffect(() => {
-    void loadLeaderProfile();
-  }, [loadLeaderProfile]);
+    void loadLeaderOnly();
+  }, [loadLeaderOnly]);
+
+  useEffect(() => {
+    void loadCommentsOnly(commentsList.length > 0);
+  }, [loadCommentsOnly]);
 
   useEffect(() => {
     if (!token || !leaderId) return;
     void loadComplaintHistory();
   }, [loadComplaintHistory, leaderId, token]);
+
+useEffect(() => {
+  if (!mistakeModalOpen) return;
+
+  const previousOverflow = document.body.style.overflow;
+  document.body.style.overflow = "hidden";
+
+  return () => {
+    document.body.style.overflow = previousOverflow;
+  };
+}, [mistakeModalOpen]);
 
   useEffect(() => {
     if (!leader?.leaderId) return;
@@ -491,7 +632,8 @@ function LeaderProfile() {
         "leader_profile"
       );
       setMessage(result.message || "Reaction saved");
-      await loadLeaderProfile();
+      await loadLeaderOnly();
+      await loadCommentsOnly(true);
     } catch (error: any) {
       setMessage(error.message || "Failed to save reaction");
     }
@@ -510,7 +652,8 @@ function LeaderProfile() {
         "leader_profile"
       );
       setMessage(result.message || "Rating saved");
-      await loadLeaderProfile();
+      await loadLeaderOnly();
+      await loadCommentsOnly(true);
     } catch (error: any) {
       setMessage(error.message || "Failed to save rating");
     }
@@ -544,7 +687,8 @@ function LeaderProfile() {
       setMessage("Comment posted");
       setComment("");
       setCommentCooldownUntil(Date.now() + 8000);
-      await loadLeaderProfile();
+      await loadLeaderOnly();
+      await loadCommentsOnly(true);
     } catch (error: any) {
       setMessage(error.message || "Failed to post comment");
     } finally {
@@ -557,7 +701,8 @@ function LeaderProfile() {
 
     try {
       await api.likeComment(token, commentId);
-      await loadLeaderProfile();
+      await loadLeaderOnly();
+      await loadCommentsOnly(true);
     } catch (error: any) {
       setMessage(error.message || "Failed to like comment");
     }
@@ -581,7 +726,8 @@ function LeaderProfile() {
       await api.replyComment(token, commentId, normalizeTextInput(current));
 
       setReplyText((prev) => ({ ...prev, [commentId]: "" }));
-      await loadLeaderProfile();
+      await loadLeaderOnly();
+      await loadCommentsOnly(true);
     } catch (error: any) {
       setMessage(error.message || "Failed to reply");
     } finally {
@@ -690,6 +836,7 @@ function LeaderProfile() {
             <h1 className="text-3xl font-bold text-slate-900">Loading leader...</h1>
           </div>
         </main>
+        <Footer />
       </div>
     );
   }
@@ -706,6 +853,7 @@ function LeaderProfile() {
             </p>
           </div>
         </main>
+        <Footer />
       </div>
     );
   }
@@ -770,7 +918,12 @@ function LeaderProfile() {
 
                 <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
                   <InfoBlock label="Role" value={`${leader.currentStatus || "Current"} ${displayRole}`.trim()} />
-                  <InfoBlock label="District" value={`${getDistrictName(leader.district) || "Not added yet"}${getProvinceName(leader) ? `, ${getProvinceName(leader)}` : ""}`} />
+                  <InfoBlock
+                    label="District"
+                    value={`${getDistrictName(leader.district) || "Not added yet"}${
+                      getProvinceName(leader) ? `, ${getProvinceName(leader)}` : ""
+                    }`}
+                  />
                   <InfoBlock label="Party" value={leader.party || "Not added yet"} />
                   <InfoBlock label="Term" value={`${leader.startYear || "-"} - ${leader.endYear || "Present"}`} />
                 </div>
@@ -790,17 +943,18 @@ function LeaderProfile() {
 
                 <div className="mt-6 flex flex-wrap gap-3">
                   <NepalActionButton
-                    onClick={() => document.getElementById("quick-rate-card")?.scrollIntoView({ behavior: "smooth" })}
+                    onClick={() =>
+                      document.getElementById("quick-rate-card")?.scrollIntoView({
+                        behavior: "smooth",
+                      })
+                    }
                     className="px-5 py-3 text-sm"
                   >
                     Rate Leader
                   </NepalActionButton>
-                  <NepalActionButton
-                    tone="secondary"
-                    className="px-5 py-3 text-sm"
-                  >
+                  {/* <NepalActionButton tone="secondary" className="px-5 py-3 text-sm">
                     Follow
-                  </NepalActionButton>
+                  </NepalActionButton> */}
                   <NepalActionButton
                     tone="secondary"
                     onClick={() => setMistakeModalOpen(true)}
@@ -836,6 +990,7 @@ function LeaderProfile() {
                   {engagementLevel} engagement
                 </span>
               </div>
+
               <div className="mt-5 grid gap-4 md:grid-cols-2">
                 <OverviewCard
                   title="Public trust snapshot"
@@ -864,101 +1019,107 @@ function LeaderProfile() {
               </div>
             </section>
 
-            <section className="surface-shell p-6">
-              <div className="mb-5 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <section className="surface-shell p-5 md:p-6">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">Community Discussion</h2>
                   <p className="mt-1 text-sm text-slate-600">
                     {commentsList.length} comment{commentsList.length === 1 ? "" : "s"}
+                    {commentsRefreshing ? " · updating..." : ""}
                   </p>
                 </div>
 
-                <select
-                  value={commentSort}
-                  onChange={(e) => setCommentSort(e.target.value)}
-                  className="rounded-2xl border border-blue-100 px-4 py-2 outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  <option value="newest">Newest</option>
-                  <option value="liked">Most Liked</option>
-                  <option value="highest-rated">Highest Rated</option>
-                  <option value="lowest-rated">Lowest Rated</option>
-                </select>
+                <CommentFilterTabs value={commentSort} onChange={setCommentSort} />
               </div>
 
               <form
                 onSubmit={handleCommentSubmit}
-                className="mt-5 rounded-[26px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-4 py-4"
+                className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] p-4"
               >
-                <div>
-                  <textarea
-                    rows={3}
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="Share a respectful public comment about this leader..."
-                    className="w-full rounded-3xl border border-blue-100 bg-white px-5 py-4 outline-none transition focus:ring-2 focus:ring-blue-200"
-                    maxLength={300}
-                  />
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <span className={commentValidation.valid ? "text-xs text-slate-500" : "text-xs text-red-600"}>
-                      {commentValidation.valid
-                        ? "Keep it factual and respectful."
-                        : commentValidation.message}
-                    </span>
-                    <span className="text-slate-500">
-                      {normalizeTextInput(comment).length}/300
-                    </span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="flex gap-1.5">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        type="button"
-                        key={star}
-                        onClick={() => setRating(star)}
-                        className={`text-3xl leading-none transition ${
-                          rating >= star ? "text-amber-400" : "text-slate-300"
-                        }`}
-                        aria-label={`Rate ${star} star`}
-                      >
-                        {"\u2605"}
-                      </button>
-                    ))}
+                <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
+                  <div>
+                    <textarea
+                      rows={3}
+                      value={comment}
+                      onChange={(e) => setComment(e.target.value)}
+                      placeholder="Share a respectful public comment about this leader..."
+                      className="w-full rounded-2xl border border-blue-100 bg-white px-4 py-3 outline-none transition focus:ring-2 focus:ring-blue-200"
+                      maxLength={300}
+                    />
+                    <div className="mt-2 flex items-center justify-between text-xs">
+                      <span className={commentValidation.valid ? "text-slate-500" : "text-red-600"}>
+                        {commentValidation.valid
+                          ? "Keep it factual and respectful."
+                          : commentValidation.message}
+                      </span>
+                      <span className="text-slate-500">
+                        {normalizeTextInput(comment).length}/300
+                      </span>
+                    </div>
                   </div>
 
-                  <button
-                    type="submit"
-                    disabled={!commentValidation.valid || commentSubmitting}
-                    className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
-                  >
-                    {commentSubmitting ? "Posting..." : "Post Comment"}
-                  </button>
+                  <div className="flex flex-col gap-3 lg:min-w-[190px]">
+                    <div className="flex justify-start gap-1.5 lg:justify-end">
+                      {[1, 2, 3, 4, 5].map((star) => (
+                        <button
+                          type="button"
+                          key={star}
+                          onClick={() => setRating(star)}
+                          className={`text-2xl leading-none transition ${
+                            rating >= star ? "text-amber-400" : "text-slate-300"
+                          }`}
+                          aria-label={`Rate ${star} star`}
+                        >
+                          {"\u2605"}
+                        </button>
+                      ))}
+                    </div>
+
+                    <button
+                      type="submit"
+                      disabled={!commentValidation.valid || commentSubmitting}
+                      className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                      {commentSubmitting ? "Posting..." : "Post Comment"}
+                    </button>
+                  </div>
                 </div>
               </form>
 
-              <div className="mt-5 space-y-4">
+              <div className="mt-5 space-y-3">
                 {commentsLoading ? (
-                  <div className="rounded-3xl border border-blue-100 bg-blue-50/60 p-5 text-sm text-slate-600">
+                  <div className="rounded-2xl border border-blue-100 bg-blue-50/60 p-5 text-sm text-slate-600">
                     Loading comments...
                   </div>
                 ) : commentsList.length > 0 ? (
                   commentsList.map((item) => {
                     const currentReplyValidation = validateReplyText(replyText[item._id] || "");
                     const replyCount = item.replies?.length || 0;
+                    const showReplies = expandedReplies[item._id] ?? false;
+                    const visibleReplies = showReplies
+                      ? item.replies || []
+                      : (item.replies || []).slice(0, 2);
 
                     return (
-                        <article
-                          key={item._id}
-                          className="surface-card interactive-lift p-5"
-                        >
-                        <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
-                          <div>
-                            <p className="font-bold text-slate-900">{item.userName}</p>
-                            <p className="mt-1 text-sm text-slate-600">
-                              {formatDateTime(item.createdAt)} - Rating: {item.rating || 0} - Likes:{" "}
-                              {item.likes || 0}
-                            </p>
+                      <article
+                        key={item._id}
+                        className="rounded-[22px] border border-slate-200 bg-white p-4 shadow-sm transition duration-300 hover:shadow-md"
+                      >
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="font-semibold text-slate-900">{item.userName}</p>
+                              {typeof item.rating === "number" && item.rating > 0 ? (
+                                <span className="rounded-full bg-amber-50 px-2.5 py-1 text-[11px] font-semibold text-amber-700">
+                                  {item.rating}★
+                                </span>
+                              ) : null}
+                              <span className="text-xs text-slate-500">
+                                {formatDateTime(item.createdAt)}
+                              </span>
+                            </div>
+
+                            <p className="mt-2 text-sm leading-6 text-slate-700">{item.text}</p>
                           </div>
 
                           <button
@@ -966,28 +1127,42 @@ function LeaderProfile() {
                             onClick={() =>
                               setReportOpenFor((prev) => (prev === item._id ? null : item._id))
                             }
-                            className="text-sm font-medium text-slate-500 transition hover:text-blue-700"
+                            className="shrink-0 text-xs font-medium text-slate-500 transition hover:text-blue-700"
                           >
-                            Report comment
+                            Report
                           </button>
                         </div>
 
-                        <p className="mt-4 leading-7 text-slate-700">{item.text}</p>
-
-                        <div className="mt-4 flex flex-wrap items-center gap-3 text-sm">
+                        <div className="mt-3 flex flex-wrap items-center gap-2">
                           <button
                             onClick={() => handleLikeComment(item._id)}
-                            className="rounded-xl bg-[linear-gradient(135deg,#0f172a_0%,#1d4ed8_100%)] px-4 py-2 font-medium text-white transition hover:-translate-y-0.5 hover:shadow-[0_12px_24px_rgba(29,78,216,0.2)]"
+                            className="rounded-xl border border-blue-100 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 transition hover:bg-blue-100"
                           >
-                            Like
+                            Like {item.likes || 0}
                           </button>
-                          <span className="text-sm text-slate-600">
+
+                          <span className="text-xs text-slate-500">
                             {replyCount} repl{replyCount === 1 ? "y" : "ies"}
                           </span>
+
+                          {replyCount > 2 ? (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setExpandedReplies((prev) => ({
+                                  ...prev,
+                                  [item._id]: !prev[item._id],
+                                }))
+                              }
+                              className="text-xs font-semibold text-slate-600 hover:text-blue-700"
+                            >
+                              {showReplies ? "Show less replies" : `Show all ${replyCount} replies`}
+                            </button>
+                          ) : null}
                         </div>
 
                         {reportOpenFor === item._id && (
-                          <div className="mt-4 rounded-2xl border border-red-100 bg-red-50/60 p-4">
+                          <div className="mt-3 rounded-2xl border border-red-100 bg-red-50/60 p-4">
                             <p className="text-sm font-semibold text-slate-900">Report comment</p>
                             <p className="mt-1 text-xs text-slate-600">
                               Help keep discussion respectful and safe.
@@ -999,7 +1174,7 @@ function LeaderProfile() {
                                   key={reason}
                                   type="button"
                                   onClick={() => setReportReason(reason)}
-                                className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
+                                  className={`rounded-full px-3 py-1.5 text-xs font-semibold ${
                                     reportReason === reason
                                       ? "bg-slate-950 text-white"
                                       : "bg-white text-slate-700"
@@ -1040,24 +1215,30 @@ function LeaderProfile() {
                           </div>
                         )}
 
-                        <div className="mt-4 space-y-3 border-l border-blue-100 pl-4 md:pl-6">
-                          {item.replies?.map((reply, index) => (
-                            <div
-                              key={index}
-                              className="rounded-2xl bg-blue-50/50 px-4 py-3"
-                            >
-                              <div className="flex items-center justify-between gap-3">
-                                <p className="font-semibold text-slate-800">{reply.userName}</p>
-                                <p className="text-xs text-slate-600">
-                                  {formatDateTime(reply.createdAt)}
+                        {visibleReplies.length > 0 && (
+                          <div className="mt-3 space-y-2 border-l border-blue-100 pl-3 md:pl-4">
+                            {visibleReplies.map((reply, index) => (
+                              <div
+                                key={index}
+                                className="rounded-2xl bg-blue-50/50 px-3 py-3"
+                              >
+                                <div className="flex flex-wrap items-center justify-between gap-2">
+                                  <p className="text-sm font-semibold text-slate-800">
+                                    {reply.userName}
+                                  </p>
+                                  <p className="text-xs text-slate-500">
+                                    {formatDateTime(reply.createdAt)}
+                                  </p>
+                                </div>
+                                <p className="mt-1.5 text-sm leading-6 text-slate-700">
+                                  {reply.text}
                                 </p>
                               </div>
-                              <p className="mt-2 text-sm leading-6 text-slate-700">{reply.text}</p>
-                            </div>
-                          ))}
-                        </div>
+                            ))}
+                          </div>
+                        )}
 
-                        <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50/50 p-4">
+                        <div className="mt-3 rounded-2xl border border-blue-100 bg-blue-50/50 p-3">
                           <textarea
                             rows={2}
                             value={replyText[item._id] || ""}
@@ -1088,13 +1269,15 @@ function LeaderProfile() {
                             </span>
                           </div>
 
-                          <button
-                            onClick={() => handleReplySubmit(item._id)}
-                            disabled={!currentReplyValidation.valid || !!replySubmitting[item._id]}
-                            className="mt-3 rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
-                          >
-                            {replySubmitting[item._id] ? "Replying..." : "Reply"}
-                          </button>
+                          <div className="mt-3 flex justify-end">
+                            <button
+                              onClick={() => handleReplySubmit(item._id)}
+                              disabled={!currentReplyValidation.valid || !!replySubmitting[item._id]}
+                              className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+                            >
+                              {replySubmitting[item._id] ? "Replying..." : "Reply"}
+                            </button>
+                          </div>
                         </div>
                       </article>
                     );
@@ -1130,14 +1313,12 @@ function LeaderProfile() {
 
               <div className="space-y-4">
                 <ProgressBar label="Like" value={stats.likePercentage} colorClass="bg-green-500" />
-                <ProgressBar
-                  label="Dislike"
-                  value={stats.dislikePercentage}
-                  colorClass="bg-red-500"
-                />
+                <ProgressBar label="Dislike" value={stats.dislikePercentage} colorClass="bg-red-500" />
 
                 <div className="rounded-[24px] border border-white/10 bg-white/5 p-4">
-                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">Community reading</p>
+                  <p className="text-xs font-semibold uppercase tracking-[0.2em] text-blue-100">
+                    Community reading
+                  </p>
                   <p className="mt-2 text-slate-100">{trustLabel}</p>
                   <div className="mt-4 flex gap-2">
                     <button
@@ -1239,243 +1420,145 @@ function LeaderProfile() {
                 </div>
               ) : null}
             </section>
-
-            <section className="hidden rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-              <h2 className="mb-4 text-2xl font-bold text-slate-900">Background</h2>
-
-              <div className="space-y-3 leading-7 text-slate-600">
-                <p>
-                  <span className="font-semibold text-slate-900">Role:</span>{" "}
-                  {leader.currentStatus} {displayRole}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Party:</span>{" "}
-                  {leader.party || "Not added yet"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">District:</span>{" "}
-                  {getDistrictName(leader.district) || "Not added yet"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Province:</span>{" "}
-                  {getProvinceName(leader) || "Not added yet"}
-                </p>
-                <p>
-                  <span className="font-semibold text-slate-900">Service:</span>{" "}
-                  {leader.startYear || "-"} - {leader.endYear || "Present"}
-                </p>
-                {leader.portfolio && (
-                  <p>
-                    <span className="font-semibold text-slate-900">Portfolio:</span>{" "}
-                    {leader.portfolio}
-                  </p>
-                )}
-                {leader.age && (
-                  <p>
-                    <span className="font-semibold text-slate-900">Age:</span> {leader.age}
-                  </p>
-                )}
-                {leader.birthPlace && (
-                  <p>
-                    <span className="font-semibold text-slate-900">Birth Place:</span>{" "}
-                    {leader.birthPlace}
-                  </p>
-                )}
-                {leader.permanentAddress && (
-                  <p>
-                    <span className="font-semibold text-slate-900">Permanent Address:</span>{" "}
-                    {leader.permanentAddress}
-                  </p>
-                )}
-              </div>
-            </section>
           </div>
         </div>
       </main>
 
-      {mistakeModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/50 px-4"
-          onClick={() => setMistakeModalOpen(false)}
-        >
-          <div
-            className="w-full max-w-2xl rounded-3xl border border-blue-100 bg-white p-6 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h3 className="text-2xl font-bold text-slate-900">Report a factual mistake</h3>
-                <p className="mt-1 text-sm text-slate-600">
-                  Help improve profile accuracy using clear, factual corrections.
-                </p>
-              </div>
+{mistakeModalOpen && (
+  <div
+    className="fixed inset-0 z-50 bg-slate-950/55 backdrop-blur-[2px]"
+    onClick={() => setMistakeModalOpen(false)}
+  >
+    <div className="h-full overflow-y-auto px-3 py-3 sm:px-4 sm:py-6">
+      <div
+        className="mx-auto w-full max-w-2xl rounded-[24px] border border-blue-100 bg-white shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="border-b border-slate-200 px-4 py-4 sm:px-5 md:px-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0">
+              <h3 className="text-xl font-bold text-slate-900 sm:text-2xl">
+                Report a factual mistake
+              </h3>
+              <p className="mt-1 text-sm text-slate-600">
+                Help improve profile accuracy using clear, factual corrections.
+              </p>
+            </div>
 
+            <button
+              type="button"
+              onClick={() => setMistakeModalOpen(false)}
+              className="shrink-0 rounded-xl border border-blue-100 bg-white px-3 py-2 text-sm font-medium text-slate-700 transition hover:bg-slate-50"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+
+        <div className="max-h-[calc(100dvh-140px)] overflow-y-auto px-4 py-4 sm:px-5 md:px-6">
+          {mistakeMessage && (
+            <div className="mb-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-slate-700">
+              {mistakeMessage}
+            </div>
+          )}
+
+          <form onSubmit={handleReportMistakeSubmit} className="space-y-4">
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Mistake type
+              </label>
+              <select
+                value={mistakeType}
+                onChange={(e) => setMistakeType(e.target.value as MistakeType)}
+                className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
+              >
+                {MISTAKE_OPTIONS.map((option) => (
+                  <option key={option} value={option}>
+                    {option}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                What is the mistake?
+              </label>
+              <textarea
+                rows={3}
+                value={mistakeText}
+                onChange={(e) => setMistakeText(e.target.value)}
+                className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="Describe the incorrect information"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Suggested correction
+              </label>
+              <textarea
+                rows={2}
+                value={suggestedCorrection}
+                onChange={(e) => setSuggestedCorrection(e.target.value)}
+                className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="What should it say instead?"
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Source / reference link
+              </label>
+              <input
+                type="text"
+                value={sourceLink}
+                onChange={(e) => setSourceLink(e.target.value)}
+                className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="https://..."
+              />
+            </div>
+
+            <div>
+              <label className="mb-2 block text-sm font-medium text-slate-700">
+                Optional contact
+              </label>
+              <input
+                type="text"
+                value={contactInfo}
+                onChange={(e) => setContactInfo(e.target.value)}
+                className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
+                placeholder="Email or other contact info"
+              />
+            </div>
+
+            <div className="flex flex-col gap-3 border-t border-slate-200 pt-4 sm:flex-row sm:justify-end">
               <button
                 type="button"
                 onClick={() => setMistakeModalOpen(false)}
-                className="rounded-xl border border-blue-100 px-3 py-2 text-sm font-medium text-slate-700"
+                className="rounded-2xl border border-blue-100 bg-white px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-50"
               >
-                Close
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={mistakeSubmitting}
+                className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+              >
+                {mistakeSubmitting ? "Submitting..." : "Submit report"}
               </button>
             </div>
-
-            {mistakeMessage && (
-              <div className="mt-4 rounded-2xl bg-blue-50 px-4 py-3 text-sm text-slate-700">
-                {mistakeMessage}
-              </div>
-            )}
-
-            <form onSubmit={handleReportMistakeSubmit} className="mt-5 space-y-4">
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Mistake type
-                </label>
-                <select
-                  value={mistakeType}
-                  onChange={(e) => setMistakeType(e.target.value as MistakeType)}
-                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
-                >
-                  {MISTAKE_OPTIONS.map((option) => (
-                    <option key={option} value={option}>
-                      {option}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  What is the mistake?
-                </label>
-                <textarea
-                  rows={3}
-                  value={mistakeText}
-                  onChange={(e) => setMistakeText(e.target.value)}
-                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
-                  placeholder="Describe the incorrect information"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Suggested correction
-                </label>
-                <textarea
-                  rows={2}
-                  value={suggestedCorrection}
-                  onChange={(e) => setSuggestedCorrection(e.target.value)}
-                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
-                  placeholder="What should it say instead?"
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Source / reference link
-                </label>
-                <input
-                  type="text"
-                  value={sourceLink}
-                  onChange={(e) => setSourceLink(e.target.value)}
-                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div>
-                <label className="mb-2 block text-sm font-medium text-slate-700">
-                  Optional contact
-                </label>
-                <input
-                  type="text"
-                  value={contactInfo}
-                  onChange={(e) => setContactInfo(e.target.value)}
-                  className="w-full rounded-2xl border border-blue-100 px-4 py-3 outline-none focus:ring-2 focus:ring-blue-200"
-                  placeholder="Email or other contact info"
-                />
-              </div>
-
-              <div className="flex flex-col gap-3 sm:flex-row">
-                <button
-                  type="submit"
-                  disabled={mistakeSubmitting}
-                  className="rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
-                >
-                  {mistakeSubmitting ? "Submitting..." : "Submit report"}
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setMistakeModalOpen(false)}
-                  className="rounded-2xl border border-blue-100 bg-white px-5 py-3 font-semibold text-slate-700"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+          </form>
         </div>
-      )}
+      </div>
     </div>
-  );
-}
+  </div>
+)}
 
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f2f7ff_100%)] px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</p>
-      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function OverviewCard({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-5 py-4">
-      <p className="text-sm font-semibold text-slate-900">{title}</p>
-      <p className="mt-2 text-sm leading-7 text-slate-700">{text}</p>
-    </div>
-  );
-}
-
-function DetailRow({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-blue-100 bg-white px-4 py-3 shadow-sm">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-        {label}
-      </p>
-      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function SignalStat({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-blue-100 bg-blue-50/50 px-4 py-3">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">
-        {label}
-      </p>
-      <p className="mt-1.5 text-sm font-semibold text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function BadgePill({ text }: { text: string }) {
-  return (
-    <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1.5 text-sm font-semibold text-blue-700">
-      {text}
-    </span>
-  );
-}
-
-function StatCard({ label, value }: { label: string; value: string | number }) {
-  return (
-    <div className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f6faff_100%)] px-4 py-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] transition hover:-translate-y-0.5 hover:shadow-[0_18px_34px_rgba(15,23,42,0.1)]">
-      <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-600">{label}</p>
-      <p className="mt-2 text-xl font-extrabold text-slate-900">{value}</p>
+      <Footer />
     </div>
   );
 }
 
 export default LeaderProfile;
-
