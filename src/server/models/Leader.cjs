@@ -324,6 +324,5 @@ leaderSchema.pre("validate", function () {
 leaderSchema.index({ normalizedName: 1, district: 1 }, { unique: true });
 leaderSchema.index({ province: 1, districtName: 1, role: 1 });
 leaderSchema.index({ party: 1, role: 1 });
-leaderSchema.index({ currentOffice: 1 });
 
 module.exports = mongoose.model("Leader", leaderSchema);
