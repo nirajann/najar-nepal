@@ -1,10 +1,40 @@
+const DEFAULT_DEV_API_BASE_URL = "http://localhost:5000/api";
 
-const API_BASE_URL=("http://localhost:5000/api");
-// const API_BASE_URL =
-//   (import.meta.env.VITE_API_BASE_URL || "https://najar-nepal-api.onrender.com/api").replace(/\/+$/, "");
+function resolveApiBaseUrl() {
+  const rawBase = (import.meta.env.VITE_API_BASE_URL || "").trim();
+  const isProd = import.meta.env.PROD;
+  const candidate = rawBase || (isProd ? "" : DEFAULT_DEV_API_BASE_URL);
 
+  if (!candidate) {
+    throw new Error("VITE_API_BASE_URL is required in production.");
+  }
 
+  let parsed: URL;
 
+  try {
+    parsed = new URL(candidate);
+  } catch {
+    throw new Error("VITE_API_BASE_URL must be a valid absolute URL.");
+  }
+
+  if (isProd) {
+    const host = parsed.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1") {
+      throw new Error("VITE_API_BASE_URL must not point to localhost in production.");
+    }
+  }
+
+  const normalizedPath = parsed.pathname.replace(/\/+$/, "");
+  if (!normalizedPath.endsWith("/api")) {
+    parsed.pathname = `${normalizedPath}/api`;
+  } else {
+    parsed.pathname = normalizedPath;
+  }
+
+  return parsed.toString().replace(/\/+$/, "");
+}
+
+const API_BASE_URL = resolveApiBaseUrl();
 
 type UnauthorizedHandler = (() => void) | null;
 
@@ -116,7 +146,8 @@ export const api = {
     });
     return parseJsonResponse(res);
   },
-    getProfile: async (token: string) => {
+
+  getProfile: async (token: string) => {
     const res = await fetch(`${API_BASE_URL}/auth/profile`, {
       headers: authHeaders(token),
     });
@@ -220,6 +251,8 @@ export const api = {
     districtId?: string;
     province?: string;
     search?: string;
+    currentStatus?: string;
+    verified?: string;
   }) => {
     const res = await fetch(
       buildUrl("/leaders", {
@@ -227,6 +260,8 @@ export const api = {
         districtId: params?.districtId,
         province: params?.province,
         search: params?.search,
+        currentStatus: params?.currentStatus,
+        verified: params?.verified,
       })
     );
     return parseJsonResponse(res);
@@ -237,6 +272,8 @@ export const api = {
     districtId?: string;
     province?: string;
     search?: string;
+    currentStatus?: string;
+    verified?: string;
     limit?: string;
   }) => {
     const res = await fetch(
@@ -245,6 +282,8 @@ export const api = {
         districtId: params?.districtId,
         province: params?.province,
         search: params?.search,
+        currentStatus: params?.currentStatus,
+        verified: params?.verified,
         limit: params?.limit,
       })
     );
@@ -414,45 +453,45 @@ export const api = {
     }
   },
 
- createComment: async (
-  token: string,
-  leaderId: string,
-  text: string,
-  rating: number,
-  sourcePage?: string
-) => {
-  const res = await fetch(`${API_BASE_URL}/comments`, {
-    method: "POST",
-    headers: authHeaders(token, true),
-    body: JSON.stringify({ leaderId, text, rating, sourcePage }),
-  });
+  createComment: async (
+    token: string,
+    leaderId: string,
+    text: string,
+    rating: number,
+    sourcePage?: string
+  ) => {
+    const res = await fetch(`${API_BASE_URL}/comments`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify({ leaderId, text, rating, sourcePage }),
+    });
 
-  return parseJsonResponse(res);
-},
+    return parseJsonResponse(res);
+  },
 
-getComments: async (leaderId: string, sort = "newest") => {
-  const res = await fetch(
-    `${API_BASE_URL}/comments/${leaderId}?sort=${encodeURIComponent(sort)}`
-  );
-  return parseJsonResponse(res);
-},
+  getComments: async (leaderId: string, sort = "newest") => {
+    const res = await fetch(
+      `${API_BASE_URL}/comments/${leaderId}?sort=${encodeURIComponent(sort)}`
+    );
+    return parseJsonResponse(res);
+  },
 
-likeComment: async (token: string, commentId: string) => {
-  const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
-    method: "POST",
-    headers: authHeaders(token),
-  });
-  return parseJsonResponse(res);
-},
+  likeComment: async (token: string, commentId: string) => {
+    const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
+      method: "POST",
+      headers: authHeaders(token),
+    });
+    return parseJsonResponse(res);
+  },
 
-replyComment: async (token: string, commentId: string, text: string) => {
-  const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
-    method: "POST",
-    headers: authHeaders(token, true),
-    body: JSON.stringify({ text }),
-  });
-  return parseJsonResponse(res);
-},
+  replyComment: async (token: string, commentId: string, text: string) => {
+    const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
+      method: "POST",
+      headers: authHeaders(token, true),
+      body: JSON.stringify({ text }),
+    });
+    return parseJsonResponse(res);
+  },
 
   getAdminAnalyticsOverview: async (token: string) => {
     const res = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
@@ -493,7 +532,6 @@ replyComment: async (token: string, commentId: string, text: string) => {
     return parseJsonResponse(res);
   },
 
-
   submitComplaint: async (
     token: string,
     leaderId: string,
@@ -513,7 +551,6 @@ replyComment: async (token: string, commentId: string, text: string) => {
     });
     return parseJsonResponse(res);
   },
-
 
   getMyComplaintsByLeader: async (token: string, leaderId: string) => {
     const res = await fetch(
@@ -616,13 +653,11 @@ replyComment: async (token: string, commentId: string, text: string) => {
 
   checkLeaderDuplicate: async (params: {
     name: string;
-    role?: string;
     districtId?: string;
   }) => {
     const res = await fetch(
       buildUrl("/leaders/check-duplicate", {
         name: params.name,
-        role: params.role,
         districtId: params.districtId,
       })
     );
@@ -642,11 +677,14 @@ replyComment: async (token: string, commentId: string, text: string) => {
     return parseJsonResponse(res);
   },
 
-  checkProjectDuplicate: async (token: string, params: {
-    title: string;
-    district?: string;
-    province?: string;
-  }) => {
+  checkProjectDuplicate: async (
+    token: string,
+    params: {
+      title: string;
+      district?: string;
+      province?: string;
+    }
+  ) => {
     const res = await fetch(
       buildUrl("/admin/projects/check-duplicate", {
         title: params.title,
@@ -669,7 +707,7 @@ replyComment: async (token: string, commentId: string, text: string) => {
     return parseJsonResponse(res);
   },
 
-    getDistrictFeedbackSummary: async (districtId: string) => {
+  getDistrictFeedbackSummary: async (districtId: string) => {
     const res = await fetch(`${API_BASE_URL}/district-feedback/${districtId}/summary`);
     return parseJsonResponse(res);
   },

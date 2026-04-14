@@ -13,7 +13,6 @@
     "migrate:legacy": "node src/server/scripts/migrateLegacyData.cjs",
     "seed:districts": "node Src/server/scripts/seedDistricts.cjs",
     "import:leaders": "node src/server/scripts/importLeaders.cjs"
-    
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
@@ -21,6 +20,8 @@
     "d3": "^7.9.0",
     "dotenv": "^17.3.1",
     "express": "^5.2.1",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.1.0",
     "jsonwebtoken": "^9.0.3",
     "leaflet": "^1.9.4",
     "lucide-react": "^1.7.0",

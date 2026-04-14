@@ -75,6 +75,7 @@ function Footer() {
               <FooterLink to="/about">About</FooterLink>
               <FooterLink to="/methodology">Methodology</FooterLink>
               <FooterLink to="/privacy">Privacy</FooterLink>
+              <FooterLink to="/terms">Terms</FooterLink>
               <FooterLink to="/contact">Contact</FooterLink>
             </div>
           </div>

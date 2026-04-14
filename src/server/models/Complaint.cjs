@@ -7,6 +7,21 @@ const complaintSchema = new mongoose.Schema(
       required: true,
       trim: true,
     },
+    leaderName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    district: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    province: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     userId: {
       type: String,
       required: true,
@@ -47,6 +62,21 @@ const complaintSchema = new mongoose.Schema(
       default: "",
       trim: true,
     },
+    complaintType: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    text: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    complaintPhoto: {
+      type: String,
+      default: "",
+      trim: true,
+    },
     status: {
       type: String,
       enum: ["pending", "reviewing", "resolved", "rejected"],
@@ -60,5 +90,31 @@ const complaintSchema = new mongoose.Schema(
   },
   { timestamps: true }
 );
+
+complaintSchema.pre("validate", function () {
+  if (!this.text && this.message) {
+    this.text = this.message;
+  }
+
+  if (!this.message && this.text) {
+    this.message = this.text;
+  }
+
+  if (!this.complaintType && this.type) {
+    this.complaintType = this.type;
+  }
+
+  if (!this.type && this.complaintType) {
+    this.type = this.complaintType;
+  }
+
+  if (!this.complaintPhoto && this.photo) {
+    this.complaintPhoto = this.photo;
+  }
+
+  if (!this.photo && this.complaintPhoto) {
+    this.photo = this.complaintPhoto;
+  }
+});
 
 module.exports = mongoose.model("Complaint", complaintSchema);

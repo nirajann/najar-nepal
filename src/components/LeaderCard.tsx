@@ -57,9 +57,9 @@ type ComplaintItem = {
   leaderId: string;
   userId: string;
   userName?: string;
-  message: string;
-  type?: string;
-  photo?: string;
+  text: string;
+  complaintType?: string;
+  complaintPhoto?: string;
   adminNote?: string;
   status?: "pending" | "reviewed" | "resolved";
   createdAt?: string;
@@ -722,7 +722,7 @@ function LeaderProfile() {
                       >
                         <div className="flex items-center justify-between gap-3 mb-2">
                           <span className="text-sm font-semibold text-blue-700">
-                            {item.type || "Other"}
+                            {item.complaintType || "Other"}
                           </span>
 
                           <span className="text-sm font-semibold text-amber-700 capitalize">
@@ -730,11 +730,11 @@ function LeaderProfile() {
                           </span>
                         </div>
 
-                        <p className="text-slate-700 text-sm leading-6">{item.message}</p>
+                        <p className="text-slate-700 text-sm leading-6">{item.text}</p>
 
-                        {item.photo && (
+                        {item.complaintPhoto && (
                           <a
-                            href={item.photo}
+                            href={item.complaintPhoto}
                             target="_blank"
                             rel="noreferrer"
                             className="inline-block mt-3 text-sm font-semibold text-blue-700 hover:underline"

@@ -217,7 +217,8 @@ router.get(
       const districtComplaintMap = new Map();
 
       complaints.forEach((complaint) => {
-        const district = complaint.district || "Unknown";
+        const district =
+          complaint.district || complaint.districtName || "Unknown";
         districtComplaintMap.set(
           district,
           (districtComplaintMap.get(district) || 0) + 1

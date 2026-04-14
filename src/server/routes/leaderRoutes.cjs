@@ -21,25 +21,63 @@ function slugify(value = "") {
     .replace(/\s+/g, "-");
 }
 
-function buildLeaderId(name, role) {
-  return `${slugify(name)}-${slugify(role || "leader")}`;
+function buildLeaderId(name) {
+  return slugify(name);
+}
+
+function parsePositions(rawValue) {
+  if (!rawValue) return [];
+
+  if (Array.isArray(rawValue)) {
+    return rawValue
+      .map((item) => ({
+        title: item?.title?.trim() || "",
+        type: item?.type?.trim() || "Other",
+        institution: item?.institution?.trim() || "",
+        ministry: item?.ministry?.trim() || "",
+        portfolio: item?.portfolio?.trim() || "",
+        status: item?.status === "Former" ? "Former" : "Current",
+        fromDate: item?.fromDate || null,
+        toDate: item?.toDate || null,
+        sourceUrl: item?.sourceUrl?.trim() || "",
+      }))
+      .filter((item) => item.title);
+  }
+
+  return [];
 }
 
 function buildLeaderFilter(query) {
-  const { role, districtId, province, search } = query;
+  const { role, districtId, province, search, currentStatus, verified } = query;
   const filter = {};
 
   if (role) filter.role = role;
-  if (districtId) filter.district = districtId;
   if (province) filter.province = province;
+  if (currentStatus) filter.currentStatus = currentStatus;
+
+  if (verified === "true") filter.verified = true;
+  if (verified === "false") filter.verified = false;
+
+  if (districtId) {
+    if (mongoose.Types.ObjectId.isValid(districtId)) {
+      filter.district = districtId;
+    } else {
+      filter.districtName = { $regex: districtId, $options: "i" };
+    }
+  }
 
   if (search) {
     filter.$or = [
       { name: { $regex: search, $options: "i" } },
       { party: { $regex: search, $options: "i" } },
       { province: { $regex: search, $options: "i" } },
+      { districtName: { $regex: search, $options: "i" } },
       { role: { $regex: search, $options: "i" } },
       { badge: { $regex: search, $options: "i" } },
+      { currentOffice: { $regex: search, $options: "i" } },
+      { portfolio: { $regex: search, $options: "i" } },
+      { constituency: { $regex: search, $options: "i" } },
+      { electionProcess: { $regex: search, $options: "i" } },
     ];
   }
 
@@ -54,9 +92,7 @@ function getCommentSort(sort = "newest") {
 }
 
 async function getLeaderStatsMap(leaderIds) {
-  if (!Array.isArray(leaderIds) || leaderIds.length === 0) {
-    return {};
-  }
+  if (!Array.isArray(leaderIds) || leaderIds.length === 0) return {};
 
   const [ratingStats, commentStats] = await Promise.all([
     Rating.aggregate([
@@ -87,9 +123,7 @@ async function getLeaderStatsMap(leaderIds) {
           comments: { $sum: 1 },
           replyCount: {
             $sum: {
-              $size: {
-                $ifNull: ["$replies", []],
-              },
+              $size: { $ifNull: ["$replies", []] },
             },
           },
           commentLikes: { $sum: { $ifNull: ["$likes", 0] } },
@@ -201,24 +235,88 @@ function buildRankingSummaryItem(leader, statsMap) {
   };
 }
 
+async function syncDistrictLeaderLinks(leaderDoc, previousLeader = null) {
+  if (!leaderDoc) return;
+
+  const previousId = previousLeader?._id ? String(previousLeader._id) : null;
+  const currentId = String(leaderDoc._id);
+
+  if (previousLeader?.district && String(previousLeader.district) !== String(leaderDoc.district || "")) {
+    await District.updateMany(
+      { _id: previousLeader.district },
+      {
+        $pull: {
+          mpLeaders: previousLeader._id,
+          ministerLeaders: previousLeader._id,
+          naLeaders: previousLeader._id,
+        },
+      }
+    );
+  }
+
+  if (!leaderDoc.district) return;
+
+  const update = {
+    $pull: {
+      mpLeaders: leaderDoc._id,
+      ministerLeaders: leaderDoc._id,
+      naLeaders: leaderDoc._id,
+    },
+  };
+
+  await District.updateOne({ _id: leaderDoc.district }, update);
+
+  const addUpdate = {};
+
+  if (leaderDoc.role === "MP") {
+    addUpdate.$addToSet = { ...(addUpdate.$addToSet || {}), mpLeaders: leaderDoc._id };
+  }
+
+  if (leaderDoc.role === "Minister" || leaderDoc.role === "Prime Minister") {
+    addUpdate.$addToSet = {
+      ...(addUpdate.$addToSet || {}),
+      ministerLeaders: leaderDoc._id,
+    };
+  }
+
+  if (leaderDoc.role === "National Assembly Member") {
+    addUpdate.$addToSet = {
+      ...(addUpdate.$addToSet || {}),
+      naLeaders: leaderDoc._id,
+    };
+  }
+
+  if (Object.keys(addUpdate).length > 0) {
+    await District.updateOne({ _id: leaderDoc.district }, addUpdate);
+  }
+
+  if (previousId && previousId !== currentId) {
+    await District.updateMany(
+      {},
+      {
+        $pull: {
+          mpLeaders: previousLeader._id,
+          ministerLeaders: previousLeader._id,
+          naLeaders: previousLeader._id,
+        },
+      }
+    );
+  }
+}
+
 // Duplicate check
 router.get("/check-duplicate", async (req, res) => {
   try {
-    const { name = "", role = "", districtId = "" } = req.query;
+    const { name = "", districtId = "" } = req.query;
 
     if (!name.trim()) {
       return res.status(400).json({ message: "Name is required" });
     }
 
     const normalizedName = normalizeText(name);
-
     const filter = {
       normalizedName: { $regex: normalizedName, $options: "i" },
     };
-
-    if (role) {
-      filter.role = role;
-    }
 
     if (districtId && mongoose.Types.ObjectId.isValid(districtId)) {
       filter.district = districtId;
@@ -232,14 +330,10 @@ router.get("/check-duplicate", async (req, res) => {
     const exactMatch = matches.some(
       (leader) =>
         leader.normalizedName === normalizedName &&
-        (!role || leader.role === role) &&
         (!districtId || String(leader.district?._id || "") === String(districtId))
     );
 
-    res.json({
-      exactMatch,
-      matches,
-    });
+    res.json({ exactMatch, matches });
   } catch (error) {
     res.status(500).json({
       message: "Failed to check duplicate leader",
@@ -251,7 +345,6 @@ router.get("/check-duplicate", async (req, res) => {
 // Get all leaders
 router.get("/", async (req, res) => {
   try {
-    console.log("GET /api/leaders hit");
     const filter = buildLeaderFilter(req.query);
 
     const leaders = await Leader.find(filter)
@@ -260,7 +353,6 @@ router.get("/", async (req, res) => {
 
     res.json(leaders);
   } catch (error) {
-    console.error("GET /api/leaders failed:", error);
     res.status(500).json({
       message: "Failed to fetch leaders",
       error: error.message,
@@ -268,27 +360,28 @@ router.get("/", async (req, res) => {
   }
 });
 
-// Get aggregated ranking summary
+// Get ranking summary
 router.get("/ranking-summary", async (req, res) => {
   try {
-    console.log("GET /api/leaders/ranking-summary hit");
     const filter = buildLeaderFilter(req.query);
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 500);
 
     const leaders = await Leader.find(filter)
       .populate("district", "name province districtId")
-      .sort({ createdAt: -1 })
       .limit(limit);
 
     const statsMap = await getLeaderStatsMap(leaders.map((leader) => leader.leaderId));
 
+    const rankedLeaders = leaders
+      .map((leader) => buildRankingSummaryItem(leader, statsMap))
+      .sort((a, b) => b.stats.engagementScore - a.stats.engagementScore);
+
     res.json({
-      leaders: leaders.map((leader) => buildRankingSummaryItem(leader, statsMap)),
-      total: leaders.length,
+      leaders: rankedLeaders,
+      total: rankedLeaders.length,
       generatedAt: new Date().toISOString(),
     });
   } catch (error) {
-    console.error("GET /api/leaders/ranking-summary failed:", error);
     res.status(500).json({
       message: "Failed to load ranking summary",
       error: error.message,
@@ -366,11 +459,16 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
     }
 
     let districtDoc = null;
+
     if (payload.district) {
       districtDoc = await District.findOne({
         $or: [
           { districtId: payload.district },
-          { _id: mongoose.Types.ObjectId.isValid(payload.district) ? payload.district : null },
+          {
+            _id: mongoose.Types.ObjectId.isValid(payload.district)
+              ? payload.district
+              : null,
+          },
         ],
       });
 
@@ -379,28 +477,31 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
       }
 
       payload.district = districtDoc._id;
+      payload.districtName = districtDoc.name;
       payload.province = districtDoc.province;
     } else {
       payload.district = null;
+      payload.districtName = payload.districtName?.trim() || "";
     }
 
-    payload.leaderId = payload.leaderId?.trim() || buildLeaderId(payload.name, payload.role);
-    payload.slug = slugify(payload.name);
+    payload.positions = parsePositions(payload.positions);
+    payload.leaderId = payload.leaderId?.trim() || buildLeaderId(payload.name);
+    payload.slug = payload.slug?.trim() || slugify(payload.name);
 
     const duplicate = await Leader.findOne({
       normalizedName: normalizeText(payload.name),
-      role: payload.role,
       district: payload.district || null,
     });
 
     if (duplicate) {
       return res.status(409).json({
-        message: "A similar leader already exists for this role and district",
+        message: "A similar leader already exists for this district",
         existingLeader: duplicate,
       });
     }
 
     const leader = await Leader.create(payload);
+    await syncDistrictLeaderLinks(leader);
 
     const populatedLeader = await Leader.findById(leader._id).populate(
       "district",
@@ -445,7 +546,11 @@ router.put("/:leaderId", authMiddleware, adminMiddleware, async (req, res) => {
       const districtDoc = await District.findOne({
         $or: [
           { districtId: payload.district },
-          { _id: mongoose.Types.ObjectId.isValid(payload.district) ? payload.district : null },
+          {
+            _id: mongoose.Types.ObjectId.isValid(payload.district)
+              ? payload.district
+              : null,
+          },
         ],
       });
 
@@ -454,23 +559,29 @@ router.put("/:leaderId", authMiddleware, adminMiddleware, async (req, res) => {
       }
 
       payload.district = districtDoc._id;
+      payload.districtName = districtDoc.name;
       payload.province = districtDoc.province;
+    } else if (payload.district === null || payload.district === "") {
+      payload.district = null;
+      payload.districtName = "";
+    }
+
+    if (payload.positions !== undefined) {
+      payload.positions = parsePositions(payload.positions);
     }
 
     const nextName = payload.name ?? existing.name;
-    const nextRole = payload.role ?? existing.role;
     const nextDistrict = payload.district ?? existing.district;
 
     const duplicate = await Leader.findOne({
       _id: { $ne: existing._id },
       normalizedName: normalizeText(nextName),
-      role: nextRole,
       district: nextDistrict || null,
     });
 
     if (duplicate) {
       return res.status(409).json({
-        message: "Another leader with similar name, role, and district already exists",
+        message: "Another leader with similar name and district already exists",
         existingLeader: duplicate,
       });
     }
@@ -480,6 +591,8 @@ router.put("/:leaderId", authMiddleware, adminMiddleware, async (req, res) => {
       payload,
       { new: true, runValidators: true }
     ).populate("district", "name province districtId");
+
+    await syncDistrictLeaderLinks(updated, existing);
 
     res.json({
       message: "Leader updated successfully",
@@ -505,11 +618,9 @@ router.delete("/:leaderId", authMiddleware, adminMiddleware, async (req, res) =>
     await District.updateMany(
       {},
       {
-        $unset: {
-          mpLeader: leader._id,
-          ministerLeader: leader._id,
-        },
         $pull: {
+          mpLeaders: leader._id,
+          ministerLeaders: leader._id,
           naLeaders: leader._id,
         },
       }

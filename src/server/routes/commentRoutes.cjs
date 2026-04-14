@@ -110,6 +110,15 @@ router.post("/:commentId/like", authMiddleware, async (req, res) => {
 router.post("/:commentId/reply", authMiddleware, async (req, res) => {
   try {
     const { text } = req.body;
+    const normalizedText = typeof text === "string" ? text.trim() : "";
+
+    if (!normalizedText || normalizedText.length < 3) {
+      return res.status(400).json({ message: "Reply is too short" });
+    }
+
+    if (normalizedText.length > 220) {
+      return res.status(400).json({ message: "Reply must be under 220 characters" });
+    }
 
     const comment = await Comment.findByIdAndUpdate(
       req.params.commentId,
@@ -118,7 +127,7 @@ router.post("/:commentId/reply", authMiddleware, async (req, res) => {
           replies: {
             userId: req.user.id,
             userName: req.user.name || "User",
-            text,
+            text: normalizedText,
           },
         },
       },

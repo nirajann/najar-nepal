@@ -14,12 +14,14 @@ type LeaderOption = {
   role: string;
   party?: string;
   province?: string;
-  district?: string | { _id?: string; name?: string; districtId?: string } | null;
+  currentOffice?: string;
+  photo?: string;
 };
 
 type LocalLevelItem = {
   name: string;
   type?: string;
+  slug?: string;
 };
 
 type DistrictRecord = {
@@ -29,11 +31,16 @@ type DistrictRecord = {
   name: string;
   normalizedName?: string;
   province: string;
-  mpLeader?: LeaderOption | string | null;
-  ministerLeader?: LeaderOption | string | null;
+  provinceSlug?: string;
+  mpLeaders?: (LeaderOption | string)[];
+  ministerLeaders?: (LeaderOption | string)[];
   naLeaders?: (LeaderOption | string)[];
   localLevels?: LocalLevelItem[];
+  totalWards?: number;
   satisfactionScore?: number;
+  verified?: boolean;
+  sourceUrl?: string;
+  lastVerifiedAt?: string;
 };
 
 type DuplicateDistrict = {
@@ -44,7 +51,7 @@ type DuplicateDistrict = {
 };
 
 type DuplicateCheckResponse = {
-  exists: boolean;
+  exactMatch: boolean;
   matches?: DuplicateDistrict[];
   message?: string;
 };
@@ -53,22 +60,28 @@ type DistrictForm = {
   districtId: string;
   name: string;
   province: string;
-  mpLeader: string;
-  ministerLeader: string;
+  mpLeaders: string[];
+  ministerLeaders: string[];
   naLeaders: string[];
   localLevelsText: string;
+  totalWards: string;
   satisfactionScore: string;
+  verified: boolean;
+  sourceUrl: string;
 };
 
 const initialForm: DistrictForm = {
   districtId: "",
   name: "",
   province: "",
-  mpLeader: "",
-  ministerLeader: "",
+  mpLeaders: [],
+  ministerLeaders: [],
   naLeaders: [],
   localLevelsText: "",
+  totalWards: "0",
   satisfactionScore: "0",
+  verified: false,
+  sourceUrl: "",
 };
 
 function getLeaderValue(leader: LeaderOption | string | null | undefined) {
@@ -81,6 +94,13 @@ function getLeaderName(leader: LeaderOption | string | null | undefined) {
   if (!leader) return "—";
   if (typeof leader === "string") return leader;
   return leader.name || leader.leaderId || "—";
+}
+
+function getLeaderNames(leaders: (LeaderOption | string)[] | undefined, limit = 2) {
+  const items = (leaders || []).map(getLeaderName).filter(Boolean);
+  if (items.length === 0) return "—";
+  if (items.length <= limit) return items.join(", ");
+  return `${items.slice(0, limit).join(", ")} +${items.length - limit} more`;
 }
 
 function AdminDistricts() {
@@ -133,7 +153,7 @@ function AdminDistricts() {
     districts.forEach((district) => {
       if (district.province) set.add(district.province);
     });
-    return Array.from(set);
+    return Array.from(set).sort();
   }, [districts]);
 
   const filteredDistricts = useMemo(() => {
@@ -162,8 +182,7 @@ function AdminDistricts() {
   const ministerOptions = useMemo(
     () =>
       leaders.filter(
-        (leader) =>
-          leader.role === "Minister" || leader.role === "Prime Minister"
+        (leader) => leader.role === "Minister" || leader.role === "Prime Minister"
       ),
     [leaders]
   );
@@ -211,14 +230,17 @@ function AdminDistricts() {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
-  const handleNaChange = (leaderId: string) => {
+  const toggleArrayValue = (
+    key: "mpLeaders" | "ministerLeaders" | "naLeaders",
+    leaderId: string
+  ) => {
     setForm((prev) => {
-      const exists = prev.naLeaders.includes(leaderId);
+      const exists = prev[key].includes(leaderId);
       return {
         ...prev,
-        naLeaders: exists
-          ? prev.naLeaders.filter((id) => id !== leaderId)
-          : [...prev.naLeaders, leaderId],
+        [key]: exists
+          ? prev[key].filter((id) => id !== leaderId)
+          : [...prev[key], leaderId],
       };
     });
   };
@@ -241,13 +263,18 @@ function AdminDistricts() {
       districtId: district.districtId || "",
       name: district.name || "",
       province: district.province || "",
-      mpLeader: getLeaderValue(district.mpLeader),
-      ministerLeader: getLeaderValue(district.ministerLeader),
+      mpLeaders: (district.mpLeaders || []).map((item) => getLeaderValue(item)).filter(Boolean),
+      ministerLeaders: (district.ministerLeaders || [])
+        .map((item) => getLeaderValue(item))
+        .filter(Boolean),
       naLeaders: (district.naLeaders || []).map((item) => getLeaderValue(item)).filter(Boolean),
       localLevelsText: (district.localLevels || [])
         .map((item) => (item.type ? `${item.name} (${item.type})` : item.name))
         .join(", "),
+      totalWards: String(district.totalWards ?? 0),
       satisfactionScore: String(district.satisfactionScore ?? 0),
+      verified: !!district.verified,
+      sourceUrl: district.sourceUrl || "",
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -257,8 +284,8 @@ function AdminDistricts() {
     districtId: form.districtId.trim(),
     name: form.name.trim(),
     province: form.province.trim(),
-    mpLeader: form.mpLeader || null,
-    ministerLeader: form.ministerLeader || null,
+    mpLeaders: form.mpLeaders,
+    ministerLeaders: form.ministerLeaders,
     naLeaders: form.naLeaders,
     localLevels: form.localLevelsText
       .split(",")
@@ -274,7 +301,10 @@ function AdminDistricts() {
         }
         return { name: item, type: "" };
       }),
+    totalWards: form.totalWards ? Number(form.totalWards) : 0,
     satisfactionScore: form.satisfactionScore ? Number(form.satisfactionScore) : 0,
+    verified: form.verified,
+    sourceUrl: form.sourceUrl.trim(),
   });
 
   const handleSubmit = async () => {
@@ -293,7 +323,7 @@ function AdminDistricts() {
       return;
     }
 
-    if (!editingDistrictId && duplicateInfo?.exists) {
+    if (!editingDistrictId && duplicateInfo?.exactMatch) {
       setError("A similar district already exists. Check the suggestions before saving.");
       return;
     }
@@ -400,7 +430,7 @@ function AdminDistricts() {
           <>
             <button
               onClick={handleSubmit}
-              disabled={submitting || (!editingDistrictId && !!duplicateInfo?.exists)}
+              disabled={submitting || (!editingDistrictId && !!duplicateInfo?.exactMatch)}
               className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
             >
               {submitting
@@ -462,6 +492,16 @@ function AdminDistricts() {
         </div>
 
         <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Total Wards</label>
+          <input
+            value={form.totalWards}
+            onChange={(e) => handleChange("totalWards", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="0"
+          />
+        </div>
+
+        <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Satisfaction Score</label>
           <input
             value={form.satisfactionScore}
@@ -472,35 +512,74 @@ function AdminDistricts() {
         </div>
 
         <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">MP</label>
-          <select
-            value={form.mpLeader}
-            onChange={(e) => handleChange("mpLeader", e.target.value)}
+          <label className="mb-2 block text-sm font-medium text-slate-700">Source URL</label>
+          <input
+            value={form.sourceUrl}
+            onChange={(e) => handleChange("sourceUrl", e.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
-          >
-            <option value="">Select MP</option>
-            {mpOptions.map((leader) => (
-              <option key={leader._id || leader.leaderId} value={leader._id || leader.leaderId}>
-                {leader.name}
-              </option>
-            ))}
-          </select>
+            placeholder="https://..."
+          />
         </div>
 
-        <div>
-          <label className="mb-2 block text-sm font-medium text-slate-700">Minister / PM</label>
-          <select
-            value={form.ministerLeader}
-            onChange={(e) => handleChange("ministerLeader", e.target.value)}
-            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
-          >
-            <option value="">Select minister / PM</option>
-            {ministerOptions.map((leader) => (
-              <option key={leader._id || leader.leaderId} value={leader._id || leader.leaderId}>
-                {leader.name}
-              </option>
-            ))}
-          </select>
+        <div className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
+          <input
+            id="district-verified"
+            type="checkbox"
+            checked={form.verified}
+            onChange={(e) => handleChange("verified", e.target.checked)}
+            className="h-4 w-4 rounded"
+          />
+          <label htmlFor="district-verified" className="text-sm font-medium text-slate-700">
+            Verified district record
+          </label>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-slate-700">MPs</label>
+          <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
+            {mpOptions.map((leader) => {
+              const value = leader._id || leader.leaderId;
+              const checked = form.mpLeaders.includes(value);
+
+              return (
+                <label
+                  key={value}
+                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleArrayValue("mpLeaders", value)}
+                  />
+                  <span>{leader.name}</span>
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-slate-700">Ministers / Prime Minister</label>
+          <div className="grid gap-2 rounded-2xl border border-slate-200 bg-slate-50 p-3 md:grid-cols-2">
+            {ministerOptions.map((leader) => {
+              const value = leader._id || leader.leaderId;
+              const checked = form.ministerLeaders.includes(value);
+
+              return (
+                <label
+                  key={value}
+                  className="flex items-center gap-3 rounded-xl bg-white px-3 py-2 text-sm text-slate-700"
+                >
+                  <input
+                    type="checkbox"
+                    checked={checked}
+                    onChange={() => toggleArrayValue("ministerLeaders", value)}
+                  />
+                  <span>{leader.name}</span>
+                </label>
+              );
+            })}
+          </div>
         </div>
 
         <div className="md:col-span-2">
@@ -521,7 +600,7 @@ function AdminDistricts() {
                   <input
                     type="checkbox"
                     checked={checked}
-                    onChange={() => handleNaChange(value)}
+                    onChange={() => toggleArrayValue("naLeaders", value)}
                   />
                   <span>{leader.name}</span>
                 </label>
@@ -543,7 +622,7 @@ function AdminDistricts() {
           />
         </div>
 
-        {!editingDistrictId && duplicateInfo?.exists ? (
+        {!editingDistrictId && duplicateInfo?.exactMatch ? (
           <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm font-semibold text-amber-800">
               Similar district already exists in database
@@ -604,21 +683,31 @@ function AdminDistricts() {
             key: "leaders",
             header: "Linked Leaders",
             render: (row) => (
-              <div>
-                <p className="text-sm text-slate-900">MP: {getLeaderName(row.mpLeader)}</p>
+              <div className="space-y-1">
+                <p className="text-sm text-slate-900">
+                  MPs: {getLeaderNames(row.mpLeaders)}
+                </p>
                 <p className="text-xs text-slate-500">
-                  Minister: {getLeaderName(row.ministerLeader)}
+                  Ministers: {getLeaderNames(row.ministerLeaders)}
+                </p>
+                <p className="text-xs text-slate-500">
+                  NA: {getLeaderNames(row.naLeaders)}
                 </p>
               </div>
             ),
           },
           {
             key: "score",
-            header: "Satisfaction",
+            header: "District Stats",
             render: (row) => (
-              <p className="font-semibold text-slate-900">
-                {row.satisfactionScore ?? 0}%
-              </p>
+              <div>
+                <p className="font-semibold text-slate-900">
+                  {row.satisfactionScore ?? 0}% satisfaction
+                </p>
+                <p className="text-xs text-slate-500">
+                  Wards: {row.totalWards ?? 0}
+                </p>
+              </div>
             ),
           },
           {

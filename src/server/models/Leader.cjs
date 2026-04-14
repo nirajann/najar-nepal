@@ -12,6 +12,80 @@ function slugify(value = "") {
     .replace(/\s+/g, "-");
 }
 
+const positionSchema = new mongoose.Schema(
+  {
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+
+    type: {
+      type: String,
+      enum: [
+        "Prime Minister",
+        "Deputy Prime Minister",
+        "Minister",
+        "Speaker",
+        "Deputy Speaker",
+        "MP",
+        "National Assembly Member",
+        "Mayor",
+        "Chairperson",
+        "Ward Chairperson",
+        "Chief Minister",
+        "Provincial Minister",
+        "Committee Role",
+        "Other",
+      ],
+      default: "Other",
+      trim: true,
+    },
+
+    institution: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    ministry: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    portfolio: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+
+    status: {
+      type: String,
+      enum: ["Current", "Former"],
+      default: "Current",
+      trim: true,
+    },
+
+    fromDate: {
+      type: Date,
+      default: null,
+    },
+
+    toDate: {
+      type: Date,
+      default: null,
+    },
+
+    sourceUrl: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+  },
+  { _id: false }
+);
+
 const leaderSchema = new mongoose.Schema(
   {
     leaderId: {
@@ -52,6 +126,7 @@ const leaderSchema = new mongoose.Schema(
         "National Assembly Member",
         "Mayor",
         "Chairperson",
+        "Ward Chairperson",
       ],
       required: true,
       index: true,
@@ -64,10 +139,22 @@ const leaderSchema = new mongoose.Schema(
       trim: true,
     },
 
+    currentOffice: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
     portfolio: {
       type: String,
       default: "",
       trim: true,
+    },
+
+    positions: {
+      type: [positionSchema],
+      default: [],
     },
 
     party: {
@@ -82,6 +169,26 @@ const leaderSchema = new mongoose.Schema(
       ref: "District",
       default: null,
       index: true,
+    },
+
+    districtName: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    constituency: {
+      type: String,
+      default: "",
+      trim: true,
+      index: true,
+    },
+
+    electionProcess: {
+      type: String,
+      default: "",
+      trim: true,
     },
 
     province: {
@@ -161,6 +268,17 @@ const leaderSchema = new mongoose.Schema(
     verified: {
       type: Boolean,
       default: false,
+      index: true,
+    },
+
+    startDate: {
+      type: Date,
+      default: null,
+    },
+
+    endDate: {
+      type: Date,
+      default: null,
     },
 
     startYear: {
@@ -174,9 +292,15 @@ const leaderSchema = new mongoose.Schema(
       default: "Present",
       trim: true,
     },
+
+    lastVerifiedAt: {
+      type: Date,
+      default: null,
+    },
   },
   { timestamps: true }
 );
+
 leaderSchema.pre("validate", function () {
   this.name = (this.name || "").trim();
   this.normalizedName = normalizeText(this.name);
@@ -186,14 +310,20 @@ leaderSchema.pre("validate", function () {
   }
 
   if (!this.leaderId) {
-    const roleSlug = slugify(this.role || "leader");
-    this.leaderId = `${slugify(this.name)}-${roleSlug}`;
+    this.leaderId = slugify(this.name);
+  }
+
+  if (!this.currentOffice && Array.isArray(this.positions) && this.positions.length > 0) {
+    const currentPosition = this.positions.find((item) => item.status === "Current");
+    if (currentPosition?.title) {
+      this.currentOffice = currentPosition.title;
+    }
   }
 });
 
-leaderSchema.index(
-  { normalizedName: 1, role: 1, district: 1 },
-  { unique: true }
-);
+leaderSchema.index({ normalizedName: 1, district: 1 }, { unique: true });
+leaderSchema.index({ province: 1, districtName: 1, role: 1 });
+leaderSchema.index({ party: 1, role: 1 });
+leaderSchema.index({ currentOffice: 1 });
 
 module.exports = mongoose.model("Leader", leaderSchema);

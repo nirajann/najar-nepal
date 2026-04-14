@@ -6,14 +6,23 @@ import AdminPageSection from "./AdminPageSection";
 import AdminFormCard from "./AdminFormCard";
 import AdminDataTable from "./AdminDataTable";
 
-
-
-
 type DistrictOption = {
   _id?: string;
   districtId: string;
   name: string;
   province: string;
+};
+
+type PositionItem = {
+  title: string;
+  type: string;
+  institution?: string;
+  ministry?: string;
+  portfolio?: string;
+  status?: string;
+  fromDate?: string | null;
+  toDate?: string | null;
+  sourceUrl?: string;
 };
 
 type LeaderRecord = {
@@ -24,9 +33,14 @@ type LeaderRecord = {
   normalizedName?: string;
   role: string;
   chamber?: string;
+  currentOffice?: string;
   portfolio?: string;
+  positions?: PositionItem[];
   party?: string;
   district?: string | { _id?: string; districtId?: string; name?: string } | null;
+  districtName?: string;
+  constituency?: string;
+  electionProcess?: string;
   province?: string;
   localLevel?: string;
   ward?: string;
@@ -40,22 +54,25 @@ type LeaderRecord = {
   electionSourceUrl?: string;
   badge?: string;
   verified?: boolean;
+  startDate?: string | null;
+  endDate?: string | null;
   startYear?: string;
   endYear?: string;
+  lastVerifiedAt?: string | null;
 };
 
 type DuplicateLeader = {
   _id?: string;
   leaderId: string;
   name: string;
-  role: string;
+  role?: string;
   party?: string;
   province?: string;
   district?: string;
 };
 
 type DuplicateCheckResponse = {
-  exists: boolean;
+  exactMatch: boolean;
   matches?: DuplicateLeader[];
   message?: string;
 };
@@ -83,10 +100,13 @@ type LeaderForm = {
   name: string;
   role: string;
   chamber: string;
+  currentOffice: string;
   portfolio: string;
   party: string;
   district: string;
   province: string;
+  constituency: string;
+  electionProcess: string;
   localLevel: string;
   ward: string;
   currentStatus: string;
@@ -99,21 +119,25 @@ type LeaderForm = {
   electionSourceUrl: string;
   badge: string;
   verified: boolean;
+  startDate: string;
+  endDate: string;
   startYear: string;
   endYear: string;
+  positionsText: string;
 };
-
-
 
 const emptyForm: LeaderForm = {
   leaderId: "",
   name: "",
   role: "MP",
   chamber: "",
+  currentOffice: "",
   portfolio: "",
   party: "",
   district: "",
   province: "",
+  constituency: "",
+  electionProcess: "",
   localLevel: "",
   ward: "",
   currentStatus: "Current",
@@ -126,8 +150,11 @@ const emptyForm: LeaderForm = {
   electionSourceUrl: "",
   badge: "",
   verified: false,
+  startDate: "",
+  endDate: "",
   startYear: "",
   endYear: "Present",
+  positionsText: "",
 };
 
 function getDistrictName(district: LeaderRecord["district"]): string {
@@ -142,6 +169,52 @@ function getDistrictValue(district: LeaderRecord["district"]): string {
   return district._id || district.districtId || "";
 }
 
+function buildPositionsText(positions: PositionItem[] | undefined) {
+  if (!positions || positions.length === 0) return "";
+  return positions
+    .map((item) => {
+      const base = item.title || "";
+      const extras = [
+        item.type,
+        item.institution,
+        item.ministry,
+        item.portfolio,
+        item.status,
+        item.fromDate,
+        item.toDate,
+        item.sourceUrl,
+      ]
+        .filter(Boolean)
+        .join(" | ");
+      return extras ? `${base} :: ${extras}` : base;
+    })
+    .join("\n");
+}
+
+function parsePositionsText(text: string): PositionItem[] {
+  return text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [titlePart, metaPart] = line.split("::").map((item) => item.trim());
+      const meta = metaPart ? metaPart.split("|").map((item) => item.trim()) : [];
+
+      return {
+        title: titlePart || "",
+        type: meta[0] || "Other",
+        institution: meta[1] || "",
+        ministry: meta[2] || "",
+        portfolio: meta[3] || "",
+        status: meta[4] || "Current",
+        fromDate: meta[5] || null,
+        toDate: meta[6] || null,
+        sourceUrl: meta[7] || "",
+      };
+    })
+    .filter((item) => item.title);
+}
+
 function AdminLeaders() {
   const { token } = useAuth();
 
@@ -153,7 +226,7 @@ function AdminLeaders() {
   const [submitting, setSubmitting] = useState(false);
 
   const [selectedProvince, setSelectedProvince] = useState("ALL");
-const [openSuggestions, setOpenSuggestions] = useState(false);
+  const [openSuggestions, setOpenSuggestions] = useState(false);
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -254,7 +327,6 @@ const [openSuggestions, setOpenSuggestions] = useState(false);
 
         const res = await api.checkLeaderDuplicate({
           name: debouncedName.trim(),
-          role: form.role || undefined,
           districtId: form.district || undefined,
         });
 
@@ -267,14 +339,14 @@ const [openSuggestions, setOpenSuggestions] = useState(false);
     };
 
     runDuplicateCheck();
-  }, [debouncedName, form.role, form.district, editingLeaderId]);
+  }, [debouncedName, form.district, editingLeaderId]);
 
   const provinceOptions = useMemo(() => {
     const set = new Set<string>();
     districts.forEach((district) => {
       if (district.province) set.add(district.province);
     });
-    return Array.from(set);
+    return Array.from(set).sort();
   }, [districts]);
 
   const filteredDistricts = useMemo(() => {
@@ -283,36 +355,44 @@ const [openSuggestions, setOpenSuggestions] = useState(false);
   }, [districts, form.province]);
 
   const searchSuggestions = useMemo(() => {
-  const q = searchText.trim().toLowerCase();
-  if (!q) return [];
+    const q = searchText.trim().toLowerCase();
+    if (!q) return [];
 
-  return leaders
-    .filter((leader) => (leader.name || "").toLowerCase().includes(q))
-    .slice(0, 8);
-}, [leaders, searchText]);
+    return leaders
+      .filter((leader) => (leader.name || "").toLowerCase().includes(q))
+      .slice(0, 8);
+  }, [leaders, searchText]);
 
-const filteredLeaders = useMemo(() => {
-  const q = searchText.trim().toLowerCase();
+  const filteredLeaders = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
 
-  return leaders
-    .filter((leader) => {
-      const name = (leader.name || "").toLowerCase();
-      const province = (leader.province || "").toLowerCase();
+    return leaders
+      .filter((leader) => {
+        const name = (leader.name || "").toLowerCase();
+        const province = (leader.province || "").toLowerCase();
+        const currentOffice = (leader.currentOffice || "").toLowerCase();
+        const party = (leader.party || "").toLowerCase();
 
-      const searchMatch = !q || name.includes(q);
-      const roleMatch = selectedRole === "ALL" || leader.role === selectedRole;
-      const provinceMatch =
-        selectedProvince === "ALL" ||
-        province === selectedProvince.toLowerCase();
+        const searchMatch =
+          !q ||
+          name.includes(q) ||
+          province.includes(q) ||
+          currentOffice.includes(q) ||
+          party.includes(q);
 
-      return searchMatch && roleMatch && provinceMatch;
-    })
-    .sort((a, b) => {
-      const scoreA = analyticsMap[a.leaderId]?.engagementScore || 0;
-      const scoreB = analyticsMap[b.leaderId]?.engagementScore || 0;
-      return scoreB - scoreA;
-    });
-}, [leaders, searchText, selectedRole, selectedProvince, analyticsMap]);
+        const roleMatch = selectedRole === "ALL" || leader.role === selectedRole;
+        const provinceMatch =
+          selectedProvince === "ALL" ||
+          province === selectedProvince.toLowerCase();
+
+        return searchMatch && roleMatch && provinceMatch;
+      })
+      .sort((a, b) => {
+        const scoreA = analyticsMap[a.leaderId]?.engagementScore || 0;
+        const scoreB = analyticsMap[b.leaderId]?.engagementScore || 0;
+        return scoreB - scoreA;
+      });
+  }, [leaders, searchText, selectedRole, selectedProvince, analyticsMap]);
 
   const handleChange = <K extends keyof LeaderForm>(key: K, value: LeaderForm[K]) => {
     setForm((prev) => {
@@ -349,10 +429,13 @@ const filteredLeaders = useMemo(() => {
       name: leader.name || "",
       role: leader.role || "MP",
       chamber: leader.chamber || "",
+      currentOffice: leader.currentOffice || "",
       portfolio: leader.portfolio || "",
       party: leader.party || "",
       district: getDistrictValue(leader.district),
       province: leader.province || "",
+      constituency: leader.constituency || "",
+      electionProcess: leader.electionProcess || "",
       localLevel: leader.localLevel || "",
       ward: leader.ward || "",
       currentStatus: leader.currentStatus || "Current",
@@ -365,8 +448,11 @@ const filteredLeaders = useMemo(() => {
       electionSourceUrl: leader.electionSourceUrl || "",
       badge: leader.badge || "",
       verified: !!leader.verified,
+      startDate: leader.startDate ? String(leader.startDate).slice(0, 10) : "",
+      endDate: leader.endDate ? String(leader.endDate).slice(0, 10) : "",
       startYear: leader.startYear || "",
       endYear: leader.endYear || "Present",
+      positionsText: buildPositionsText(leader.positions),
     });
 
     window.scrollTo({ top: 0, behavior: "smooth" });
@@ -385,10 +471,14 @@ const filteredLeaders = useMemo(() => {
     name: form.name.trim(),
     role: form.role,
     chamber: form.chamber,
+    currentOffice: form.currentOffice.trim(),
     portfolio: form.portfolio.trim(),
+    positions: parsePositionsText(form.positionsText),
     party: form.party.trim(),
     district: form.district || null,
     province: form.province.trim(),
+    constituency: form.constituency.trim(),
+    electionProcess: form.electionProcess.trim(),
     localLevel: form.localLevel.trim(),
     ward: form.ward.trim(),
     currentStatus: form.currentStatus,
@@ -401,6 +491,8 @@ const filteredLeaders = useMemo(() => {
     electionSourceUrl: form.electionSourceUrl.trim(),
     badge: form.badge.trim(),
     verified: form.verified,
+    startDate: form.startDate || null,
+    endDate: form.endDate || null,
     startYear: form.startYear.trim(),
     endYear: form.endYear.trim(),
   });
@@ -421,7 +513,7 @@ const filteredLeaders = useMemo(() => {
       return;
     }
 
-    if (!editingLeaderId && duplicateInfo?.exists) {
+    if (!editingLeaderId && duplicateInfo?.exactMatch) {
       setError("A similar leader already exists. Check the suggestions below before saving.");
       return;
     }
@@ -478,7 +570,7 @@ const filteredLeaders = useMemo(() => {
       <div>
         <h1 className="text-3xl font-bold tracking-tight text-slate-950">Leaders</h1>
         <p className="mt-1 text-sm text-slate-500">
-          Manage leaders, roles, and public engagement
+          Manage leaders, roles, offices, and public engagement
         </p>
       </div>
 
@@ -494,95 +586,96 @@ const filteredLeaders = useMemo(() => {
         </div>
       ) : null}
 
-     <AdminPageSection
-  title="Leaders Directory"
-  description="Search leader records, filter by role and province, and monitor public activity."
->
-  <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
-    <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-center">
-      <div className="relative w-full xl:max-w-[460px]">
-        <input
-          type="text"
-          value={searchText}
-          onChange={(e) => {
-            setSearchText(e.target.value);
-            setOpenSuggestions(true);
-          }}
-          onFocus={() => setOpenSuggestions(true)}
-          onBlur={() => {
-            setTimeout(() => setOpenSuggestions(false), 150);
-          }}
-          placeholder="Search leader name..."
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-300 focus:bg-white"
-        />
+      <AdminPageSection
+        title="Leaders Directory"
+        description="Search leader records, filter by role and province, and monitor public activity."
+      >
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-center xl:justify-between">
+          <div className="flex w-full flex-col gap-3 xl:flex-row xl:items-center">
+            <div className="relative w-full xl:max-w-[460px]">
+              <input
+                type="text"
+                value={searchText}
+                onChange={(e) => {
+                  setSearchText(e.target.value);
+                  setOpenSuggestions(true);
+                }}
+                onFocus={() => setOpenSuggestions(true)}
+                onBlur={() => {
+                  setTimeout(() => setOpenSuggestions(false), 150);
+                }}
+                placeholder="Search leader name, office, party..."
+                className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none focus:border-slate-300 focus:bg-white"
+              />
 
-        {openSuggestions && searchText.trim() && (
-          <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white shadow-lg">
-            {searchSuggestions.length > 0 ? (
-              searchSuggestions.map((leader) => (
-                <button
-                  key={leader.leaderId}
-                  type="button"
-                  onMouseDown={() => {
-                    setSearchText(leader.name);
-                    setOpenSuggestions(false);
-                  }}
-                  className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
-                >
-                  <p className="text-sm font-semibold text-slate-900">
-                    {leader.name}
-                  </p>
-                  <p className="mt-1 text-xs text-slate-500">
-                    {leader.role} • {leader.province || "No province"}
-                  </p>
-                </button>
-              ))
-            ) : (
-              <div className="px-4 py-3 text-sm text-slate-500">
-                No matching leader found
-              </div>
-            )}
+              {openSuggestions && searchText.trim() && (
+                <div className="absolute left-0 right-0 top-full z-20 mt-2 rounded-2xl border border-slate-200 bg-white shadow-lg">
+                  {searchSuggestions.length > 0 ? (
+                    searchSuggestions.map((leader) => (
+                      <button
+                        key={leader.leaderId}
+                        type="button"
+                        onMouseDown={() => {
+                          setSearchText(leader.name);
+                          setOpenSuggestions(false);
+                        }}
+                        className="block w-full border-b border-slate-100 px-4 py-3 text-left last:border-b-0 hover:bg-slate-50"
+                      >
+                        <p className="text-sm font-semibold text-slate-900">
+                          {leader.name}
+                        </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {leader.role} • {leader.currentOffice || leader.province || "No province"}
+                        </p>
+                      </button>
+                    ))
+                  ) : (
+                    <div className="px-4 py-3 text-sm text-slate-500">
+                      No matching leader found
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <select
+              value={selectedRole}
+              onChange={(e) => setSelectedRole(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            >
+              <option value="ALL">All Roles</option>
+              <option value="Prime Minister">Prime Minister</option>
+              <option value="Minister">Minister</option>
+              <option value="MP">MP</option>
+              <option value="National Assembly Member">National Assembly Member</option>
+              <option value="Mayor">Mayor</option>
+              <option value="Chairperson">Chairperson</option>
+              <option value="Ward Chairperson">Ward Chairperson</option>
+            </select>
+
+            <select
+              value={selectedProvince}
+              onChange={(e) => setSelectedProvince(e.target.value)}
+              className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            >
+              <option value="ALL">All Provinces</option>
+              {provinceOptions.map((province) => (
+                <option key={province} value={province}>
+                  {province}
+                </option>
+              ))}
+            </select>
           </div>
-        )}
-      </div>
 
-      <select
-        value={selectedRole}
-        onChange={(e) => setSelectedRole(e.target.value)}
-        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
-      >
-        <option value="ALL">All Roles</option>
-        <option value="Prime Minister">Prime Minister</option>
-        <option value="Minister">Minister</option>
-        <option value="MP">MP</option>
-        <option value="National Assembly Member">National Assembly Member</option>
-        <option value="Mayor">Mayor</option>
-        <option value="Chairperson">Chairperson</option>
-      </select>
-
-      <select
-        value={selectedProvince}
-        onChange={(e) => setSelectedProvince(e.target.value)}
-        className="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
-      >
-        <option value="ALL">All Provinces</option>
-        {provinceOptions.map((province) => (
-          <option key={province} value={province}>
-            {province}
-          </option>
-        ))}
-      </select>
-    </div>
-
-    <button
-      type="button"
-      onClick={resetForm}
-      className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
-    >
-      {editingLeaderId ? "Cancel Edit" : "New Entry"}
-    </button>
-  </div>
-</AdminPageSection>
+          <button
+            type="button"
+            onClick={resetForm}
+            className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800"
+          >
+            {editingLeaderId ? "Cancel Edit" : "New Entry"}
+          </button>
+        </div>
+      </AdminPageSection>
 
       <AdminFormCard
         title={editingLeaderId ? "Edit Leader" : "Add Leader"}
@@ -591,7 +684,7 @@ const filteredLeaders = useMemo(() => {
           <>
             <button
               onClick={handleSubmit}
-              disabled={submitting || (!editingLeaderId && !!duplicateInfo?.exists)}
+              disabled={submitting || (!editingLeaderId && !!duplicateInfo?.exactMatch)}
               className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-semibold text-white transition hover:bg-slate-800 disabled:opacity-50"
             >
               {submitting
@@ -649,6 +742,7 @@ const filteredLeaders = useMemo(() => {
             <option value="National Assembly Member">National Assembly Member</option>
             <option value="Mayor">Mayor</option>
             <option value="Chairperson">Chairperson</option>
+            <option value="Ward Chairperson">Ward Chairperson</option>
           </select>
         </div>
 
@@ -662,6 +756,16 @@ const filteredLeaders = useMemo(() => {
             <option value="Current">Current</option>
             <option value="Former">Former</option>
           </select>
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Current Office</label>
+          <input
+            value={form.currentOffice}
+            onChange={(e) => handleChange("currentOffice", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Minister for Finance, Deputy Speaker, etc."
+          />
         </div>
 
         <div>
@@ -723,6 +827,26 @@ const filteredLeaders = useMemo(() => {
         </div>
 
         <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Constituency</label>
+          <input
+            value={form.constituency}
+            onChange={(e) => handleChange("constituency", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Chitwan-2, Election Area No.-2, etc."
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Election Process</label>
+          <input
+            value={form.electionProcess}
+            onChange={(e) => handleChange("electionProcess", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder="Direct, Proportional, Indirect"
+          />
+        </div>
+
+        <div>
           <label className="mb-2 block text-sm font-medium text-slate-700">Portfolio</label>
           <input
             value={form.portfolio}
@@ -739,6 +863,26 @@ const filteredLeaders = useMemo(() => {
             onChange={(e) => handleChange("badge", e.target.value)}
             className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
             placeholder="Badge text"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">Start Date</label>
+          <input
+            type="date"
+            value={form.startDate}
+            onChange={(e) => handleChange("startDate", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="mb-2 block text-sm font-medium text-slate-700">End Date</label>
+          <input
+            type="date"
+            value={form.endDate}
+            onChange={(e) => handleChange("endDate", e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
           />
         </div>
 
@@ -852,6 +996,20 @@ const filteredLeaders = useMemo(() => {
           />
         </div>
 
+        <div className="md:col-span-2">
+          <label className="mb-2 block text-sm font-medium text-slate-700">Positions</label>
+          <textarea
+            value={form.positionsText}
+            onChange={(e) => handleChange("positionsText", e.target.value)}
+            rows={6}
+            className="w-full rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm outline-none"
+            placeholder={`One line per position
+Example:
+Member of Parliament :: MP | House of Representatives |  |  | Current | 2022-11-20 |  | https://...
+Minister for Law, Justice and Parliamentary Affairs :: Minister | Government of Nepal | Ministry of Law, Justice and Parliamentary Affairs | Law, Justice and Parliamentary Affairs | Current | 2026-03-27 |  | https://...`}
+          />
+        </div>
+
         <div className="md:col-span-2 flex items-center gap-3 rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3">
           <input
             id="verified"
@@ -865,7 +1023,7 @@ const filteredLeaders = useMemo(() => {
           </label>
         </div>
 
-        {!editingLeaderId && duplicateInfo?.exists ? (
+        {!editingLeaderId && duplicateInfo?.exactMatch ? (
           <div className="md:col-span-2 rounded-2xl border border-amber-200 bg-amber-50 p-4">
             <p className="text-sm font-semibold text-amber-800">
               Similar leader already exists in database
@@ -883,7 +1041,7 @@ const filteredLeaders = useMemo(() => {
                     handleEdit({
                       leaderId: item.leaderId,
                       name: item.name,
-                      role: item.role,
+                      role: item.role || "MP",
                       party: item.party,
                       province: item.province,
                       district: item.district || "",
@@ -893,7 +1051,7 @@ const filteredLeaders = useMemo(() => {
                 >
                   <p className="font-semibold text-slate-900">{item.name}</p>
                   <p className="mt-1 text-xs text-slate-500">
-                    {item.role} • {item.party || "No party"} • {item.district || "No district"}
+                    {item.role || "No role"} • {item.party || "No party"} • {item.district || "No district"}
                   </p>
                 </button>
               ))}
@@ -932,11 +1090,13 @@ const filteredLeaders = useMemo(() => {
           },
           {
             key: "role",
-            header: "Role",
+            header: "Role / Office",
             render: (row) => (
               <div>
                 <p className="font-medium text-slate-900">{row.role}</p>
-                <p className="text-xs text-slate-500">{row.currentStatus || "Current"}</p>
+                <p className="text-xs text-slate-500">
+                  {row.currentOffice || row.currentStatus || "Current"}
+                </p>
               </div>
             ),
           },

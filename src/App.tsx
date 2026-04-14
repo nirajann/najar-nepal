@@ -15,6 +15,11 @@ import AdminUsers from "./components/admin/AdminUsers";
 import Profile from "./pages/Profile";
 import VerificationPage from "./pages/VerificationPage";
 import Support from "./pages/Support";
+import About from "./pages/About";
+import Methodology from "./pages/Methodology";
+import Privacy from "./pages/Privacy";
+import Terms from "./pages/Terms";
+import Contact from "./pages/Contact";
 
 function App() {
   return (
@@ -27,17 +32,18 @@ function App() {
         <Route path="/leader/:id" element={<LeaderProfile />} />
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/profile" element={<Profile />} />
-<Route path="/support" element={<Support />} />
-<Route path="/support/report-issue" element={<div>Report Issue Page</div>} />
-<Route path="/support/corrections" element={<div>Corrections Page</div>} />
-<Route path="/support/contact" element={<div>Contact Page</div>} />
-<Route path="/support/volunteer" element={<div>Volunteer Page</div>} />
-<Route path="/support/donate" element={<div>Donate Page</div>} />
-<Route path="/support/faq" element={<div>FAQ Page</div>} />
-<Route path="/about" element={<div className="p-10">About Page</div>} />
-<Route path="/methodology" element={<div className="p-10">Methodology Page</div>} />
-<Route path="/privacy" element={<div className="p-10">Privacy Page</div>} />
-<Route path="/contact" element={<div className="p-10">Contact Page</div>} />
+        <Route path="/support" element={<Support />} />
+        <Route path="/support/report-issue" element={<div>Report Issue Page</div>} />
+        <Route path="/support/corrections" element={<div>Corrections Page</div>} />
+        <Route path="/support/contact" element={<div>Contact Page</div>} />
+        <Route path="/support/volunteer" element={<div>Volunteer Page</div>} />
+        <Route path="/support/donate" element={<div>Donate Page</div>} />
+        <Route path="/support/faq" element={<div>FAQ Page</div>} />
+        <Route path="/about" element={<About />} />
+        <Route path="/methodology" element={<Methodology />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/contact" element={<Contact />} />
         <Route
           path="/verification"
           element={

@@ -62,9 +62,9 @@ type ComplaintItem = {
   leaderId: string;
   userId: string;
   userName?: string;
-  message: string;
-  type?: string;
-  photo?: string;
+  text: string;
+  complaintType?: string;
+  complaintPhoto?: string;
   adminNote?: string;
   status?: "pending" | "reviewed" | "resolved";
   createdAt?: string;

@@ -8,9 +8,24 @@ const reportSchema = new mongoose.Schema(
       required: true,
     },
     leaderId: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Leader",
+      type: String,
       required: true,
+      trim: true,
+    },
+    leaderName: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    district: {
+      type: String,
+      default: "",
+      trim: true,
+    },
+    province: {
+      type: String,
+      default: "",
+      trim: true,
     },
     details: {
       type: String,
