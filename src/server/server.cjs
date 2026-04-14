@@ -115,6 +115,7 @@ async function startServer() {
     app.use("/api/ratings", writeLimiter, require("./routes/ratingRoutes.cjs"));
     app.use("/api/complaints", writeLimiter, require("./routes/complaintRoutes.cjs"));
     app.use("/api/reports", writeLimiter, require("./routes/reportRoutes.cjs"));
+    app.use("/api/support", writeLimiter, require("./routes/supportRoutes.cjs"));
     app.use("/api/projects", require("./routes/projectRoutes.cjs"));
     app.use("/api/comments", writeLimiter, require("./routes/commentRoutes.cjs"));
     app.use("/api/analytics", writeLimiter, require("./routes/analyticsEventRoutes.cjs"));

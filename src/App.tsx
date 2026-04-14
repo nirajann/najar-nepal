@@ -15,6 +15,12 @@ import AdminUsers from "./components/admin/AdminUsers";
 import Profile from "./pages/Profile";
 import VerificationPage from "./pages/VerificationPage";
 import Support from "./pages/Support";
+import SupportReportIssue from "./pages/support/SupportReportIssue";
+import SupportCorrections from "./pages/support/SupportCorrections";
+import SupportContact from "./pages/support/SupportContact";
+import SupportVolunteer from "./pages/support/SupportVolunteer";
+import SupportDonate from "./pages/support/SupportDonate";
+import SupportFAQ from "./pages/support/SupportFAQ";
 import About from "./pages/About";
 import Methodology from "./pages/Methodology";
 import Privacy from "./pages/Privacy";
@@ -33,12 +39,12 @@ function App() {
         <Route path="/profile/:id" element={<Profile />} />
         <Route path="/profile" element={<Profile />} />
         <Route path="/support" element={<Support />} />
-        <Route path="/support/report-issue" element={<div>Report Issue Page</div>} />
-        <Route path="/support/corrections" element={<div>Corrections Page</div>} />
-        <Route path="/support/contact" element={<div>Contact Page</div>} />
-        <Route path="/support/volunteer" element={<div>Volunteer Page</div>} />
-        <Route path="/support/donate" element={<div>Donate Page</div>} />
-        <Route path="/support/faq" element={<div>FAQ Page</div>} />
+        <Route path="/support/report-issue" element={<SupportReportIssue />} />
+        <Route path="/support/corrections" element={<SupportCorrections />} />
+        <Route path="/support/contact" element={<SupportContact />} />
+        <Route path="/support/volunteer" element={<SupportVolunteer />} />
+        <Route path="/support/donate" element={<SupportDonate />} />
+        <Route path="/support/faq" element={<SupportFAQ />} />
         <Route path="/about" element={<About />} />
         <Route path="/methodology" element={<Methodology />} />
         <Route path="/privacy" element={<Privacy />} />

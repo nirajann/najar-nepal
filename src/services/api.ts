@@ -552,6 +552,66 @@ export const api = {
     return parseJsonResponse(res);
   },
 
+  submitSupportIssue: async (payload: {
+    issueCategory: string;
+    pageSection: string;
+    description: string;
+    screenshotUrl?: string;
+    name?: string;
+    email?: string;
+  }) => {
+    const res = await fetch(`${API_BASE_URL}/support/issues`, {
+      method: "POST",
+      headers: authHeaders(undefined, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  submitSupportCorrection: async (payload: {
+    affectedEntity: string;
+    incorrectInfo: string;
+    suggestedCorrection: string;
+    sourceLink?: string;
+    notes?: string;
+  }) => {
+    const res = await fetch(`${API_BASE_URL}/support/corrections`, {
+      method: "POST",
+      headers: authHeaders(undefined, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  submitSupportContact: async (payload: {
+    name: string;
+    email: string;
+    subject: string;
+    message: string;
+  }) => {
+    const res = await fetch(`${API_BASE_URL}/support/contact`, {
+      method: "POST",
+      headers: authHeaders(undefined, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
+  submitSupportVolunteer: async (payload: {
+    name: string;
+    email: string;
+    interests: string;
+    availability?: string;
+    notes?: string;
+  }) => {
+    const res = await fetch(`${API_BASE_URL}/support/volunteer`, {
+      method: "POST",
+      headers: authHeaders(undefined, true),
+      body: JSON.stringify(payload),
+    });
+    return parseJsonResponse(res);
+  },
+
   getMyComplaintsByLeader: async (token: string, leaderId: string) => {
     const res = await fetch(
       buildUrl("/complaints/my", {
