@@ -302,8 +302,8 @@ type HeroPreviewItem = {
 };
 
 function getHeroPreviewSignal(score: number | null, linkedCount: number) {
-  if (typeof score === "number" && score >= 75) return "Strong public trust signal";
-  if (typeof score === "number" && score >= 50) return "Moderate trust and civic visibility";
+  if (typeof score === "number" && score >= 75) return "Strong public feedback signal";
+  if (typeof score === "number" && score >= 50) return "Moderate public feedback visibility";
   if (linkedCount >= 2) return "Linked public profiles available";
   if (linkedCount >= 1) return "Early district visibility on platform";
   return "District public data is still developing";
@@ -311,11 +311,11 @@ function getHeroPreviewSignal(score: number | null, linkedCount: number) {
 
 function getHeroPreviewActivity(score: number | null, linkedCount: number, localLevels: number) {
   if (typeof score === "number") {
-    return `${localLevels} local levels and ${linkedCount} linked public profile${linkedCount === 1 ? "" : "s"} are visible in this district summary.`;
+    return `${localLevels} local levels and ${linkedCount} linked public profile${linkedCount === 1 ? "" : "s"} are listed for this district.`;
   }
 
   if (linkedCount > 0) {
-    return `${linkedCount} linked public profile${linkedCount === 1 ? "" : "s"} and district context are already available here.`;
+    return `${linkedCount} linked public profile${linkedCount === 1 ? "" : "s"} and district context are already available.`;
   }
 
   return `${localLevels} local levels are visible now while district public signals continue to build.`;
@@ -365,16 +365,14 @@ function HeroVisual({
 
   if (loading) {
     return (
-      <div className="relative overflow-hidden rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_16px_34px_rgba(15,23,42,0.10)] md:rounded-[30px] md:p-4">
+      <div className="relative overflow-hidden rounded-[24px] border border-blue-100 bg-white p-4 shadow-[0_16px_34px_rgba(15,23,42,0.08)] md:rounded-[30px]">
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="skeleton-shimmer h-6 w-28 rounded-full" />
-            <div className="skeleton-shimmer h-4 w-24 rounded-full" />
+            <div className="skeleton-shimmer h-5 w-32 rounded-full" />
+            <div className="skeleton-shimmer h-4 w-20 rounded-full" />
           </div>
-          <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm md:rounded-[26px] md:p-4">
-            <div className="skeleton-shimmer h-[260px] rounded-[18px] md:h-[300px] md:rounded-[22px]" />
-          </div>
+          <div className="skeleton-shimmer h-[230px] rounded-[18px]" />
         </div>
       </div>
     );
@@ -420,131 +418,90 @@ function HeroVisual({
         };
 
   return (
-    <div className="relative overflow-hidden rounded-[26px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-[0_18px_38px_rgba(15,23,42,0.12)] md:rounded-[32px] md:p-4">
-      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-fuchsia-500 to-blue-600" />
-      <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-blue-200/20 blur-3xl" />
-      <div className="absolute left-0 bottom-0 h-40 w-40 rounded-full bg-red-200/20 blur-3xl" />
+    <div className="relative overflow-hidden rounded-[26px] border border-blue-100 bg-white p-4 shadow-[0_18px_38px_rgba(15,23,42,0.10)] md:rounded-[32px]">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
 
-      <div className="relative mb-3 flex items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-red-600">
-            Active Nepal view
-          </span>
-          <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-blue-700">
-            Civic pulse
-          </span>
-          <span className="hidden rounded-full border border-slate-200 bg-white px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-500 sm:inline-flex">
-            Public view
-          </span>
+      <div className="relative space-y-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">
+              Live civic stats
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Public feedback, visibility, and representative signals updated from the map.
+            </p>
+          </div>
+          <div className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
+            {filteredDistrictsCount} districts visible
+          </div>
         </div>
 
-        <span className="text-xs font-medium text-slate-600">
-          {leaderCount}+ {uiText.heroPreviewLeaderProfiles}
-        </span>
-      </div>
+        <div className="grid gap-3 lg:grid-cols-2">
+          <div className="rounded-[22px] border border-slate-200 bg-slate-50/60 p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              District snapshot
+            </p>
+            <h3 className="mt-2 text-xl font-bold text-slate-950">{activeItem.districtName}</h3>
+            <p className="text-sm text-slate-600">{activeItem.province}</p>
 
-      <div className="relative rounded-[24px] border border-blue-100 bg-white/90 p-3 shadow-sm backdrop-blur-sm md:rounded-[28px] md:p-4">
-        <div className="grid gap-3 lg:grid-cols-[1.05fr_0.95fr]">
-          <div className="relative overflow-hidden rounded-[24px] border border-slate-900 bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.16),transparent_25%),linear-gradient(155deg,#020617_0%,#08142c_48%,#1d4ed8_100%)] p-4 text-white shadow-[0_22px_40px_rgba(15,23,42,0.20)] md:p-5">
-            <div className="absolute left-[18%] top-[24%] h-28 w-28 rounded-full bg-white/5 blur-3xl" />
-            <div className="absolute right-[16%] bottom-[20%] h-28 w-28 rounded-full bg-blue-400/10 blur-3xl" />
+            <div className="mt-3 flex items-center justify-between text-xs font-semibold text-slate-600">
+              <span>Public feedback score</span>
+              <span>
+                {typeof activeItem.score === "number" ? `${activeItem.score}/100` : "Not rated"}
+              </span>
+            </div>
+            <div className="mt-2 h-2 overflow-hidden rounded-full bg-white">
+              <div
+                className={`h-full rounded-full ${accent.bar}`}
+                style={{
+                  width:
+                    typeof activeItem.score === "number"
+                      ? `${Math.max(8, Math.min(activeItem.score, 100))}%`
+                      : "18%",
+                }}
+              />
+            </div>
 
-            <div className="relative">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-slate-300">
-                Trust layer
-              </p>
-
-              <div className="mt-4 rounded-[20px] border border-white/10 bg-white/5 p-4 backdrop-blur-sm">
-                <div className="rounded-[18px] border border-white/10 bg-[linear-gradient(180deg,rgba(255,255,255,0.08),rgba(255,255,255,0.04))] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,0.06)]">
-                  <p className="max-w-[240px] text-sm font-semibold uppercase leading-6 tracking-[0.16em] text-slate-100">
-                    A living view of public sentiment, civic participation, and accountability across Nepal
-                  </p>
-                </div>
+            <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-slate-600">
+              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                <p className="font-semibold text-slate-900">{leaderCount}+</p>
+                <p>Leader profiles</p>
               </div>
-
-              <div className="mt-5 grid gap-3 sm:grid-cols-2">
-                <div className="rounded-[18px] border border-white/10 bg-white/5 p-3.5 transition duration-300 hover:bg-white/10">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-                    Selected district
-                  </p>
-                  <h3 className="mt-2 text-2xl font-extrabold tracking-tight text-white">
-                    {activeItem.districtName}
-                  </h3>
-                  <p className="mt-1 text-sm text-slate-200">{activeItem.province}</p>
-                </div>
-
-                <div className="rounded-[18px] border border-white/10 bg-white/5 p-3.5 transition duration-300 hover:bg-white/10">
-                  <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-300">
-                    Public trust score
-                  </p>
-                  <p className="mt-2 text-3xl font-extrabold tracking-tight text-white">
-                    {typeof activeItem.score === "number" ? `${activeItem.score}/100` : "--"}
-                  </p>
-                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                    <div
-                      className={`h-full rounded-full ${accent.bar}`}
-                      style={{
-                        width:
-                          typeof activeItem.score === "number"
-                            ? `${Math.max(8, Math.min(activeItem.score, 100))}%`
-                            : "18%",
-                      }}
-                    />
-                  </div>
-                </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                <p className="font-semibold text-slate-900">{activeItem.linkedCount}</p>
+                <p>Linked profiles</p>
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-2.5 py-2">
+                <p className="font-semibold text-slate-900">{filteredDistrictsCount}</p>
+                <p>Visible districts</p>
               </div>
             </div>
           </div>
 
-          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-1">
-            <div className="rounded-[22px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#eff6ff_100%)] p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                District signals
-              </p>
-              <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
-                {filteredDistrictsCount}+ districts
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Explore district-level public voice directly from the map.
-              </p>
-            </div>
-
-            <div className="rounded-[22px] border border-red-100 bg-[linear-gradient(180deg,#ffffff_0%,#fef2f2_100%)] p-4 shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-md">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                Trust layer
-              </p>
-              <p className="mt-2 text-3xl font-extrabold tracking-tight text-slate-950">
-                {leaderCount}+ leaders
-              </p>
-              <p className="mt-2 text-sm leading-6 text-slate-600">
-                Linked profiles, reactions, and public context built into one civic view.
-              </p>
-            </div>
-
-            <div className="rounded-[22px] border border-slate-900 bg-[linear-gradient(180deg,#07111f_0%,#0b1730_100%)] p-4 text-white shadow-sm transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_32px_rgba(15,23,42,0.16)]">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-                Civic pulse
-              </p>
-
-              <div className="mt-3 flex items-start gap-3">
-                <div className={`flex h-12 w-12 items-center justify-center rounded-2xl border ${accent.scoreCard}`}>
-                  <span className="text-base font-bold">{activeItem.leaderName.charAt(0)}</span>
-                </div>
-                <div className="min-w-0">
-                  <h3 className="truncate text-lg font-bold text-white">
-                    {activeItem.leaderName}
-                  </h3>
-                  <p className="mt-1 text-sm leading-6 text-slate-300">
-                    {activeItem.liveSignal}
-                  </p>
-                </div>
+          <div className="rounded-[22px] border border-blue-100 bg-white p-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-600">
+              Public representatives
+            </p>
+            <div className="mt-3 flex items-start gap-3">
+              <div
+                className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${accent.scoreCard}`}
+              >
+                <span className="text-base font-bold">{activeItem.leaderName.charAt(0)}</span>
               </div>
-
-              <div className="mt-4 rounded-2xl bg-white/5 px-3 py-3">
-                <p className="text-sm leading-6 text-slate-200">
-                  {activeItem.activitySummary}
+              <div className="min-w-0">
+                <h3 className="truncate text-lg font-bold text-slate-950">
+                  {activeItem.leaderName}
+                </h3>
+                <p className="mt-1 text-sm leading-6 text-slate-600">
+                  {activeItem.liveSignal}
                 </p>
               </div>
+            </div>
+
+            <div className="mt-4 rounded-2xl bg-slate-50 px-3 py-3">
+              <p className="text-sm leading-6 text-slate-700">
+                {activeItem.activitySummary}
+              </p>
             </div>
           </div>
         </div>
@@ -895,17 +852,10 @@ function Home() {
                 {text.heroSupportLine}
               </p>
 
-              <div className="mt-4 flex flex-wrap items-center gap-2">
-                <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-medium text-slate-600">
-                  District-level public voice
-                </span>
-                <span className="rounded-full border border-blue-100 bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  Trust and accountability signals
-                </span>
-                <span className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-600">
-                  Modern civic participation
-                </span>
-              </div>
+              <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
+                Search any district to see local leaders, public feedback, and activity signals
+                in one place.
+              </p>
 
               <div className="mt-5 max-w-2xl rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-2.5 shadow-[0_16px_34px_rgba(15,23,42,0.08)] md:mt-6 md:rounded-[28px] md:p-3">
                 <div className="flex flex-col gap-2.5 sm:flex-row">
@@ -920,26 +870,15 @@ function Home() {
                     href="#district-map"
                     className="min-h-[48px] justify-center whitespace-nowrap px-5 text-sm shadow-[0_14px_24px_rgba(15,23,42,0.14)] md:min-h-[54px] md:px-6"
                   >
-                    {text.heroSearchAction}
+                    {text.primaryCta}
                   </NepalAnchorButton>
                 </div>
               </div>
 
               <div className="mt-4 flex flex-wrap items-center gap-2.5 md:mt-5 md:gap-3">
-                <NepalAnchorButton href="#district-map">
-                  {text.primaryCta}
-                </NepalAnchorButton>
-
                 <NepalActionLink to="/ranking" tone="secondary">
                   {text.secondaryCta}
                 </NepalActionLink>
-
-                <a
-                  href="#district-map"
-                  className="inline-flex items-center px-1 py-2 text-sm font-semibold text-slate-600 transition hover:text-slate-900"
-                >
-                  {text.seeHowItWorks}
-                </a>
               </div>
             </div>
 
