@@ -26,8 +26,12 @@ function parseLocalLevels(rawValue) {
     return rawValue
       .map((item) =>
         typeof item === "string"
-          ? { name: item.trim(), type: "" }
-          : { name: item.name?.trim() || "", type: item.type?.trim() || "" }
+          ? { name: item.trim(), type: "", slug: slugify(item.trim()) }
+          : {
+              name: item.name?.trim() || "",
+              type: item.type?.trim() || "",
+              slug: item.slug?.trim() || slugify(item.name || ""),
+            }
       )
       .filter((item) => item.name);
   }
@@ -37,23 +41,42 @@ function parseLocalLevels(rawValue) {
       .split(",")
       .map((item) => item.trim())
       .filter(Boolean)
-      .map((name) => ({ name, type: "" }));
+      .map((name) => ({ name, type: "", slug: slugify(name) }));
   }
 
   return [];
 }
 
-async function validateLeaderRole(leaderId, allowedRoles) {
-  if (!leaderId) return null;
-  if (!mongoose.Types.ObjectId.isValid(leaderId)) return { error: "Invalid leader id" };
+async function validateLeaderIds(leaderIds, allowedRoles) {
+  if (!Array.isArray(leaderIds)) return { validIds: [] };
 
-  const leader = await Leader.findById(leaderId);
-  if (!leader) return { error: "Linked leader not found" };
-  if (!allowedRoles.includes(leader.role)) {
-    return { error: `Leader role must be one of: ${allowedRoles.join(", ")}` };
+  const validIds = [];
+
+  for (const leaderId of leaderIds) {
+    if (!mongoose.Types.ObjectId.isValid(leaderId)) {
+      return { error: "Invalid leader id found in list" };
+    }
+
+    const leader = await Leader.findById(leaderId);
+    if (!leader) {
+      return { error: "Linked leader not found" };
+    }
+
+    if (!allowedRoles.includes(leader.role)) {
+      return { error: `Leader role must be one of: ${allowedRoles.join(", ")}` };
+    }
+
+    validIds.push(leader._id);
   }
 
-  return { leader };
+  return { validIds };
+}
+
+async function syncLeadersToDistrict(districtId, province, districtName) {
+  await Leader.updateMany(
+    { district: districtId },
+    { $set: { province, districtName } }
+  );
 }
 
 // Duplicate check
@@ -94,6 +117,7 @@ router.get("/", async (req, res) => {
       districtFindType: typeof District?.find,
       leaderFindType: typeof Leader?.find,
     });
+
     const { province, search } = req.query;
     const filter = {};
 
@@ -108,8 +132,8 @@ router.get("/", async (req, res) => {
     }
 
     const districts = await District.find(filter)
-      .populate("mpLeader", "leaderId name role")
-      .populate("ministerLeader", "leaderId name role")
+      .populate("mpLeaders", "leaderId name role")
+      .populate("ministerLeaders", "leaderId name role")
       .populate("naLeaders", "leaderId name role")
       .sort({ name: 1 });
 
@@ -126,8 +150,8 @@ router.get("/", async (req, res) => {
 router.get("/:districtId", async (req, res) => {
   try {
     const district = await District.findOne({ districtId: req.params.districtId })
-      .populate("mpLeader", "leaderId name role")
-      .populate("ministerLeader", "leaderId name role")
+      .populate("mpLeaders", "leaderId name role")
+      .populate("ministerLeaders", "leaderId name role")
       .populate("naLeaders", "leaderId name role");
 
     if (!district) {
@@ -158,6 +182,7 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
 
     payload.districtId = payload.districtId?.trim() || slugify(payload.name);
     payload.slug = slugify(payload.name);
+    payload.provinceSlug = slugify(payload.province);
     payload.localLevels = parseLocalLevels(payload.localLevels || payload.localLevelsText);
 
     const duplicate = await District.findOne({
@@ -172,12 +197,12 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
       });
     }
 
-    const mpValidation = await validateLeaderRole(payload.mpLeader, ["MP"]);
+    const mpValidation = await validateLeaderIds(payload.mpLeaders, ["MP"]);
     if (mpValidation?.error) {
       return res.status(400).json({ message: mpValidation.error });
     }
 
-    const ministerValidation = await validateLeaderRole(payload.ministerLeader, [
+    const ministerValidation = await validateLeaderIds(payload.ministerLeaders, [
       "Minister",
       "Prime Minister",
     ]);
@@ -185,20 +210,24 @@ router.post("/", authMiddleware, adminMiddleware, async (req, res) => {
       return res.status(400).json({ message: ministerValidation.error });
     }
 
-    if (Array.isArray(payload.naLeaders)) {
-      for (const leaderId of payload.naLeaders) {
-        const naValidation = await validateLeaderRole(leaderId, ["National Assembly Member"]);
-        if (naValidation?.error) {
-          return res.status(400).json({ message: naValidation.error });
-        }
-      }
+    const naValidation = await validateLeaderIds(payload.naLeaders, [
+      "National Assembly Member",
+    ]);
+    if (naValidation?.error) {
+      return res.status(400).json({ message: naValidation.error });
     }
+
+    payload.mpLeaders = mpValidation.validIds;
+    payload.ministerLeaders = ministerValidation.validIds;
+    payload.naLeaders = naValidation.validIds;
 
     const district = await District.create(payload);
 
+    await syncLeadersToDistrict(district._id, district.province, district.name);
+
     const populatedDistrict = await District.findById(district._id)
-      .populate("mpLeader", "leaderId name role")
-      .populate("ministerLeader", "leaderId name role")
+      .populate("mpLeaders", "leaderId name role")
+      .populate("ministerLeaders", "leaderId name role")
       .populate("naLeaders", "leaderId name role");
 
     res.status(201).json({
@@ -251,30 +280,37 @@ router.put("/:districtId", authMiddleware, adminMiddleware, async (req, res) => 
       });
     }
 
-    if (payload.mpLeader !== undefined) {
-      const mpValidation = await validateLeaderRole(payload.mpLeader, ["MP"]);
+    if (payload.mpLeaders !== undefined) {
+      const mpValidation = await validateLeaderIds(payload.mpLeaders, ["MP"]);
       if (mpValidation?.error) {
         return res.status(400).json({ message: mpValidation.error });
       }
+      payload.mpLeaders = mpValidation.validIds;
     }
 
-    if (payload.ministerLeader !== undefined) {
-      const ministerValidation = await validateLeaderRole(payload.ministerLeader, [
+    if (payload.ministerLeaders !== undefined) {
+      const ministerValidation = await validateLeaderIds(payload.ministerLeaders, [
         "Minister",
         "Prime Minister",
       ]);
       if (ministerValidation?.error) {
         return res.status(400).json({ message: ministerValidation.error });
       }
+      payload.ministerLeaders = ministerValidation.validIds;
     }
 
-    if (Array.isArray(payload.naLeaders)) {
-      for (const leaderId of payload.naLeaders) {
-        const naValidation = await validateLeaderRole(leaderId, ["National Assembly Member"]);
-        if (naValidation?.error) {
-          return res.status(400).json({ message: naValidation.error });
-        }
+    if (payload.naLeaders !== undefined) {
+      const naValidation = await validateLeaderIds(payload.naLeaders, [
+        "National Assembly Member",
+      ]);
+      if (naValidation?.error) {
+        return res.status(400).json({ message: naValidation.error });
       }
+      payload.naLeaders = naValidation.validIds;
+    }
+
+    if (payload.province) {
+      payload.provinceSlug = slugify(payload.province);
     }
 
     const updated = await District.findOneAndUpdate(
@@ -282,9 +318,11 @@ router.put("/:districtId", authMiddleware, adminMiddleware, async (req, res) => 
       payload,
       { new: true, runValidators: true }
     )
-      .populate("mpLeader", "leaderId name role party photo")
-      .populate("ministerLeader", "leaderId name role party photo")
+      .populate("mpLeaders", "leaderId name role party photo")
+      .populate("ministerLeaders", "leaderId name role party photo")
       .populate("naLeaders", "leaderId name role party photo");
+
+    await syncLeadersToDistrict(updated._id, updated.province, updated.name);
 
     res.json({
       message: "District updated successfully",
@@ -297,6 +335,7 @@ router.put("/:districtId", authMiddleware, adminMiddleware, async (req, res) => 
     });
   }
 });
+
 // Delete district
 router.delete("/:districtId", authMiddleware, adminMiddleware, async (req, res) => {
   try {
@@ -308,7 +347,13 @@ router.delete("/:districtId", authMiddleware, adminMiddleware, async (req, res) 
 
     await Leader.updateMany(
       { district: district._id },
-      { $set: { district: null, province: "" } }
+      {
+        $set: {
+          district: null,
+          districtName: "",
+          province: "",
+        },
+      }
     );
 
     res.json({
