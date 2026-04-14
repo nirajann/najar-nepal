@@ -345,6 +345,10 @@ router.get("/check-duplicate", async (req, res) => {
 // Get all leaders
 router.get("/", async (req, res) => {
   try {
+    console.log("[route] GET /api/leaders", {
+      districtFindType: typeof District?.find,
+      leaderFindType: typeof Leader?.find,
+    });
     const filter = buildLeaderFilter(req.query);
 
     const leaders = await Leader.find(filter)

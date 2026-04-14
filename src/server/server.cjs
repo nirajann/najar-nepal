@@ -4,10 +4,22 @@ const dotenv = require("dotenv");
 const helmet = require("helmet");
 const rateLimit = require("express-rate-limit");
 const connectDB = require("./config/db.cjs");
+const path = require("path");
+const District = require("./models/District.cjs");
+const Leader = require("./models/Leader.cjs");
 
 dotenv.config();
 
 const app = express();
+
+const districtModelPath = path.resolve(__dirname, "models", "District.cjs");
+const leaderModelPath = path.resolve(__dirname, "models", "Leader.cjs");
+console.log("[startup] District model path:", districtModelPath);
+console.log("[startup] District modelName:", District?.modelName || null);
+console.log("[startup] District find type:", typeof District?.find);
+console.log("[startup] Leader model path:", leaderModelPath);
+console.log("[startup] Leader modelName:", Leader?.modelName || null);
+console.log("[startup] Leader find type:", typeof Leader?.find);
 
 async function startServer() {
   try {
@@ -85,6 +97,15 @@ async function startServer() {
 
     app.get("/", (req, res) => {
       res.send("Najar Nepal API is running");
+    });
+
+    app.get("/api/debug-models", (req, res) => {
+      res.json({
+        districtModelName: District?.modelName || null,
+        districtFindType: typeof District?.find,
+        leaderModelName: Leader?.modelName || null,
+        leaderFindType: typeof Leader?.find,
+      });
     });
 
     app.use("/api/auth", authLimiter, require("./routes/authRoutes.cjs"));

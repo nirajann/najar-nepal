@@ -90,6 +90,10 @@ router.get("/check-duplicate", async (req, res) => {
 // Get all districts
 router.get("/", async (req, res) => {
   try {
+    console.log("[route] GET /api/districts", {
+      districtFindType: typeof District?.find,
+      leaderFindType: typeof Leader?.find,
+    });
     const { province, search } = req.query;
     const filter = {};
 
