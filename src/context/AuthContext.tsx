@@ -1,14 +1,15 @@
 import {
   createContext,
-  useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
+  type Dispatch,
+  type SetStateAction,
 } from "react";
 import { api } from "../services/api";
 
-type User = {
+export type User = {
   _id?: string;
   id?: string;
   name?: string;
@@ -28,20 +29,25 @@ type User = {
   badges?: string[];
 };
 
-type AuthContextType = {
+type LoginResponse = {
+  token: string;
+  user: User;
+};
+
+export type AuthContextType = {
   user: User | null;
   token: string;
   isAuthenticated: boolean;
   authReady: boolean;
-  loginUser: (email: string, password: string) => Promise<any>;
+  loginUser: (email: string, password: string) => Promise<LoginResponse>;
   logoutUser: () => void;
   handleUnauthorized: () => void;
   updateUser: (nextUser: Partial<User>) => void;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
-  setToken: React.Dispatch<React.SetStateAction<string>>;
+  setUser: Dispatch<SetStateAction<User | null>>;
+  setToken: Dispatch<SetStateAction<string>>;
 };
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -58,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (savedUser) {
       try {
-        setUser(JSON.parse(savedUser));
+        setUser(JSON.parse(savedUser) as User);
       } catch {
         localStorage.removeItem("user");
       }
@@ -74,11 +80,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem("user");
   };
 
-  const loginUser = async (email: string, password: string) => {
-    const res = await api.login(email, password);
+  const loginUser = async (email: string, password: string): Promise<LoginResponse> => {
+    const res = (await api.login(email, password)) as LoginResponse;
 
-    const nextToken = res?.token || "";
-    const nextUser = res?.user || null;
+    const nextToken = res.token || "";
+    const nextUser = res.user || null;
 
     if (!nextToken || !nextUser) {
       throw new Error("Login response is missing token or user");
@@ -105,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     });
   };
 
-  const value = useMemo(
+  const value = useMemo<AuthContextType>(
     () => ({
       user,
       token,
@@ -122,14 +128,4 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
-}
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error("useAuth must be used within AuthProvider");
-  }
-
-  return context;
 }

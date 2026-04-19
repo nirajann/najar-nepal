@@ -170,3 +170,34 @@ Clone the repository:
 ```bash
 git clone https://github.com/nirajann/your-repo-name.git
 cd your-repo-name
+```
+
+Install dependencies:
+
+```bash
+npm install
+```
+
+Create your local environment file from `.env.example` and set:
+
+```bash
+MONGO_URI=<mongodb connection string>
+JWT_SECRET=<long random secret>
+NODE_ENV=development
+PORT=5000
+VITE_API_BASE_URL=http://localhost:5000/api
+CORS_ORIGINS=http://localhost:5173,https://your-frontend.example.com,https://staging-your-frontend.example.com
+REQUEST_TIMEOUT_MS=30000
+JSON_BODY_LIMIT=1mb
+```
+
+The backend exposes `GET /api/health` for deployment checks and monitoring.
+
+Useful scripts:
+
+```bash
+npm run server
+npm run build
+npm run seed:districts
+npm run import:leaders
+```

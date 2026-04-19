@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Users,
   MessageSquare,
@@ -7,8 +7,8 @@ import {
   Vote,
   RefreshCw,
 } from "lucide-react";
-import { useAuth } from "../../context/AuthContext";
-import { api } from "../../services/api";
+import { useAuth } from "../../context/useAuth";
+import { api, type AdminAnalyticsOverviewResponse } from "../../services/api";
 import StatCard from "./StatCard";
 import WidgetCard from "./WidgetCard";
 import LeaderListWidget from "./LeaderListWidget";
@@ -50,38 +50,40 @@ type OverviewResponse = {
   recentActivity: { label: string; value: number }[];
 };
 
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
 function AdminDashboard() {
   const { token } = useAuth();
   const [data, setData] = useState<OverviewResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const loadOverview = async () => {
+  const loadOverview = useCallback(async () => {
     if (!token) return;
 
     try {
       setLoading(true);
       setError("");
-      const res = await api.getAdminAnalyticsOverview(token);
-      setData(res);
-    } catch (err: any) {
-      setError(err.message || "Failed to load dashboard analytics");
+      const res: AdminAnalyticsOverviewResponse = await api.getAdminAnalyticsOverview(token);
+      setData(res as unknown as OverviewResponse);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load dashboard analytics"));
     } finally {
       setLoading(false);
     }
-  };
-
-  useEffect(() => {
-    loadOverview();
   }, [token]);
 
-  const lastUpdated = useMemo(() => {
-    return new Date().toLocaleTimeString([], {
+  useEffect(() => {
+    void loadOverview();
+  }, [loadOverview]);
+
+  const lastUpdated = new Date().toLocaleTimeString([], {
       hour: "numeric",
       minute: "2-digit",
       second: "2-digit",
     });
-  }, [data]);
 
   const topPopularForWidget =
     data?.topPopular.map((leader) => ({

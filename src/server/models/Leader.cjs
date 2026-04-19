@@ -12,13 +12,16 @@ function slugify(value = "") {
     .replace(/\s+/g, "-");
 }
 
+function cleanUrl(value = "") {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return "";
+}
+
 const positionSchema = new mongoose.Schema(
   {
-    title: {
-      type: String,
-      required: true,
-      trim: true,
-    },
+    title: { type: String, required: true, trim: true, maxlength: 150 },
 
     type: {
       type: String,
@@ -39,48 +42,25 @@ const positionSchema = new mongoose.Schema(
         "Other",
       ],
       default: "Other",
-      trim: true,
     },
 
-    institution: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    ministry: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    portfolio: {
-      type: String,
-      default: "",
-      trim: true,
-    },
+    institution: { type: String, default: "", trim: true, maxlength: 150 },
+    ministry: { type: String, default: "", trim: true, maxlength: 150 },
+    portfolio: { type: String, default: "", trim: true, maxlength: 150 },
 
     status: {
       type: String,
       enum: ["Current", "Former"],
       default: "Current",
-      trim: true,
     },
 
-    fromDate: {
-      type: Date,
-      default: null,
-    },
-
-    toDate: {
-      type: Date,
-      default: null,
-    },
+    fromDate: { type: Date, default: null },
+    toDate: { type: Date, default: null },
 
     sourceUrl: {
       type: String,
       default: "",
-      trim: true,
+      set: cleanUrl,
     },
   },
   { _id: false }
@@ -108,6 +88,7 @@ const leaderSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 150,
     },
 
     normalizedName: {
@@ -115,6 +96,11 @@ const leaderSchema = new mongoose.Schema(
       required: true,
       trim: true,
       index: true,
+    },
+
+    aliases: {
+      type: [String],
+      default: [],
     },
 
     role: {
@@ -136,13 +122,13 @@ const leaderSchema = new mongoose.Schema(
       type: String,
       enum: ["House of Representatives", "National Assembly", ""],
       default: "",
-      trim: true,
     },
 
     currentOffice: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
       index: true,
     },
 
@@ -150,6 +136,7 @@ const leaderSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     positions: {
@@ -161,6 +148,7 @@ const leaderSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 100,
       index: true,
     },
 
@@ -220,43 +208,52 @@ const leaderSchema = new mongoose.Schema(
     age: {
       type: Number,
       default: null,
-      min: 0,
+      min: 18,
+      max: 120,
     },
 
     birthPlace: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 150,
     },
 
     permanentAddress: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 250,
     },
 
     gender: {
       type: String,
+      enum: ["Male", "Female", "Other", ""],
       default: "",
-      trim: true,
     },
 
     photo: {
       type: String,
       default: "",
-      trim: true,
+      set: cleanUrl,
     },
 
     officialSourceUrl: {
       type: String,
       default: "",
-      trim: true,
+      set: cleanUrl,
     },
 
     electionSourceUrl: {
       type: String,
       default: "",
-      trim: true,
+      set: cleanUrl,
+    },
+
+    shortBio: {
+      type: String,
+      default: "",
+      maxlength: 500,
     },
 
     badge: {
@@ -271,58 +268,89 @@ const leaderSchema = new mongoose.Schema(
       index: true,
     },
 
-    startDate: {
-      type: Date,
-      default: null,
-    },
-
-    endDate: {
-      type: Date,
-      default: null,
-    },
-
-    startYear: {
-      type: String,
-      default: "",
-      trim: true,
-    },
-
-    endYear: {
-      type: String,
-      default: "Present",
-      trim: true,
-    },
-
     lastVerifiedAt: {
       type: Date,
       default: null,
     },
+
+    startDate: { type: Date, default: null },
+    endDate: { type: Date, default: null },
+
+    startYear: { type: String, default: "" },
+    endYear: { type: String, default: "Present" },
+
+    /* Cached metrics */
+    totalLikes: { type: Number, default: 0 },
+    totalDislikes: { type: Number, default: 0 },
+    totalComments: { type: Number, default: 0 },
+    averageRating: { type: Number, default: 0 },
+    engagementScore: { type: Number, default: 0 },
+
+    /* Safety */
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    deletedAt: {
+      type: Date,
+      default: null,
+    },
   },
-  { timestamps: true }
+  {
+    timestamps: true,
+  }
 );
 
+/* AUTO CLEANUP */
 leaderSchema.pre("validate", function () {
-  this.name = (this.name || "").trim();
+  this.name = String(this.name || "").trim();
+
   this.normalizedName = normalizeText(this.name);
 
-  if (!this.slug) {
-    this.slug = slugify(this.name);
+  if (!this.slug) this.slug = slugify(this.name);
+
+  if (!this.leaderId) this.leaderId = slugify(this.name);
+
+  this.photo = cleanUrl(this.photo);
+  this.officialSourceUrl = cleanUrl(this.officialSourceUrl);
+  this.electionSourceUrl = cleanUrl(this.electionSourceUrl);
+
+  if (!this.currentOffice && this.positions.length > 0) {
+    const active = this.positions.find((p) => p.status === "Current");
+    if (active?.title) this.currentOffice = active.title;
   }
 
-  if (!this.leaderId) {
-    this.leaderId = slugify(this.name);
-  }
+  if (!Array.isArray(this.aliases)) this.aliases = [];
+});
 
-  if (!this.currentOffice && Array.isArray(this.positions) && this.positions.length > 0) {
-    const currentPosition = this.positions.find((item) => item.status === "Current");
-    if (currentPosition?.title) {
-      this.currentOffice = currentPosition.title;
-    }
+/* FILTER SOFT DELETED BY DEFAULT */
+leaderSchema.pre(/^find/, function () {
+  if (!this.getQuery().includeDeleted) {
+    this.where({ isDeleted: false });
   }
 });
 
-leaderSchema.index({ normalizedName: 1, district: 1 }, { unique: true });
+/* INDEXES */
+leaderSchema.index(
+  { normalizedName: 1, district: 1 },
+  { unique: true }
+);
+
 leaderSchema.index({ province: 1, districtName: 1, role: 1 });
 leaderSchema.index({ party: 1, role: 1 });
+leaderSchema.index({ verified: 1, role: 1 });
+leaderSchema.index({ engagementScore: -1 });
+
+/* TEXT SEARCH */
+leaderSchema.index({
+  name: "text",
+  party: "text",
+  role: "text",
+  districtName: "text",
+  province: "text",
+  currentOffice: "text",
+});
 
 module.exports = mongoose.model("Leader", leaderSchema);

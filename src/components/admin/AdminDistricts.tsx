@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { api } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  api,
+  type DuplicateCheckResponse as ApiDuplicateCheckResponse,
+  type GenericListResponse,
+} from "../../services/api";
+import { useAuth } from "../../context/useAuth";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import AdminPageSection from "./AdminPageSection";
 import AdminToolbar from "./AdminToolbar";
@@ -50,11 +54,7 @@ type DuplicateDistrict = {
   province: string;
 };
 
-type DuplicateCheckResponse = {
-  exactMatch: boolean;
-  matches?: DuplicateDistrict[];
-  message?: string;
-};
+type DuplicateCheckResponse = ApiDuplicateCheckResponse<DuplicateDistrict>;
 
 type DistrictForm = {
   districtId: string;
@@ -83,6 +83,10 @@ const initialForm: DistrictForm = {
   verified: false,
   sourceUrl: "",
 };
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function getLeaderValue(leader: LeaderOption | string | null | undefined) {
   if (!leader) return "";
@@ -125,7 +129,7 @@ function AdminDistricts() {
 
   const debouncedName = useDebouncedValue(form.name, 450);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
@@ -135,18 +139,30 @@ function AdminDistricts() {
         api.getLeaders(),
       ]);
 
-      setDistricts(Array.isArray(districtsRes) ? districtsRes : districtsRes?.districts || []);
-      setLeaders(Array.isArray(leadersRes) ? leadersRes : leadersRes?.leaders || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load districts");
+      const districtPayload =
+        districtsRes as DistrictRecord[] | GenericListResponse<DistrictRecord>;
+      const leaderPayload =
+        leadersRes as LeaderOption[] | GenericListResponse<LeaderOption>;
+
+      const loadedDistricts = Array.isArray(districtPayload)
+        ? districtPayload
+        : districtPayload.rows || districtPayload.districts || [];
+      const loadedLeaders = Array.isArray(leaderPayload)
+        ? leaderPayload
+        : leaderPayload.rows || leaderPayload.leaders || [];
+
+      setDistricts(loadedDistricts);
+      setLeaders(loadedLeaders);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load districts"));
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
 
   const provinceOptions = useMemo(() => {
     const set = new Set<string>();
@@ -212,7 +228,7 @@ function AdminDistricts() {
           province: form.province || undefined,
         });
 
-        setDuplicateInfo(res || null);
+        setDuplicateInfo((res as DuplicateCheckResponse) || null);
       } catch {
         setDuplicateInfo(null);
       } finally {
@@ -345,8 +361,8 @@ function AdminDistricts() {
 
       resetForm();
       await loadData();
-    } catch (err: any) {
-      setError(err.message || "Failed to save district");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to save district"));
     } finally {
       setSubmitting(false);
     }
@@ -370,8 +386,8 @@ function AdminDistricts() {
       }
 
       await loadData();
-    } catch (err: any) {
-      setError(err.message || "Failed to delete district");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to delete district"));
     }
   };
 

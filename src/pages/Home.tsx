@@ -4,8 +4,8 @@ import Navbar from "../components/Navbar";
 import NepalMap from "../components/NepalMap";
 import { api } from "../services/api";
 import { useDebouncedValue } from "../hooks/useDebouncedValue";
-import type { DistrictInfo } from "../types/home";
-import { useLanguage } from "../context/LanguageContext";
+import type { DistrictInfo, LeaderRef } from "../types/home";
+import { useLanguage } from "../context/useLanguage";
 import Footer from "../components/Footer";
 import {
   NepalActionLink,
@@ -34,11 +34,12 @@ function DhakaBorder() {
 function NepalPatternBackdrop() {
   return (
     <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">
-      <div className="absolute inset-x-0 top-0 h-[460px] bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.10),transparent_34%),radial-gradient(circle_at_top_right,rgba(37,99,235,0.10),transparent_36%),linear-gradient(180deg,rgba(248,250,252,0.98),rgba(248,250,252,0.88))]" />
-      <div className="absolute left-[-8%] top-[70px] h-[300px] w-[300px] rounded-full border border-red-100/70 opacity-80" />
-      <div className="absolute right-[-8%] top-[150px] h-[380px] w-[380px] rounded-full border border-blue-100/80 opacity-80" />
-      <div className="absolute left-[18%] top-[250px] h-40 w-40 rounded-full bg-red-200/10 blur-3xl" />
-      <div className="absolute right-[12%] top-[260px] h-52 w-52 rounded-full bg-blue-300/10 blur-3xl" />
+      <div className="absolute inset-x-0 top-0 h-[520px] bg-[radial-gradient(circle_at_top_left,rgba(239,68,68,0.11),transparent_34%),radial-gradient(circle_at_top_right,rgba(37,99,235,0.13),transparent_36%),linear-gradient(180deg,rgba(248,250,252,0.98),rgba(248,250,252,0.92))]" />
+      <div className="absolute left-[-9%] top-[58px] h-[310px] w-[310px] rounded-full border border-red-100/80 opacity-80" />
+      <div className="absolute right-[-10%] top-[138px] h-[410px] w-[410px] rounded-full border border-blue-100/80 opacity-80" />
+      <div className="absolute left-[15%] top-[250px] h-44 w-44 rounded-full bg-red-200/15 blur-3xl" />
+      <div className="absolute right-[10%] top-[230px] h-56 w-56 rounded-full bg-blue-300/15 blur-3xl" />
+      <div className="absolute inset-x-0 top-[430px] h-[300px] bg-[linear-gradient(180deg,rgba(255,255,255,0)_0%,rgba(248,250,252,0.8)_70%,rgba(248,250,252,1)_100%)]" />
     </div>
   );
 }
@@ -65,7 +66,13 @@ function normalizeDistrictAlias(name = "") {
     .replace("rukum purba", "rukum east");
 }
 
-function getLeaderDistrictName(district: any) {
+type LeaderDistrictLike = string | { name?: string } | null | undefined;
+
+type HomeLeaderRecord = LeaderRef & {
+  district?: LeaderDistrictLike;
+};
+
+function getLeaderDistrictName(district: LeaderDistrictLike) {
   if (!district) return "";
   if (typeof district === "string") return district;
   return district.name || "";
@@ -162,6 +169,64 @@ function UtilityCard({
         {cta}
       </div>
     </Link>
+  );
+}
+
+function TrustPill({ text }: { text: string }) {
+  return (
+    <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white/90 px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm backdrop-blur">
+      <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+      <span>{text}</span>
+    </div>
+  );
+}
+
+function QuickActionCard({
+  title,
+  text,
+  href,
+  badge,
+}: {
+  title: string;
+  text: string;
+  href: string;
+  badge: string;
+}) {
+  return (
+    <Link
+      to={href}
+      className="group relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-4 shadow-[0_14px_24px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-1 hover:border-blue-200 hover:shadow-[0_24px_38px_rgba(15,23,42,0.10)]"
+    >
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
+      <div className="inline-flex rounded-full border border-blue-100 bg-blue-50 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.14em] text-blue-700">
+        {badge}
+      </div>
+      <h3 className="mt-3 text-lg font-bold tracking-tight text-slate-950">{title}</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-700">{text}</p>
+      <div className="mt-4 text-sm font-semibold text-slate-900 transition group-hover:text-blue-700">
+        Explore
+      </div>
+    </Link>
+  );
+}
+
+function ProcessStep({
+  number,
+  title,
+  text,
+}: {
+  number: string;
+  title: string;
+  text: string;
+}) {
+  return (
+    <div className="relative overflow-hidden rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_14px_28px_rgba(15,23,42,0.05)]">
+      <div className="absolute right-[-14px] top-[-14px] flex h-16 w-16 items-center justify-center rounded-full bg-blue-50 text-lg font-extrabold text-blue-700">
+        {number}
+      </div>
+      <h3 className="text-lg font-bold tracking-tight text-slate-950">{title}</h3>
+      <p className="mt-2 pr-8 text-sm leading-6 text-slate-700">{text}</p>
+    </div>
   );
 }
 
@@ -341,8 +406,6 @@ function HeroVisual({
   selectedDistrictId?: string;
   loading: boolean;
 }) {
-  const { section } = useLanguage();
-  const uiText = section("home");
   const [rotatingIndex, setRotatingIndex] = useState(0);
 
   const selectedIndex = useMemo(() => {
@@ -369,10 +432,10 @@ function HeroVisual({
         <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
         <div className="space-y-3">
           <div className="flex items-center justify-between gap-3">
-            <div className="skeleton-shimmer h-5 w-32 rounded-full" />
-            <div className="skeleton-shimmer h-4 w-20 rounded-full" />
+            <div className="h-5 w-32 animate-pulse rounded-full bg-slate-200" />
+            <div className="h-4 w-20 animate-pulse rounded-full bg-slate-200" />
           </div>
-          <div className="skeleton-shimmer h-[230px] rounded-[18px]" />
+          <div className="h-[230px] animate-pulse rounded-[18px] bg-slate-200" />
         </div>
       </div>
     );
@@ -387,10 +450,11 @@ function HeroVisual({
         <div className="rounded-[22px] border border-blue-100 bg-white p-3 shadow-sm md:rounded-[26px] md:p-4">
           <div className="rounded-[20px] border border-slate-900 bg-[linear-gradient(180deg,#0f172a_0%,#111827_100%)] p-4 text-white shadow-[0_18px_32px_rgba(15,23,42,0.16)] md:rounded-[24px] md:p-5">
             <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-300">
-              {uiText.heroPreviewLabel}
+              Live civic stats
             </p>
             <p className="mt-3 text-sm leading-6 text-slate-200">
-              {uiText.heroPreviewFallback}
+              Explore the interactive map to reveal district-level public feedback, linked
+              representatives, and local context.
             </p>
           </div>
         </div>
@@ -401,18 +465,15 @@ function HeroVisual({
   const accent =
     activeItem.accent === "blue"
       ? {
-          dot: "#60a5fa",
           scoreCard: "border-blue-100 bg-blue-50/70 text-blue-700",
           bar: "bg-[linear-gradient(90deg,#2563eb_0%,#0f766e_100%)]",
         }
       : activeItem.accent === "slate"
       ? {
-          dot: "#cbd5e1",
           scoreCard: "border-slate-200 bg-slate-100 text-slate-700",
           bar: "bg-[linear-gradient(90deg,#94a3b8_0%,#cbd5e1_100%)]",
         }
       : {
-          dot: "#ef4444",
           scoreCard: "border-red-100 bg-red-50/70 text-red-700",
           bar: "bg-[linear-gradient(90deg,#ef4444_0%,#2563eb_100%)]",
         };
@@ -420,6 +481,7 @@ function HeroVisual({
   return (
     <div className="relative overflow-hidden rounded-[26px] border border-blue-100 bg-white p-4 shadow-[0_18px_38px_rgba(15,23,42,0.10)] md:rounded-[32px]">
       <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-red-500 via-red-500 to-blue-600" />
+      <div className="pointer-events-none absolute right-0 top-0 h-44 w-44 rounded-full bg-blue-100/30 blur-3xl" />
 
       <div className="relative space-y-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -510,6 +572,33 @@ function HeroVisual({
   );
 }
 
+function MobileStickyActions({
+  primaryCta,
+  secondaryCta,
+}: {
+  primaryCta: string;
+  secondaryCta: string;
+}) {
+  return (
+    <div className="fixed inset-x-0 bottom-3 z-40 block px-3 md:hidden">
+      <div className="mx-auto flex max-w-xl items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2 shadow-[0_18px_40px_rgba(15,23,42,0.14)] backdrop-blur">
+        <a
+          href="#district-map"
+          className="flex-1 rounded-xl bg-slate-950 px-4 py-3 text-center text-sm font-semibold text-white"
+        >
+          {primaryCta}
+        </a>
+        <Link
+          to="/ranking"
+          className="flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-center text-sm font-semibold text-slate-900"
+        >
+          {secondaryCta}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 function Home() {
   const { section } = useLanguage();
   const text = section("home");
@@ -532,22 +621,30 @@ function Home() {
         setLoadingDistricts(true);
 
         const [districtRes, leaderRes] = await Promise.all([
-          api.getDistricts(),
-          api.getLeaders(),
-        ]);
+  api.getDistricts(),
+  api.getLeaders(),
+]);
 
-        const districtItems = Array.isArray(districtRes)
-          ? districtRes
-          : districtRes?.districts || [];
+const districtPayload = districtRes as
+  | DistrictInfo[]
+  | { rows?: DistrictInfo[]; districts?: DistrictInfo[] };
 
-        const leaderItems = Array.isArray(leaderRes)
-          ? leaderRes
-          : leaderRes?.leaders || [];
+const leaderPayload = leaderRes as
+  | HomeLeaderRecord[]
+  | { rows?: HomeLeaderRecord[]; leaders?: HomeLeaderRecord[] };
+
+const districtItems = Array.isArray(districtPayload)
+  ? districtPayload
+  : districtPayload.rows || districtPayload.districts || [];
+
+const leaderItems = Array.isArray(leaderPayload)
+  ? leaderPayload
+  : leaderPayload.rows || leaderPayload.leaders || [];
 
         const normalized = districtItems.map((district: DistrictInfo) => {
           const districtKey = normalizeDistrictAlias(district.name);
 
-          const relatedLeaders = leaderItems.filter((leader: any) => {
+          const relatedLeaders = leaderItems.filter((leader: HomeLeaderRecord) => {
             const leaderDistrictName = getLeaderDistrictName(leader.district);
             return normalizeDistrictAlias(leaderDistrictName) === districtKey;
           });
@@ -555,15 +652,17 @@ function Home() {
           return {
             ...district,
             localLevels: Array.isArray(district.localLevels) ? district.localLevels : [],
-            mpLeader: relatedLeaders.find((leader: any) => leader.role === "MP") || null,
+            mpLeader: relatedLeaders.find((leader: HomeLeaderRecord) => leader.role === "MP") || null,
             ministerLeader:
-              relatedLeaders.find((leader: any) => leader.role === "Minister") || null,
+              relatedLeaders.find((leader: HomeLeaderRecord) => leader.role === "Minister") ||
+              relatedLeaders.find((leader: HomeLeaderRecord) => leader.role === "Prime Minister") ||
+              null,
             mayorLeader:
-              relatedLeaders.find((leader: any) => leader.role === "Mayor") ||
-              relatedLeaders.find((leader: any) => leader.role === "Chairperson") ||
+              relatedLeaders.find((leader: HomeLeaderRecord) => leader.role === "Mayor") ||
+              relatedLeaders.find((leader: HomeLeaderRecord) => leader.role === "Chairperson") ||
               null,
             naLeaders: relatedLeaders.filter(
-              (leader: any) => leader.role === "National Assembly Member"
+              (leader: HomeLeaderRecord) => leader.role === "National Assembly Member"
             ),
             satisfactionScore:
               typeof district.satisfactionScore === "number"
@@ -648,7 +747,7 @@ function Home() {
     );
   };
 
-  const filteredDistrictsCount = useMemo(() => {
+  const filteredDistricts = useMemo(() => {
     return districts.filter((district) => {
       const matchProvince =
         selectedProvince === "ALL" || district.province === selectedProvince;
@@ -660,8 +759,10 @@ function Home() {
         district.province.toLowerCase().includes(query);
 
       return matchProvince && matchSearch;
-    }).length;
+    });
   }, [districts, selectedProvince, debouncedSearchText]);
+
+  const filteredDistrictsCount = filteredDistricts.length;
 
   const leaderCount = useMemo(() => {
     return districts.reduce((count, district) => {
@@ -733,7 +834,7 @@ function Home() {
         ...(Array.isArray(district.naLeaders) ? district.naLeaders : []),
       ].filter(Boolean);
 
-      candidates.forEach((leader: any) => {
+      candidates.forEach((leader: LeaderRef) => {
         if (!leader?.leaderId || seen.has(leader.leaderId)) return;
         seen.add(leader.leaderId);
         collected.push({
@@ -831,12 +932,20 @@ function Home() {
       }));
   }, [districts]);
 
+  const trustPills = [
+    "Public district discovery",
+    "Representative visibility",
+    "Citizen feedback signals",
+    "Independent civic experience",
+  ];
+
   return (
     <div className="relative min-h-screen overflow-hidden bg-slate-50">
       <NepalPatternBackdrop />
       <Navbar />
+      <MobileStickyActions primaryCta={text.primaryCta} secondaryCta={text.secondaryCta} />
 
-      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-3 md:px-5 md:py-5">
+      <main className="relative z-10 mx-auto max-w-[1480px] px-3 py-3 pb-28 md:px-5 md:py-5 md:pb-6">
         <section className="rounded-[30px] border border-blue-100 bg-white/95 p-4 shadow-[0_22px_48px_rgba(15,23,42,0.10)] backdrop-blur-sm md:rounded-[36px] md:p-6">
           <div className="grid items-start gap-5 xl:grid-cols-[1.05fr_0.95fr] xl:gap-7">
             <div className="max-w-3xl pt-0.5">
@@ -844,7 +953,13 @@ function Home() {
                 {text.heroBadge}
               </div>
 
-              <h1 className="mt-3 max-w-4xl bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#1d4ed8_100%)] bg-clip-text text-[2rem] font-extrabold tracking-tight text-transparent sm:text-[2.35rem] md:mt-4 md:text-5xl xl:text-[4.3rem] xl:leading-[0.98]">
+              <div className="mt-4 flex flex-wrap gap-2">
+                {trustPills.map((pill) => (
+                  <TrustPill key={pill} text={pill} />
+                ))}
+              </div>
+
+              <h1 className="mt-4 max-w-4xl bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#1d4ed8_100%)] bg-clip-text text-[2rem] font-extrabold tracking-tight text-transparent sm:text-[2.35rem] md:mt-5 md:text-5xl xl:text-[4.3rem] xl:leading-[0.98]">
                 {text.heroTitle}
               </h1>
 
@@ -853,8 +968,9 @@ function Home() {
               </p>
 
               <p className="mt-4 max-w-2xl text-sm leading-6 text-slate-600">
-                Search any district to see local leaders, public feedback, and activity signals
-                in one place.
+                Search any district to see local leaders, public feedback, and civic activity
+                signals in one clear place. Built to help citizens discover information faster,
+                compare what matters, and take action with confidence.
               </p>
 
               <div className="mt-5 max-w-2xl rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#ffffff_100%)] p-2.5 shadow-[0_16px_34px_rgba(15,23,42,0.08)] md:mt-6 md:rounded-[28px] md:p-3">
@@ -879,6 +995,30 @@ function Home() {
                 <NepalActionLink to="/ranking" tone="secondary">
                   {text.secondaryCta}
                 </NepalActionLink>
+                <NepalActionLink to="/support" tone="secondary">
+                  Report or correct information
+                </NepalActionLink>
+              </div>
+
+              <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <QuickActionCard
+                  badge="Search"
+                  title="Explore districts"
+                  text="Find your district and see the key public signals available today."
+                  href="#district-map"
+                />
+                <QuickActionCard
+                  badge="Rankings"
+                  title="Compare leaders"
+                  text="Open leader rankings and compare profiles, visibility, and public engagement."
+                  href="/ranking"
+                />
+                <QuickActionCard
+                  badge="Support"
+                  title="Report an issue"
+                  text="Submit corrections, contact support, or raise a civic issue quickly."
+                  href="/support"
+                />
               </div>
             </div>
 
@@ -907,7 +1047,40 @@ function Home() {
           </div>
         </section>
 
-        <section className="mt-6 md:mt-8">
+        <section className="mt-8">
+          <div className="mb-4">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">
+              How it works
+            </p>
+            <h2 className="mt-1 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+              A simpler way to understand what is happening in your district
+            </h2>
+            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-700">
+              Najar Nepal helps people move from confusion to clarity by turning scattered local
+              information into a searchable, explorable civic experience.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-3 md:gap-4">
+            <ProcessStep
+              number="1"
+              title="Search your district"
+              text="Use the map and search tools to find your district quickly and see the public information already available."
+            />
+            <ProcessStep
+              number="2"
+              title="Review leaders and signals"
+              text="Open district insights, representative profiles, and public feedback signals without jumping across many pages."
+            />
+            <ProcessStep
+              number="3"
+              title="Take action"
+              text="Rate district experience, compare profiles, and submit corrections or support requests when information needs attention."
+            />
+          </div>
+        </section>
+
+        <section className="mt-8 md:mt-10">
           <div id="district-map">
             <NepalMap
               districts={districts}
@@ -981,6 +1154,57 @@ function Home() {
 
         <FeaturedLeadersPanel leaders={featuredLeaders} loading={loadingDistricts} />
 
+        <section className="mt-8 overflow-hidden rounded-[28px] border border-blue-100 bg-white shadow-[0_18px_38px_rgba(15,23,42,0.06)] md:rounded-[32px]">
+          <DhakaBorder />
+          <div className="grid gap-5 p-4 md:p-6 lg:grid-cols-[0.9fr_1.1fr]">
+            <div>
+              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-red-600">
+                Trust and transparency
+              </p>
+              <h2 className="mt-2 text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
+                Built for clarity, not noise
+              </h2>
+              <p className="mt-3 text-sm leading-6 text-slate-700">
+                The goal is to help citizens discover district and leader information in a way that
+                feels understandable, fast, and useful. Public feedback, district visibility, and
+                representative context are surfaced together so people can spend less time searching
+                and more time understanding.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-950">District-first navigation</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  Search, map exploration, and province filters are all centered on helping people
+                  reach the right local context quickly.
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-950">Representative visibility</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  Linked leader profiles help connect district information with the people who
+                  represent those communities.
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-950">Public feedback signals</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  District feedback creates an easier way to understand public sentiment at a
+                  glance.
+                </p>
+              </div>
+              <div className="rounded-[22px] border border-slate-200 bg-slate-50 p-4">
+                <p className="text-sm font-semibold text-slate-950">Action-oriented support</p>
+                <p className="mt-2 text-sm leading-6 text-slate-700">
+                  Support, corrections, and issue reporting are kept accessible so the platform can
+                  improve over time.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
         <section className="mt-8 md:mt-10">
           <div className="mb-3 md:mb-4">
             <h2 className="text-2xl font-bold tracking-tight text-slate-950 md:text-3xl">
@@ -1007,6 +1231,7 @@ function Home() {
           </div>
         </section>
       </main>
+
       <Footer />
     </div>
   );

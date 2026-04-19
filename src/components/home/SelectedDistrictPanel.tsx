@@ -178,7 +178,7 @@ function SelectedDistrictPanel({ district, embedded = false }: Props) {
   const { section } = useLanguage();
   const text = section("selectedDistrictPanel");
 
-  const [pmLeader, setPmLeader] = useState<any>(null);
+  const [pmLeader, setPmLeader] = useState<LeaderCardRef>(null);
   const [leaderCount, setLeaderCount] = useState<number>(0);
 
   useEffect(() => {
@@ -190,7 +190,9 @@ function SelectedDistrictPanel({ district, embedded = false }: Props) {
         setLeaderCount(leaderItems.length || 0);
 
         const primeMinister =
-          leaderItems.find((item: any) => item.role === "Prime Minister") || null;
+          leaderItems.find(
+            (item: LeaderCardRef) => item?.role === "Prime Minister"
+          ) || null;
 
         setPmLeader(primeMinister);
       } catch (error) {

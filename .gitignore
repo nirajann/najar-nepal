@@ -11,9 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+
+# Environment files
 .env
 .env.*
 !.env.example
+
 src/server/private_uploads/
 
 # Editor directories and files

@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import {
+  api,
+  type DuplicateCheckResponse as ApiDuplicateCheckResponse,
+  type GenericListResponse,
+} from "../../services/api";
+import { useAuth } from "../../context/useAuth";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import AdminPageSection from "./AdminPageSection";
 import AdminToolbar from "./AdminToolbar";
@@ -32,11 +36,7 @@ type DuplicateProject = {
   status?: string;
 };
 
-type DuplicateCheckResponse = {
-  exists: boolean;
-  matches?: DuplicateProject[];
-  message?: string;
-};
+type DuplicateCheckResponse = ApiDuplicateCheckResponse<DuplicateProject>;
 
 type ProjectForm = {
   projectId: string;
@@ -63,6 +63,10 @@ const initialForm: ProjectForm = {
   description: "",
   source: "",
 };
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function getProjectTitle(project: ProjectRecord) {
   return project.title || project.name || "Untitled Project";
@@ -108,10 +112,14 @@ function AdminProjects() {
       }
 
       const res = await api.getAdminProjects(token);
+      const payload = res as ProjectRecord[] | GenericListResponse<ProjectRecord>;
+      const items = Array.isArray(payload)
+        ? payload
+        : payload.rows || payload.projects || [];
 
-      setProjects(Array.isArray(res) ? res : res?.projects || []);
-    } catch (err: any) {
-      setError(err.message || "Failed to load projects");
+      setProjects(items);
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load projects"));
       setProjects([]);
     } finally {
       setLoading(false);
@@ -149,7 +157,7 @@ function AdminProjects() {
           province: form.province || undefined,
         });
 
-        setDuplicateInfo(res || null);
+        setDuplicateInfo((res as DuplicateCheckResponse) || null);
       } catch {
         setDuplicateInfo(null);
       } finally {
@@ -274,8 +282,8 @@ function AdminProjects() {
 
       resetForm();
       await loadProjects();
-    } catch (err: any) {
-      setError(err.message || "Failed to save project");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to save project"));
     } finally {
       setSubmitting(false);
     }
@@ -299,8 +307,8 @@ function AdminProjects() {
       }
 
       await loadProjects();
-    } catch (err: any) {
-      setError(err.message || "Failed to delete project");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to delete project"));
     }
   };
 

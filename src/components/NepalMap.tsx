@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import * as d3 from "d3";
 import geoData from "../data/nepalGeo.json";
 import type { DistrictInfo } from "../types/home";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../context/useLanguage";
 
 type ProvinceButton = {
   id: number;

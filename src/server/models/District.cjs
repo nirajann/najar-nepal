@@ -12,24 +12,34 @@ function slugify(value = "") {
     .replace(/\s+/g, "-");
 }
 
+function cleanUrl(value = "") {
+  const url = String(value || "").trim();
+  if (!url) return "";
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return "";
+}
+
 const localLevelSchema = new mongoose.Schema(
   {
     name: {
       type: String,
       required: true,
       trim: true,
+      maxlength: 120,
     },
 
     type: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 80,
     },
 
     slug: {
       type: String,
       default: "",
       trim: true,
+      maxlength: 140,
     },
   },
   { _id: false }
@@ -57,6 +67,7 @@ const districtSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 120,
     },
 
     normalizedName: {
@@ -70,6 +81,7 @@ const districtSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: 120,
       index: true,
     },
 
@@ -77,6 +89,7 @@ const districtSchema = new mongoose.Schema(
       type: String,
       default: "",
       trim: true,
+      maxlength: 140,
       index: true,
     },
 
@@ -128,10 +141,46 @@ const districtSchema = new mongoose.Schema(
     sourceUrl: {
       type: String,
       default: "",
-      trim: true,
+      set: cleanUrl,
     },
 
     lastVerifiedAt: {
+      type: Date,
+      default: null,
+    },
+
+    /* Cached metrics for fast public UI */
+    totalLeaderCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalProjectsCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    totalFeedbackCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
+
+    engagementScore: {
+      type: Number,
+      default: 0,
+    },
+
+    /* Safety */
+    isDeleted: {
+      type: Boolean,
+      default: false,
+      index: true,
+    },
+
+    deletedAt: {
       type: Date,
       default: null,
     },
@@ -140,8 +189,9 @@ const districtSchema = new mongoose.Schema(
 );
 
 districtSchema.pre("validate", function () {
-  this.name = (this.name || "").trim();
-  this.province = (this.province || "").trim();
+  this.name = String(this.name || "").trim();
+  this.province = String(this.province || "").trim();
+
   this.normalizedName = normalizeText(this.name);
 
   if (!this.slug) {
@@ -156,18 +206,58 @@ districtSchema.pre("validate", function () {
     this.provinceSlug = slugify(this.province);
   }
 
+  this.sourceUrl = cleanUrl(this.sourceUrl);
+
   if (Array.isArray(this.localLevels)) {
-    this.localLevels = this.localLevels.map((item) => ({
-      ...item,
-      name: (item.name || "").trim(),
-      type: (item.type || "").trim(),
-      slug: item.slug || slugify(item.name || ""),
-    }));
+    const seen = new Set();
+
+    this.localLevels = this.localLevels
+      .map((item) => {
+        const name = String(item?.name || "").trim();
+        const type = String(item?.type || "").trim();
+        const slug = String(item?.slug || slugify(name)).trim();
+
+        return { name, type, slug };
+      })
+      .filter((item) => item.name)
+      .filter((item) => {
+        const key = normalizeText(item.name);
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+  }
+
+  this.totalWards = Number.isFinite(this.totalWards) ? this.totalWards : 0;
+  this.satisfactionScore = Number.isFinite(this.satisfactionScore)
+    ? this.satisfactionScore
+    : 0;
+});
+
+/* Hide soft-deleted records by default */
+districtSchema.pre(/^find/, function () {
+  if (!this.getQuery().includeDeleted) {
+    this.where({ isDeleted: false });
   }
 });
 
+/* Duplicate protection */
 districtSchema.index({ normalizedName: 1, province: 1 }, { unique: true });
+
+/* Common filters */
 districtSchema.index({ province: 1, name: 1 });
 districtSchema.index({ provinceSlug: 1, slug: 1 });
+districtSchema.index({ verified: 1, province: 1 });
+districtSchema.index({ engagementScore: -1 });
+districtSchema.index({ satisfactionScore: -1 });
+
+/* Text search */
+districtSchema.index({
+  name: "text",
+  province: "text",
+  districtId: "text",
+  "localLevels.name": "text",
+  "localLevels.type": "text",
+});
 
 module.exports = mongoose.model("District", districtSchema);

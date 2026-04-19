@@ -1,35 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
-import { api } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { api, type ComplaintItem } from "../../services/api";
+import { useAuth } from "../../context/useAuth";
 import AdminPageSection from "./AdminPageSection";
 import AdminToolbar from "./AdminToolbar";
 import AdminFormCard from "./AdminFormCard";
 import AdminDataTable from "./AdminDataTable";
 
-type ComplaintRecord = {
-  _id?: string;
-  complaintId?: string;
-  text?: string;
-  complaintType?: string;
-  complaintPhoto?: string;
-  status?: string;
-  createdAt?: string;
-  leaderId?: string;
-  leader?: {
-    _id?: string;
-    leaderId?: string;
-    name?: string;
-    role?: string;
-    district?: string;
-    province?: string;
-    photo?: string;
-  } | null;
-  user?: {
-    _id?: string;
-    name?: string;
-    email?: string;
-  } | null;
-};
+type ComplaintRecord = ComplaintItem;
 
 type ComplaintUpdateForm = {
   status: string;
@@ -40,6 +17,10 @@ const initialUpdateForm: ComplaintUpdateForm = {
   status: "Pending",
   adminNote: "",
 };
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 function formatDate(value?: string) {
   if (!value) return "—";
@@ -107,7 +88,7 @@ function AdminComplaints() {
   const [selectedComplaint, setSelectedComplaint] = useState<ComplaintRecord | null>(null);
   const [updateForm, setUpdateForm] = useState<ComplaintUpdateForm>(initialUpdateForm);
 
-  const loadComplaints = async () => {
+  const loadComplaints = useCallback(async () => {
     if (!token) {
       setComplaints([]);
       setLoading(false);
@@ -124,7 +105,12 @@ function AdminComplaints() {
         complaintType: selectedType !== "ALL" ? selectedType : undefined,
       });
 
-      const items = Array.isArray(res) ? res : res?.complaints || [];
+      const payload =
+        res as ComplaintItem[] | { rows?: ComplaintItem[]; complaints?: ComplaintItem[] };
+      const items = Array.isArray(payload)
+        ? payload
+        : payload.rows || payload.complaints || [];
+
       setComplaints(items);
 
       if (selectedComplaint?._id) {
@@ -139,19 +125,19 @@ function AdminComplaints() {
           });
         }
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load complaints");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load complaints"));
       setComplaints([]);
     } finally {
       setLoading(false);
     }
-  };
+  }, [searchText, selectedComplaint?._id, selectedStatus, selectedType, token]);
 
   useEffect(() => {
     if (!authReady) return;
     if (!token) return;
-    loadComplaints();
-  }, [authReady, token]);
+    void loadComplaints();
+  }, [authReady, loadComplaints, token]);
 
   const filteredComplaints = useMemo(() => {
     const q = searchText.trim().toLowerCase();
@@ -221,8 +207,8 @@ function AdminComplaints() {
 
       setMessage(res.message || "Complaint updated successfully");
       await loadComplaints();
-    } catch (err: any) {
-      setError(err.message || "Failed to update complaint");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to update complaint"));
     } finally {
       setSaving(false);
     }
@@ -247,8 +233,8 @@ function AdminComplaints() {
       }
 
       await loadComplaints();
-    } catch (err: any) {
-      setError(err.message || "Failed to delete complaint");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to delete complaint"));
     }
   };
 

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import type { DistrictInfo } from "../../types/home";
-import { useLanguage } from "../../context/LanguageContext";
+import { useLanguage } from "../../context/useLanguage";
 
 type Props = {
   district: DistrictInfo | null;

@@ -3,8 +3,8 @@ import { useNavigate, useParams } from "react-router-dom";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { NepalActionButton } from "../components/NepalDesignSystem";
-import { useAuth } from "../context/AuthContext";
-import { api } from "../services/api";
+import { useAuth } from "../context/useAuth";
+import { api, type LeaderPublicProfileResponse } from "../services/api";
 
 type LeaderDistrict =
   | string
@@ -13,7 +13,7 @@ type LeaderDistrict =
       districtId?: string;
       name?: string;
       province?: string;
-      localLevels?: any[];
+      localLevels?: unknown[];
     };
 
 type Leader = {
@@ -136,6 +136,14 @@ function getProvinceName(leader?: Leader | null) {
 
 function normalizeTextInput(value: string) {
   return value.replace(/\s+/g, " ").trim();
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) {
+    return error.message;
+  }
+
+  return fallback;
 }
 
 function formatDateTime(value?: string) {
@@ -490,12 +498,12 @@ function LeaderProfile() {
       setLeaderLoading(true);
       setMessage("");
 
-      const data = await api.getLeaderPublicProfile(id, {
+      const data: LeaderPublicProfileResponse = await api.getLeaderPublicProfile(id, {
         sort: "newest",
         limit: "50",
       });
 
-      const nextLeader = data?.leader || null;
+      const nextLeader = (data?.leader as Leader | null | undefined) || null;
       const nextStats = data?.stats || {};
 
       setLeader(nextLeader);
@@ -508,7 +516,7 @@ function LeaderProfile() {
         dislikePercentage: nextStats.dislikePercentage ?? "0.0",
         ratingCount: nextStats.ratingCount ?? 0,
       });
-    } catch (error: any) {
+    } catch (error: unknown) {
       setLeader(null);
       setStats({
         likes: 0,
@@ -519,7 +527,7 @@ function LeaderProfile() {
         dislikePercentage: "0.0",
         ratingCount: 0,
       });
-      setMessage(error.message || "Leader not found");
+      setMessage(getErrorMessage(error, "Leader not found"));
     } finally {
       setLeaderLoading(false);
     }
@@ -540,16 +548,18 @@ function LeaderProfile() {
           setCommentsLoading(true);
         }
 
-        const data = await api.getLeaderPublicProfile(id, {
+        const data: LeaderPublicProfileResponse = await api.getLeaderPublicProfile(id, {
           sort: commentSort,
           limit: "50",
         });
 
-        const nextComments = Array.isArray(data?.comments) ? data.comments : [];
+        const nextComments = Array.isArray(data?.comments)
+          ? (data.comments as CommentItem[])
+          : [];
         setCommentsList(nextComments);
-      } catch (error: any) {
+      } catch (error: unknown) {
         setCommentsList([]);
-        setMessage(error.message || "Failed to load comments");
+        setMessage(getErrorMessage(error, "Failed to load comments"));
       } finally {
         setCommentsLoading(false);
         setCommentsRefreshing(false);
@@ -578,7 +588,7 @@ function LeaderProfile() {
   }, [loadLeaderOnly]);
 
   useEffect(() => {
-    void loadCommentsOnly(commentsList.length > 0);
+    void loadCommentsOnly();
   }, [loadCommentsOnly]);
 
   useEffect(() => {
@@ -634,8 +644,8 @@ useEffect(() => {
       setMessage(result.message || "Reaction saved");
       await loadLeaderOnly();
       await loadCommentsOnly(true);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to save reaction");
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "Failed to save reaction"));
     }
   };
 
@@ -654,8 +664,8 @@ useEffect(() => {
       setMessage(result.message || "Rating saved");
       await loadLeaderOnly();
       await loadCommentsOnly(true);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to save rating");
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "Failed to save rating"));
     }
   };
 
@@ -689,8 +699,8 @@ useEffect(() => {
       setCommentCooldownUntil(Date.now() + 8000);
       await loadLeaderOnly();
       await loadCommentsOnly(true);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to post comment");
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "Failed to post comment"));
     } finally {
       setCommentSubmitting(false);
     }
@@ -703,8 +713,8 @@ useEffect(() => {
       await api.likeComment(token, commentId);
       await loadLeaderOnly();
       await loadCommentsOnly(true);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to like comment");
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "Failed to like comment"));
     }
   };
 
@@ -728,8 +738,8 @@ useEffect(() => {
       setReplyText((prev) => ({ ...prev, [commentId]: "" }));
       await loadLeaderOnly();
       await loadCommentsOnly(true);
-    } catch (error: any) {
-      setMessage(error.message || "Failed to reply");
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, "Failed to reply"));
     } finally {
       setReplySubmitting((prev) => ({ ...prev, [commentId]: false }));
     }
@@ -796,8 +806,8 @@ useEffect(() => {
       setSourceLink("");
       setContactInfo("");
       await loadComplaintHistory();
-    } catch (error: any) {
-      setMistakeMessage(error.message || "Failed to submit report.");
+    } catch (error: unknown) {
+      setMistakeMessage(getErrorMessage(error, "Failed to submit report."));
     } finally {
       setMistakeSubmitting(false);
     }

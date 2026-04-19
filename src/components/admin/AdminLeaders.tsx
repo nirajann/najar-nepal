@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useState } from "react";
-import { api } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import {
+  api,
+  type DuplicateCheckResponse as ApiDuplicateCheckResponse,
+  type GenericListResponse,
+} from "../../services/api";
+import { useAuth } from "../../context/useAuth";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import AdminPageSection from "./AdminPageSection";
 import AdminFormCard from "./AdminFormCard";
@@ -71,11 +75,7 @@ type DuplicateLeader = {
   district?: string;
 };
 
-type DuplicateCheckResponse = {
-  exactMatch: boolean;
-  matches?: DuplicateLeader[];
-  message?: string;
-};
+type DuplicateCheckResponse = ApiDuplicateCheckResponse<DuplicateLeader>;
 
 type AnalyticsLeader = {
   leaderId: string;
@@ -94,6 +94,10 @@ type OverviewResponse = {
   highestRated?: AnalyticsLeader[];
   lowestRated?: AnalyticsLeader[];
 };
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
 
 type LeaderForm = {
   leaderId: string;
@@ -242,12 +246,12 @@ function AdminLeaders() {
 
   const debouncedName = useDebouncedValue(form.name, 450);
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     try {
       setLoading(true);
       setError("");
 
-      const requests: Promise<any>[] = [api.getLeaders(), api.getDistricts()];
+      const requests: Promise<unknown>[] = [api.getLeaders(), api.getDistricts()];
 
       if (token && api.getAdminAnalyticsOverview) {
         requests.push(api.getAdminAnalyticsOverview(token));
@@ -257,12 +261,19 @@ function AdminLeaders() {
 
       const leadersRes = results[0];
       const districtsRes = results[1];
-      const analyticsRes: OverviewResponse | undefined = results[2];
+      const analyticsRes = results[2] as OverviewResponse | undefined;
 
-      const loadedLeaders = Array.isArray(leadersRes) ? leadersRes : leadersRes?.leaders || [];
-      const loadedDistricts = Array.isArray(districtsRes)
-        ? districtsRes
-        : districtsRes?.districts || [];
+      const leaderPayload =
+        leadersRes as LeaderRecord[] | GenericListResponse<LeaderRecord>;
+      const districtPayload =
+        districtsRes as DistrictOption[] | GenericListResponse<DistrictOption>;
+
+      const loadedLeaders = Array.isArray(leaderPayload)
+        ? leaderPayload
+        : leaderPayload.rows || leaderPayload.leaders || [];
+      const loadedDistricts = Array.isArray(districtPayload)
+        ? districtPayload
+        : districtPayload.rows || districtPayload.districts || [];
 
       setLeaders(loadedLeaders);
       setDistricts(loadedDistricts);
@@ -299,16 +310,16 @@ function AdminLeaders() {
       } else {
         setAnalyticsMap({});
       }
-    } catch (err: any) {
-      setError(err.message || "Failed to load leaders");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to load leaders"));
     } finally {
       setLoading(false);
     }
-  };
+  }, [token]);
 
   useEffect(() => {
-    loadData();
-  }, [token]);
+    void loadData();
+  }, [loadData]);
 
   useEffect(() => {
     const runDuplicateCheck = async () => {
@@ -330,7 +341,7 @@ function AdminLeaders() {
           districtId: form.district || undefined,
         });
 
-        setDuplicateInfo(res || null);
+        setDuplicateInfo((res as DuplicateCheckResponse) || null);
       } catch {
         setDuplicateInfo(null);
       } finally {
@@ -535,8 +546,8 @@ function AdminLeaders() {
 
       resetForm();
       await loadData();
-    } catch (err: any) {
-      setError(err.message || "Failed to save leader");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to save leader"));
     } finally {
       setSubmitting(false);
     }
@@ -560,8 +571,8 @@ function AdminLeaders() {
       }
 
       await loadData();
-    } catch (err: any) {
-      setError(err.message || "Failed to delete leader");
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, "Failed to delete leader"));
     }
   };
 

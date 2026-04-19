@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { api } from "../../services/api";
-import { useAuth } from "../../context/AuthContext";
+import {
+  api,
+  type DuplicateCheckResponse as ApiDuplicateCheckResponse,
+  type GenericListResponse,
+  type VerificationDocumentsResponse,
+} from "../../services/api";
+import { useAuth } from "../../context/useAuth";
 import { useDebouncedValue } from "../../hooks/useDebouncedValue";
 import AdminPageSection from "./AdminPageSection";
 import AdminToolbar from "./AdminToolbar";
@@ -24,11 +29,7 @@ type DuplicateUser = {
   role?: string;
 };
 
-type DuplicateCheckResponse = {
-  exists: boolean;
-  matches?: DuplicateUser[];
-  message?: string;
-};
+type DuplicateCheckResponse = ApiDuplicateCheckResponse<DuplicateUser>;
 
 type UserForm = {
   name: string;
@@ -44,19 +45,6 @@ const initialForm: UserForm = {
   role: "user",
   verificationStatus: "unverified",
   badgesText: "",
-};
-
-type VerificationDocumentResponse = {
-  id?: string;
-  name?: string;
-  email?: string;
-  verificationStatus?: string;
-  citizenshipNumber?: string;
-  hasCitizenshipFrontPhoto?: boolean;
-  hasCitizenshipBackPhoto?: boolean;
-  hasVerificationSelfiePhoto?: boolean;
-  verificationSubmittedAt?: string;
-  verificationNotes?: string;
 };
 
 type ReviewDocumentUrls = {
@@ -86,7 +74,7 @@ function AdminUsers() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [form, setForm] = useState<UserForm>(initialForm);
   const [selectedReviewUser, setSelectedReviewUser] = useState<UserRecord | null>(null);
-  const [reviewDocuments, setReviewDocuments] = useState<VerificationDocumentResponse | null>(
+  const [reviewDocuments, setReviewDocuments] = useState<VerificationDocumentsResponse | null>(
     null
   );
   const [reviewLoading, setReviewLoading] = useState(false);
@@ -124,8 +112,9 @@ function AdminUsers() {
       const res = await api.getAdminUsers(token, {
         search: searchText || undefined,
       });
-
-      setUsers(Array.isArray(res) ? res : res?.users || []);
+      const payload = res as UserRecord[] | GenericListResponse<UserRecord>;
+      const items = Array.isArray(payload) ? payload : payload.rows || payload.users || [];
+      setUsers(items);
     } catch (err: unknown) {
       setError(getErrorMessage(err, "Failed to load users"));
       setUsers([]);
@@ -162,7 +151,7 @@ function AdminUsers() {
           email: debouncedEmail.trim(),
         });
 
-        setDuplicateInfo(res || null);
+        setDuplicateInfo((res as DuplicateCheckResponse) || null);
       } catch {
         setDuplicateInfo(null);
       } finally {
@@ -259,8 +248,11 @@ function AdminUsers() {
         return { front: "", back: "", selfie: "" };
       });
 
-      const res = await api.getUserVerificationDocuments(token, user._id);
-      const nextDocuments = res?.user || null;
+      const res: VerificationDocumentsResponse = await api.getUserVerificationDocuments(
+        token,
+        user._id
+      );
+      const nextDocuments = res || null;
       setReviewDocuments(nextDocuments);
 
       const nextUrls: ReviewDocumentUrls = { front: "", back: "", selfie: "" };

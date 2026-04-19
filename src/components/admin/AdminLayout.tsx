@@ -2,7 +2,7 @@ import { useEffect, useState, type ReactNode } from "react";
 import { LogOut } from "lucide-react";
 import AdminSidebar from "./AdminSidebar";
 import AdminTopbar from "./AdminTopbar";
-import { useAuth } from "../../context/AuthContext";
+import { useAuth } from "../../context/useAuth";
 import { useNavigate } from "react-router-dom";
 
 type Props = {

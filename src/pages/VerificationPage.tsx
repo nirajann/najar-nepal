@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import Navbar from "../components/Navbar";
-import { useAuth } from "../context/AuthContext";
-import { api } from "../services/api";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { api, type VerificationSubmitResponse } from "../services/api";
+import { useLanguage } from "../context/useLanguage";
 
 const MAX_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/png", "image/webp"];
@@ -61,7 +61,7 @@ function VerificationPage() {
 
       try {
         const result = await api.getProfile(token);
-        const profileUser = result?.user;
+        const profileUser = result.user;
 
         if (profileUser) {
           setDistrict(profileUser.district || "");
@@ -202,7 +202,7 @@ function VerificationPage() {
       setMessage("");
       setError("");
 
-      const result = await api.submitVerification(token, {
+      const result: VerificationSubmitResponse = await api.submitVerification(token, {
         citizenshipNumber,
         citizenshipFrontPhoto: frontUpload.dataUrl,
         citizenshipBackPhoto: backUpload.dataUrl,
@@ -435,5 +435,4 @@ function VerificationPage() {
 }
 
 export default VerificationPage;
-
 

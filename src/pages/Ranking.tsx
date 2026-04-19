@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
+import Footer from "../components/Footer";
 import { NepalActionButton, NepalActionLink } from "../components/NepalDesignSystem";
 import { api } from "../services/api";
-import { useLanguage } from "../context/LanguageContext";
+import { useLanguage } from "../context/useLanguage";
 
 type LeaderDistrict =
   | string
@@ -27,6 +28,7 @@ type Leader = {
   verified?: boolean;
   startYear?: string;
   endYear?: string;
+  stats?: LeaderStats;
 };
 
 type LeaderStats = {
@@ -75,14 +77,10 @@ function getDistrictName(district?: LeaderDistrict) {
 }
 
 function getProvinceName(leader: Leader) {
-  if (leader.province) {
-    return leader.province.replace(" PROVINCE", "");
-  }
-
+  if (leader.province) return leader.province.replace(" PROVINCE", "");
   if (leader.district && typeof leader.district !== "string") {
     return leader.district.province?.replace(" PROVINCE", "") || "Unknown province";
   }
-
   return "Unknown province";
 }
 
@@ -135,8 +133,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
     const averageRating = raw.averageRating ?? 0;
     const ratingCount = raw.ratingCount ?? 0;
     const totalReactions = raw.totalReactions ?? likes + dislikes;
-    const engagementCount =
-      raw.engagementScore ?? likes + comments + ratingCount - dislikes;
+    const engagementCount = raw.engagementScore ?? likes + comments + ratingCount - dislikes;
 
     return {
       leader,
@@ -176,11 +173,7 @@ function buildRankedLeaders(leaders: Leader[], statsMap: Record<string, LeaderSt
       confidenceWeight: roundValue(confidenceWeight),
       weightedRating: roundValue(stats.averageRating * confidenceWeight),
       engagementCount: stats.engagementScore,
-      trendLabel: getTrendLabel(
-        stats.comments,
-        stats.engagementScore,
-        stats.ratingCount
-      ),
+      trendLabel: getTrendLabel(stats.comments, stats.engagementScore, stats.ratingCount),
       signalLabel: getSignalLabel(
         stats.averageRating,
         stats.ratingCount,
@@ -540,9 +533,48 @@ function LeaderListRow({
   );
 }
 
-function Ranking() {
+function RankingSkeleton() {
+  return (
+    <div className="mt-8 space-y-5">
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
+        {Array.from({ length: 3 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-[280px] animate-pulse rounded-[28px] border border-blue-100/70 bg-white"
+          />
+        ))}
+      </div>
+      <div className="space-y-3">
+        {Array.from({ length: 5 }).map((_, index) => (
+          <div
+            key={index}
+            className="h-[92px] animate-pulse rounded-[24px] border border-blue-100/70 bg-white"
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TopInsight({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-2xl border border-blue-100 bg-white/85 px-4 py-3 shadow-sm">
+      <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-1 text-lg font-bold text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+export default function Ranking() {
   const { section } = useLanguage();
   const text = section("ranking");
+
   const [leaders, setLeaders] = useState<Leader[]>([]);
   const [statsMap, setStatsMap] = useState<Record<string, LeaderStats>>({});
   const [loading, setLoading] = useState(true);
@@ -552,6 +584,7 @@ function Ranking() {
   const [error, setError] = useState("");
   const [showHowItWorks, setShowHowItWorks] = useState(false);
   const [lastUpdated, setLastUpdated] = useState<string>("");
+
   const trackedFilterRef = useRef("");
 
   useEffect(() => {
@@ -561,7 +594,9 @@ function Ranking() {
         setError("");
 
         const res = await api.getLeadersRankingSummary({ limit: "250" });
-        const leaderItems = Array.isArray(res) ? res : res?.leaders || [];
+        const payload = res as Leader[] | { leaders?: Leader[]; generatedAt?: string };
+        const leaderItems = Array.isArray(payload) ? payload : payload?.leaders || [];
+
         setLeaders(leaderItems);
         setStatsMap(
           Object.fromEntries(
@@ -572,8 +607,8 @@ function Ranking() {
           )
         );
         setLastUpdated(
-          res?.generatedAt
-            ? new Date(res.generatedAt).toLocaleString()
+          !Array.isArray(payload) && payload?.generatedAt
+            ? new Date(payload.generatedAt).toLocaleString()
             : new Date().toLocaleString()
         );
       } catch (err: any) {
@@ -583,13 +618,11 @@ function Ranking() {
       }
     };
 
-    loadRankingData();
+    void loadRankingData();
   }, []);
 
   const roleTabs = useMemo(() => {
-    const roles = Array.from(
-      new Set(leaders.map((leader) => leader.role).filter(Boolean))
-    );
+    const roles = Array.from(new Set(leaders.map((leader) => leader.role).filter(Boolean)));
     return ["All", ...roles];
   }, [leaders]);
 
@@ -643,22 +676,10 @@ function Ranking() {
     const computed = buildRankedLeaders(filtered, statsMap);
 
     return computed.sort((a, b) => {
-      if (sortBy === "Highest Rated") {
-        return b.stats.averageRating - a.stats.averageRating;
-      }
-
-      if (sortBy === "Lowest Rated") {
-        return a.stats.averageRating - b.stats.averageRating;
-      }
-
-      if (sortBy === "Most Discussed") {
-        return b.stats.comments - a.stats.comments;
-      }
-
-      if (sortBy === "Most Engaged") {
-        return b.engagementCount - a.engagementCount;
-      }
-
+      if (sortBy === "Highest Rated") return b.stats.averageRating - a.stats.averageRating;
+      if (sortBy === "Lowest Rated") return a.stats.averageRating - b.stats.averageRating;
+      if (sortBy === "Most Discussed") return b.stats.comments - a.stats.comments;
+      if (sortBy === "Most Engaged") return b.engagementCount - a.engagementCount;
       return b.publicScore - a.publicScore;
     });
   }, [leaders, statsMap, selectedRole, sortBy, searchText]);
@@ -667,11 +688,11 @@ function Ranking() {
   const remaining = rankedLeaders.slice(3);
 
   return (
-    <div className="min-h-screen page-fade-in bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_26%,#f4f7fb_100%)]">
+    <div className="min-h-screen bg-[linear-gradient(180deg,#eef4ff_0%,#f8fbff_26%,#f4f7fb_100%)]">
       <Navbar />
 
       <main className="mx-auto max-w-[1380px] px-4 py-4 md:px-6">
-        <section className="surface-shell p-4 md:p-5 lg:p-6">
+        <section className="rounded-[30px] border border-blue-100/80 bg-white p-5 shadow-[0_18px_40px_rgba(15,23,42,0.08)] md:p-6">
           <div className="rounded-[28px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_16px_34px_rgba(15,23,42,0.06)] md:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
               <div className="max-w-3xl">
@@ -679,8 +700,8 @@ function Ranking() {
                   {text.badge}
                 </div>
 
-                <div className="mt-2 flex flex-wrap items-center gap-2.5">
-                  <h1 className="bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#1d4ed8_100%)] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent md:text-4xl">
+                <div className="mt-3 flex flex-wrap items-center gap-2.5">
+                  <h1 className="bg-[linear-gradient(180deg,#020617_0%,#0f172a_42%,#1d4ed8_100%)] bg-clip-text text-3xl font-extrabold tracking-tight text-transparent md:text-5xl">
                     {text.title}
                   </h1>
                   <button
@@ -692,9 +713,15 @@ function Ranking() {
                   </button>
                 </div>
 
-                <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-600">
+                <p className="mt-3 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
                   {text.subtitle}
                 </p>
+
+                <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                  <TopInsight label="Visible leaders" value={String(rankedLeaders.length)} />
+                  <TopInsight label="Top score" value={String(featured[0]?.publicScore ?? 0)} />
+                  <TopInsight label="Last updated" value={lastUpdated || "Now"} />
+                </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-2 text-sm text-slate-600 lg:justify-end">
@@ -718,45 +745,37 @@ function Ranking() {
               </div>
             )}
 
-            <div className="mt-4 rounded-[24px] border border-blue-100/80 bg-white p-3 shadow-sm">
-              <div className="flex flex-col gap-3 lg:flex-row lg:items-center">
-                <div className="min-w-0 lg:max-w-[320px] lg:flex-1">
-                  <label className="sr-only" htmlFor="ranking-search">
-                    {text.searchLabel || "Search profiles"}
-                  </label>
-                  <input
-                    id="ranking-search"
-                    type="search"
-                    value={searchText}
-                    onChange={(e) => setSearchText(e.target.value)}
-                    placeholder={
-                      text.searchPlaceholder ||
-                      "Search by leader, role, district, province, or party..."
-                    }
-                    className="h-11 w-full rounded-2xl border border-blue-100 bg-white px-4 text-sm text-slate-900 outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-                  />
+            <div className="mt-5 rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-3 shadow-sm">
+              <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
+                <input
+                  type="search"
+                  value={searchText}
+                  onChange={(e) => setSearchText(e.target.value)}
+                  placeholder={
+                    text.searchPlaceholder ||
+                    "Search by leader, role, district, province, or party..."
+                  }
+                  className="h-12 w-full rounded-2xl border border-blue-100 px-4 text-sm outline-none transition placeholder:text-slate-500 focus:border-blue-400 focus:ring-2 focus:ring-blue-100 xl:max-w-sm"
+                />
+
+                <div className="flex gap-2 overflow-x-auto pb-1 xl:flex-1">
+                  {roleTabs.map((role) => (
+                    <NepalActionButton
+                      key={role}
+                      onClick={() => setSelectedRole(role)}
+                      tone={selectedRole === role ? "primary" : "secondary"}
+                      className="min-h-[40px] shrink-0 px-4 py-2 text-sm"
+                    >
+                      {role === "All" ? text.allLeaders : roleLabel(role)}
+                    </NepalActionButton>
+                  ))}
                 </div>
 
-                <div className="min-w-0 lg:flex-[1.4]">
-                  <div className="flex gap-2 overflow-x-auto pb-1">
-                    {roleTabs.map((role) => (
-                      <NepalActionButton
-                        key={role}
-                        onClick={() => setSelectedRole(role)}
-                        tone={selectedRole === role ? "primary" : "secondary"}
-                        className="min-h-[40px] shrink-0 px-4 py-2 text-sm"
-                      >
-                        {role === "All" ? text.allLeaders : roleLabel(role)}
-                      </NepalActionButton>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-2 sm:flex-row lg:ml-auto">
+                <div className="flex gap-2 xl:ml-auto">
                   <select
                     value={sortBy}
                     onChange={(e) => setSortBy(e.target.value as SortOption)}
-                    className="h-11 rounded-2xl border border-blue-100 bg-white px-4 text-sm font-medium text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+                    className="h-12 rounded-2xl border border-blue-100 px-4 text-sm font-medium outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
                   >
                     <option>{text.sortPublic}</option>
                     <option>{text.sortHighest}</option>
@@ -765,71 +784,51 @@ function Ranking() {
                     <option>{text.sortLowest}</option>
                   </select>
 
-                  {(selectedRole !== "All" || searchText.trim()) ? (
+                  {(selectedRole !== "All" || searchText.trim()) && (
                     <NepalActionButton
                       onClick={() => {
                         setSelectedRole("All");
                         setSearchText("");
+                        setSortBy("Public Score");
                       }}
                       tone="secondary"
                       className="min-h-[40px] px-4 py-2 text-sm"
                     >
                       {text.clearFilters || "Clear filters"}
                     </NepalActionButton>
-                  ) : null}
+                  )}
                 </div>
               </div>
             </div>
+
+            {error ? (
+              <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+                {error}
+              </div>
+            ) : null}
           </div>
 
-          {error ? (
-            <div className="mt-4 rounded-2xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
-              {error}
-            </div>
-          ) : null}
-
           {loading ? (
-            <div className="mt-8 space-y-5">
-              <div className="grid grid-cols-1 gap-4 xl:grid-cols-3">
-                {Array.from({ length: 3 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="skeleton-shimmer h-[240px] rounded-[28px] border border-blue-100/70"
-                  />
-                ))}
-              </div>
-              <div className="space-y-3">
-                {Array.from({ length: 5 }).map((_, index) => (
-                  <div
-                    key={index}
-                    className="skeleton-shimmer h-[88px] rounded-[24px] border border-blue-100/70"
-                  />
-                ))}
-              </div>
-            </div>
+            <RankingSkeleton />
           ) : rankedLeaders.length === 0 ? (
             <div className="mt-6 rounded-[28px] border border-dashed border-blue-200 bg-white px-6 py-12 text-center">
               <h2 className="text-xl font-bold text-slate-900">{text.emptyTitle}</h2>
-              <p className="mt-2 text-sm text-slate-500">
-                {text.emptyBody}
-              </p>
+              <p className="mt-2 text-sm text-slate-500">{text.emptyBody}</p>
             </div>
           ) : (
             <div className="mt-6 space-y-6">
               <section>
                 <div className="mb-3 flex items-center justify-between">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-950 md:text-xl">{text.topTitle}</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {text.topBody}
-                    </p>
+                    <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{text.topTitle}</h2>
+                    <p className="mt-1 text-sm text-slate-600">{text.topBody}</p>
                   </div>
-                  <div className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600 md:inline-flex">
+                  <div className="hidden rounded-full border border-slate-200 bg-white px-4 py-2 text-sm text-slate-600 md:inline-flex">
                     {text.spotlight}
                   </div>
                 </div>
 
-                <div className="grid grid-cols-1 gap-3 xl:grid-cols-3 xl:items-start">
+                <div className="grid grid-cols-1 gap-4 xl:grid-cols-3 xl:items-start">
                   {featured.map((item, index) => (
                     <FeaturedLeaderCard
                       key={item.leader.leaderId}
@@ -841,16 +840,12 @@ function Ranking() {
               </section>
 
               <section className="rounded-[30px] border border-blue-100/80 bg-[linear-gradient(180deg,#ffffff_0%,#f8fbff_100%)] p-4 shadow-[0_12px_30px_rgba(15,23,42,0.06)] md:p-5">
-                <div className="mb-3 flex items-center justify-between">
+                <div className="mb-3 flex items-center justify-between gap-4">
                   <div>
-                    <h2 className="text-lg font-bold text-slate-950 md:text-xl">{text.fullTitle}</h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      {text.fullBody}
-                    </p>
+                    <h2 className="text-xl font-extrabold text-slate-950 md:text-2xl">{text.fullTitle}</h2>
+                    <p className="mt-1 text-sm text-slate-600">{text.fullBody}</p>
                   </div>
-                  <p className="hidden text-sm text-slate-600 md:block">
-                    {text.compactView}
-                  </p>
+                  <p className="hidden text-sm text-slate-600 md:block">{text.compactView}</p>
                 </div>
 
                 <div className="mb-3 hidden rounded-2xl border border-blue-100 bg-[linear-gradient(180deg,#f8fbff_0%,#f3f8ff_100%)] px-4 py-3 lg:grid lg:grid-cols-[minmax(0,2.4fr)_minmax(120px,0.8fr)_repeat(4,minmax(90px,0.7fr))_minmax(120px,0.9fr)_auto] lg:gap-3">
@@ -878,8 +873,8 @@ function Ranking() {
           )}
         </section>
       </main>
+
+      <Footer />
     </div>
   );
 }
-
-export default Ranking;

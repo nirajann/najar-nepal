@@ -1,4 +1,233 @@
+import type { DistrictInfo } from "../types/home";
+
 const DEFAULT_DEV_API_BASE_URL = "http://localhost:5000/api";
+const DEFAULT_REQUEST_TIMEOUT_MS = 15000;
+
+type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+type Primitive = string | number | boolean;
+type QueryValue = Primitive | null | undefined;
+
+type UnauthorizedHandler = (() => void) | null;
+
+type RequestOptions = {
+  method?: HttpMethod;
+  token?: string;
+  body?: unknown;
+  params?: Record<string, QueryValue>;
+  signal?: AbortSignal;
+  retry?: boolean;
+  timeoutMs?: number;
+  isBlob?: boolean;
+};
+
+type AnalyticsMetadata = Record<
+  string,
+  string | number | boolean | null | undefined
+>;
+export type ApiMessageResponse = {
+  message?: string;
+  error?: string;
+};
+
+export type AuthUser = {
+  _id?: string;
+  id?: string;
+  name?: string;
+  username?: string;
+  email?: string;
+  phone?: string;
+  district?: string;
+  province?: string;
+  birthplace?: string;
+  bio?: string;
+  profilePhoto?: string;
+  role?: "user" | "admin" | "reviewer";
+  verificationStatus?: "unverified" | "pending" | "verified" | "rejected";
+  verificationNotes?: string;
+  verificationSubmittedAt?: string;
+  verificationReviewedAt?: string;
+  badges?: string[];
+};
+
+export type ProfileResponse = ApiMessageResponse & {
+  message?: string;
+  user?: AuthUser;
+};
+
+export type RatingResponse = ApiMessageResponse & {
+  message?: string;
+  rating?: {
+    value?: number;
+    reaction?: string;
+    comment?: string;
+  };
+};
+
+export type AdminAnalyticsOverviewResponse = {
+  totals?: Record<string, number>;
+  engagement?: Record<string, number>;
+  leaderBreakdown?: unknown[];
+  districtBreakdown?: unknown[];
+  complaintBreakdown?: unknown[];
+  recentActivity?: unknown[];
+  message?: string;
+};
+
+export type LeaderPublicProfileResponse = {
+  leader?: unknown;
+  stats?: {
+    likes?: number;
+    dislikes?: number;
+    totalReactions?: number;
+    averageRating?: number;
+    rating?: number;
+    likePercentage?: string;
+    dislikePercentage?: string;
+    ratingCount?: number;
+  };
+  comments?: unknown[];
+  ratingSummary?: unknown;
+  message?: string;
+};
+
+export type DistrictFeedbackSummary = {
+  score?: number | null;
+  verifiedContributors?: number;
+  [key: string]: unknown;
+};
+
+export type DistrictFeedbackValues = {
+  transportation?: number;
+  roads?: number;
+  safety?: number;
+  cleanliness?: number;
+  publicServices?: number;
+  scenery?: number;
+};
+
+export type DistrictFeedbackResponse = ApiMessageResponse & {
+  message?: string;
+  summary?: DistrictFeedbackSummary | null;
+  feedback?: DistrictFeedbackValues | null;
+};
+
+export type DuplicateCheckResponse<T = unknown> = ApiMessageResponse & {
+  exactMatch?: boolean;
+  exists?: boolean;
+  matches?: T[];
+  isDuplicate?: boolean;
+  duplicate?: boolean;
+};
+
+export type ComplaintItem = {
+  _id?: string;
+  id?: string;
+  leaderId?: string;
+  complaintType?: string;
+  status?: string;
+  text?: string;
+  complaintPhoto?: string;
+  adminNote?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  leader?: {
+    _id?: string;
+    leaderId?: string;
+    name?: string;
+    role?: string;
+    district?: string;
+    province?: string;
+    photo?: string;
+  } | null;
+  user?: {
+    _id?: string;
+    name?: string;
+    email?: string;
+  } | null;
+};
+
+export type VerificationSubmitResponse = {
+  user?: AuthUser;
+  message?: string;
+  error?: string;
+};
+
+export type VerificationDocumentsResponse = {
+  id?: string;
+  name?: string;
+  email?: string;
+  verificationStatus?: string;
+  citizenshipNumber?: string;
+  hasCitizenshipFrontPhoto?: boolean;
+  hasCitizenshipBackPhoto?: boolean;
+  hasVerificationSelfiePhoto?: boolean;
+  citizenshipFrontPhotoUrl?: string;
+  citizenshipBackPhotoUrl?: string;
+  verificationSelfiePhotoUrl?: string;
+  verificationSubmittedAt?: string;
+  verificationNotes?: string;
+  message?: string;
+};
+
+type LoginResponse = {
+  token: string;
+  user: AuthUser;
+  message?: string;
+};
+
+export type GenericListResponse<T> = {
+  rows?: T[];
+  leaders?: T[];
+  districts?: T[];
+  projects?: T[];
+  users?: T[];
+  complaints?: T[];
+  total?: number;
+  generatedAt?: string;
+};
+
+type LeaderItem = {
+  _id?: string;
+  leaderId: string;
+  name: string;
+  role: string;
+  party?: string;
+  district?: unknown;
+  districtName?: string;
+  province?: string;
+  currentStatus?: string;
+  photo?: string;
+  badge?: string;
+  verified?: boolean;
+  stats?: {
+    likes?: number;
+    dislikes?: number;
+    comments?: number;
+    averageRating?: number;
+    engagementScore?: number;
+    totalReactions?: number;
+    ratingCount?: number;
+  };
+};
+
+type ProjectItem = {
+  id?: string;
+  projectId?: string;
+  title?: string;
+  titleEn?: string;
+  titleNp?: string;
+  category?: string;
+  status?: string;
+  updatedAt?: string;
+  lastUpdated?: string;
+  district?: string;
+  province?: string;
+  progress?: number;
+  source?: string;
+  sourceName?: string;
+  daysText?: string;
+};
 
 function resolveApiBaseUrl() {
   const rawBase = (import.meta.env.VITE_API_BASE_URL || "").trim();
@@ -36,63 +265,10 @@ function resolveApiBaseUrl() {
 
 const API_BASE_URL = resolveApiBaseUrl();
 
-type UnauthorizedHandler = (() => void) | null;
-
 let unauthorizedHandler: UnauthorizedHandler = null;
 
 export function setUnauthorizedHandler(handler: () => void) {
   unauthorizedHandler = handler;
-}
-
-async function parseJsonResponse(res: Response) {
-  const contentType = res.headers.get("content-type") || "";
-  let data: any = null;
-  let rawText = "";
-
-  try {
-    if (contentType.includes("application/json")) {
-      data = await res.json();
-    } else {
-      rawText = await res.text();
-    }
-  } catch (error) {
-    console.error("Failed to parse response body:", error);
-  }
-
-  if (res.status === 401 && unauthorizedHandler) {
-    unauthorizedHandler();
-  }
-
-  if (!res.ok) {
-    const backendMessage =
-      data?.message ||
-      data?.error ||
-      rawText ||
-      `Request failed with status ${res.status}`;
-
-    throw new Error(backendMessage);
-  }
-
-  return data ?? rawText;
-}
-
-function buildUrl(path: string, params?: Record<string, string | undefined>) {
-  const query = new URLSearchParams();
-
-  if (params) {
-    Object.entries(params).forEach(([key, value]) => {
-      if (value) query.append(key, value);
-    });
-  }
-
-  return `${API_BASE_URL}${path}${query.toString() ? `?${query.toString()}` : ""}`;
-}
-
-function authHeaders(token?: string, isJson = false) {
-  return {
-    ...(isJson ? { "Content-Type": "application/json" } : {}),
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
 }
 
 function getStoredId(storage: Storage, key: string) {
@@ -119,40 +295,246 @@ function getAnalyticsIdentity() {
   };
 }
 
+function buildUrl(path: string, params?: Record<string, QueryValue>) {
+  const query = new URLSearchParams();
+
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== "") {
+        query.append(key, String(value));
+      }
+    });
+  }
+
+  return `${API_BASE_URL}${path}${query.toString() ? `?${query.toString()}` : ""}`;
+}
+
+function buildHeaders(token?: string, isJson = false) {
+  return {
+    ...(isJson ? { "Content-Type": "application/json" } : {}),
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+function getMessageFromUnknown(data: unknown) {
+  if (!data || typeof data !== "object") return undefined;
+  const payload = data as { message?: string; error?: string };
+  return payload.message || payload.error;
+}
+
+function normalizeErrorMessage(status: number, data: unknown, rawText: string) {
+  return (
+    getMessageFromUnknown(data) ||
+    rawText ||
+    `Request failed with status ${status}`
+  );
+}
+
+async function parseJsonResponse<T>(res: Response): Promise<T> {
+  const contentType = res.headers.get("content-type") || "";
+  let data: unknown = null;
+  let rawText = "";
+
+  try {
+    if (contentType.includes("application/json")) {
+      data = await res.json();
+    } else {
+      rawText = await res.text();
+    }
+  } catch (error) {
+    console.error("Failed to parse response body:", error);
+  }
+
+  if (res.status === 401 && unauthorizedHandler) {
+    unauthorizedHandler();
+  }
+
+  if (!res.ok) {
+    throw new Error(normalizeErrorMessage(res.status, data, rawText));
+  }
+
+  return (data ?? rawText) as T;
+}
+
+async function parseBlobResponse(res: Response): Promise<Blob> {
+  if (res.status === 401 && unauthorizedHandler) {
+    unauthorizedHandler();
+  }
+
+  if (!res.ok) {
+    let message = `Request failed with status ${res.status}`;
+
+    try {
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = await res.json();
+        message = getMessageFromUnknown(data) || message;
+      } else {
+        const rawText = await res.text();
+        message = rawText || message;
+      }
+    } catch {
+      // ignore parse failure
+    }
+
+    throw new Error(message);
+  }
+
+  return res.blob();
+}
+
+async function request<T>(
+  path: string,
+  options: RequestOptions = {}
+): Promise<T> {
+  const {
+    method = "GET",
+    token,
+    body,
+    params,
+    signal,
+    retry = method === "GET",
+    timeoutMs = DEFAULT_REQUEST_TIMEOUT_MS,
+    isBlob = false,
+  } = options;
+
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  const onAbort = () => controller.abort();
+  if (signal) {
+    if (signal.aborted) {
+      clearTimeout(timeout);
+      throw new Error("Request was cancelled.");
+    }
+    signal.addEventListener("abort", onAbort, { once: true });
+  }
+
+  const isJson = body !== undefined && body !== null && !isBlob;
+
+  try {
+    const res = await fetch(buildUrl(path, params), {
+      method,
+      headers: buildHeaders(token, isJson),
+      body: isJson ? JSON.stringify(body) : undefined,
+      signal: controller.signal,
+    });
+
+    if (isBlob) {
+      return (await parseBlobResponse(res)) as T;
+    }
+
+    return await parseJsonResponse<T>(res);
+  } catch (error: unknown) {
+    const isAbortError =
+      error instanceof Error && error.name === "AbortError";
+
+    if (isAbortError) {
+      throw new Error("The request timed out or was cancelled.");
+    }
+
+    if (retry && method === "GET") {
+      return request<T>(path, {
+        ...options,
+        retry: false,
+      });
+    }
+
+    throw error;
+  } finally {
+    clearTimeout(timeout);
+    if (signal) {
+      signal.removeEventListener("abort", onAbort);
+    }
+  }
+}
+
+function get<T>(
+  path: string,
+  params?: Record<string, QueryValue>,
+  token?: string,
+  signal?: AbortSignal
+) {
+  return request<T>(path, {
+    method: "GET",
+    params,
+    token,
+    signal,
+  });
+}
+
+function post<T>(
+  path: string,
+  body?: unknown,
+  token?: string,
+  signal?: AbortSignal
+) {
+  return request<T>(path, {
+    method: "POST",
+    body,
+    token,
+    signal,
+  });
+}
+
+function put<T>(
+  path: string,
+  body?: unknown,
+  token?: string,
+  signal?: AbortSignal
+) {
+  return request<T>(path, {
+    method: "PUT",
+    body,
+    token,
+    signal,
+  });
+}
+
+function patch<T>(
+  path: string,
+  body?: unknown,
+  token?: string,
+  signal?: AbortSignal
+) {
+  return request<T>(path, {
+    method: "PATCH",
+    body,
+    token,
+    signal,
+  });
+}
+
+function del<T>(path: string, token?: string, signal?: AbortSignal) {
+  return request<T>(path, {
+    method: "DELETE",
+    token,
+    signal,
+  });
+}
+
 export const api = {
-  register: async (name: string, email: string, password: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/register`, {
-      method: "POST",
-      headers: authHeaders(undefined, true),
-      body: JSON.stringify({ name, email, password }),
-    });
-    return parseJsonResponse(res);
-  },
+  register: async (
+    name: string,
+    email: string,
+    password: string
+  ): Promise<ApiMessageResponse & Partial<LoginResponse>> =>
+    post("/auth/register", { name, email, password }),
 
-  login: async (email: string, password: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/login`, {
-      method: "POST",
-      headers: authHeaders(undefined, true),
-      body: JSON.stringify({ email, password }),
-    });
-    return parseJsonResponse(res);
-  },
+  login: async (
+    email: string,
+    password: string
+  ): Promise<LoginResponse> =>
+    post("/auth/login", { email, password }),
 
-  updateProfile: async (token: string, profileData: any) => {
-    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
-      method: "PUT",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(profileData),
-    });
-    return parseJsonResponse(res);
-  },
+  updateProfile: async (
+    token: string,
+    profileData: Partial<AuthUser>
+  ): Promise<ProfileResponse> =>
+    put("/auth/profile", profileData, token),
 
-  getProfile: async (token: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/profile`, {
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  getProfile: async (token: string): Promise<ProfileResponse> =>
+    get("/auth/profile", undefined, token),
 
   submitVerification: async (
     token: string,
@@ -164,57 +546,28 @@ export const api = {
       district?: string;
       province?: string;
     }
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/auth/verification/submit`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  ): Promise<VerificationSubmitResponse> =>
+    post("/auth/verification/submit", payload, token),
 
-  getUserVerificationDocuments: async (token: string, userId: string) => {
-    const res = await fetch(
-      `${API_BASE_URL}/auth/users/${userId}/verification-documents`,
-      {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+  getUserVerificationDocuments: async (
+    token: string,
+    userId: string
+  ): Promise<VerificationDocumentsResponse> =>
+    get(`/auth/users/${userId}/verification-documents`, undefined, token),
 
   getVerificationDocumentBlob: async (
     token: string,
     userId: string,
     documentType: "front" | "back" | "selfie"
-  ) => {
-    const res = await fetch(
-      `${API_BASE_URL}/auth/users/${userId}/verification-documents/${documentType}`,
+  ) =>
+    request<Blob>(
+      `/auth/users/${userId}/verification-documents/${documentType}`,
       {
-        headers: authHeaders(token),
+        method: "GET",
+        token,
+        isBlob: true,
       }
-    );
-
-    if (res.status === 401 && unauthorizedHandler) {
-      unauthorizedHandler();
-    }
-
-    if (!res.ok) {
-      let message = `Request failed with status ${res.status}`;
-
-      try {
-        const data = await res.json();
-        message = data?.message || message;
-      } catch {
-        const rawText = await res.text();
-        message = rawText || message;
-      }
-
-      throw new Error(message);
-    }
-
-    return res.blob();
-  },
+    ),
 
   reviewUserVerification: async (
     token: string,
@@ -223,27 +576,12 @@ export const api = {
       verificationStatus: "pending" | "verified" | "rejected";
       verificationNotes?: string;
     }
-  ) => {
-    const res = await fetch(
-      `${API_BASE_URL}/auth/users/${userId}/review-verification`,
-      {
-        method: "PUT",
-        headers: authHeaders(token, true),
-        body: JSON.stringify(payload),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+  ) => put(`/auth/users/${userId}/review-verification`, payload, token),
 
-  getPendingVerificationUsers: async (token: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/users`, {
-      headers: authHeaders(token),
-    });
-    const data = await parseJsonResponse(res);
-
+  getPendingVerificationUsers: async (token: string): Promise<AuthUser[]> => {
+    const data = await get<AuthUser[]>("/auth/users", undefined, token);
     if (!Array.isArray(data)) return [];
-
-    return data.filter((user: any) => user.verificationStatus === "pending");
+    return data.filter((user) => user.verificationStatus === "pending");
   },
 
   getLeaders: async (params?: {
@@ -253,19 +591,19 @@ export const api = {
     search?: string;
     currentStatus?: string;
     verified?: string;
-  }) => {
-    const res = await fetch(
-      buildUrl("/leaders", {
-        role: params?.role,
-        districtId: params?.districtId,
-        province: params?.province,
-        search: params?.search,
-        currentStatus: params?.currentStatus,
-        verified: params?.verified,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+    page?: string | number;
+    limit?: string | number;
+  }): Promise<LeaderItem[] | GenericListResponse<LeaderItem>> =>
+    get("/leaders", {
+      role: params?.role,
+      districtId: params?.districtId,
+      province: params?.province,
+      search: params?.search,
+      currentStatus: params?.currentStatus,
+      verified: params?.verified,
+      page: params?.page,
+      limit: params?.limit,
+    }),
 
   getLeadersRankingSummary: async (params?: {
     role?: string;
@@ -274,153 +612,114 @@ export const api = {
     search?: string;
     currentStatus?: string;
     verified?: string;
-    limit?: string;
-  }) => {
-    const res = await fetch(
-      buildUrl("/leaders/ranking-summary", {
-        role: params?.role,
-        districtId: params?.districtId,
-        province: params?.province,
-        search: params?.search,
-        currentStatus: params?.currentStatus,
-        verified: params?.verified,
-        limit: params?.limit,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+    limit?: string | number;
+  }): Promise<LeaderItem[] | { leaders?: LeaderItem[]; generatedAt?: string }> =>
+    get("/leaders/ranking-summary", {
+      role: params?.role,
+      districtId: params?.districtId,
+      province: params?.province,
+      search: params?.search,
+      currentStatus: params?.currentStatus,
+      verified: params?.verified,
+      limit: params?.limit,
+    }),
 
-  getLeaderById: async (leaderId: string) => {
-    const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`);
-    return parseJsonResponse(res);
-  },
+  getLeaderById: async (leaderId: string) => get(`/leaders/${leaderId}`),
 
   getLeaderPublicProfile: async (
     leaderId: string,
     params?: {
       sort?: string;
-      limit?: string;
+      limit?: string | number;
     }
-  ) => {
-    const res = await fetch(
-      buildUrl(`/leaders/${leaderId}/public-profile`, {
-        sort: params?.sort,
-        limit: params?.limit,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+  ): Promise<LeaderPublicProfileResponse> =>
+    get(`/leaders/${leaderId}/public-profile`, {
+      sort: params?.sort,
+      limit: params?.limit,
+    }),
 
-  createLeader: async (token: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/leaders`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  createLeader: async (token: string, payload: unknown): Promise<ApiMessageResponse> =>
+    post("/leaders", payload, token),
 
-  updateLeader: async (token: string, leaderId: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`, {
-      method: "PUT",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  updateLeader: async (
+    token: string,
+    leaderId: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse> =>
+    put(`/leaders/${leaderId}`, payload, token),
 
-  deleteLeader: async (token: string, leaderId: string) => {
-    const res = await fetch(`${API_BASE_URL}/leaders/${leaderId}`, {
-      method: "DELETE",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  deleteLeader: async (token: string, leaderId: string): Promise<ApiMessageResponse> =>
+    del(`/leaders/${leaderId}`, token),
 
-  getDistricts: async (params?: { province?: string; search?: string }) => {
-    const res = await fetch(
-      buildUrl("/districts", {
-        province: params?.province,
-        search: params?.search,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+  getDistricts: async (params?: {
+    province?: string;
+    search?: string;
+    page?: string | number;
+    limit?: string | number;
+  }): Promise<DistrictInfo[] | GenericListResponse<DistrictInfo>> =>
+    get("/districts", {
+      province: params?.province,
+      search: params?.search,
+      page: params?.page,
+      limit: params?.limit,
+    }),
 
-  getDistrictById: async (districtId: string) => {
-    const res = await fetch(`${API_BASE_URL}/districts/${districtId}`);
-    return parseJsonResponse(res);
-  },
+  getDistrictById: async (districtId: string) => get(`/districts/${districtId}`),
 
-  createDistrict: async (token: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/districts`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  createDistrict: async (
+    token: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse & { district?: DistrictInfo }> =>
+    post("/districts", payload, token),
 
-  updateDistrict: async (token: string, districtId: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/districts/${districtId}`, {
-      method: "PUT",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  updateDistrict: async (
+    token: string,
+    districtId: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse & { district?: DistrictInfo }> =>
+    put(`/districts/${districtId}`, payload, token),
 
-  deleteDistrict: async (token: string, districtId: string) => {
-    const res = await fetch(`${API_BASE_URL}/districts/${districtId}`, {
-      method: "DELETE",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  deleteDistrict: async (
+    token: string,
+    districtId: string
+  ): Promise<ApiMessageResponse> =>
+    del(`/districts/${districtId}`, token),
 
   getProjects: async (params?: {
     status?: string;
     district?: string;
     province?: string;
     search?: string;
-  }) => {
-    const res = await fetch(
-      buildUrl("/projects", {
-        status: params?.status,
-        district: params?.district,
-        province: params?.province,
-        search: params?.search,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+    page?: string | number;
+    limit?: string | number;
+  }): Promise<ProjectItem[] | GenericListResponse<ProjectItem>> =>
+    get("/projects", {
+      status: params?.status,
+      district: params?.district,
+      province: params?.province,
+      search: params?.search,
+      page: params?.page,
+      limit: params?.limit,
+    }),
 
-  getProjectById: async (projectId: string) => {
-    const res = await fetch(`${API_BASE_URL}/projects/${projectId}`);
-    return parseJsonResponse(res);
-  },
+  getProjectById: async (projectId: string) => get(`/projects/${projectId}`),
 
   getComplaints: async (params?: {
     status?: string;
     category?: string;
     search?: string;
-  }) => {
-    const res = await fetch(
-      buildUrl("/complaints", {
-        status: params?.status,
-        category: params?.category,
-        search: params?.search,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+    page?: string | number;
+    limit?: string | number;
+  }): Promise<ComplaintItem[] | GenericListResponse<ComplaintItem>> =>
+    get("/complaints", {
+      status: params?.status,
+      category: params?.category,
+      search: params?.search,
+      page: params?.page,
+      limit: params?.limit,
+    }),
 
-  getUsers: async (token: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/users`, {
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  getUsers: async (token: string) => get("/auth/users", undefined, token),
 
   trackEvent: async (
     payload: {
@@ -429,24 +728,22 @@ export const api = {
       entityId?: string;
       entityName?: string;
       sourcePage?: string;
-      metadata?: Record<string, string | number | boolean | null | undefined>;
+      metadata?: AnalyticsMetadata;
     },
     token?: string
   ) => {
     try {
       const { visitorKey, sessionId } = getAnalyticsIdentity();
 
-      const res = await fetch(`${API_BASE_URL}/analytics/events`, {
-        method: "POST",
-        headers: authHeaders(token, true),
-        body: JSON.stringify({
+      return await post(
+        "/analytics/events",
+        {
           ...payload,
           visitorKey,
           sessionId,
-        }),
-      });
-
-      return parseJsonResponse(res);
+        },
+        token
+      );
     } catch (error) {
       console.error("Analytics tracking failed:", error);
       return null;
@@ -459,78 +756,101 @@ export const api = {
     text: string,
     rating: number,
     sourcePage?: string
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/comments`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify({ leaderId, text, rating, sourcePage }),
-    });
+  ) =>
+    post(
+      "/comments",
+      {
+        leaderId,
+        text,
+        rating,
+        sourcePage,
+      },
+      token
+    ),
 
-    return parseJsonResponse(res);
-  },
+  getComments: async (
+    leaderId: string,
+    params?: {
+      sort?: string;
+      page?: string | number;
+      limit?: string | number;
+    }
+  ) =>
+    get(`/comments/${leaderId}`, {
+      sort: params?.sort || "newest",
+      page: params?.page,
+      limit: params?.limit,
+    }),
 
-  getComments: async (leaderId: string, sort = "newest") => {
-    const res = await fetch(
-      `${API_BASE_URL}/comments/${leaderId}?sort=${encodeURIComponent(sort)}`
-    );
-    return parseJsonResponse(res);
-  },
+  likeComment: async (token: string, commentId: string) =>
+    post(`/comments/${commentId}/like`, undefined, token),
 
-  likeComment: async (token: string, commentId: string) => {
-    const res = await fetch(`${API_BASE_URL}/comments/${commentId}/like`, {
-      method: "POST",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  replyComment: async (token: string, commentId: string, text: string) =>
+    post(`/comments/${commentId}/reply`, { text }, token),
 
-  replyComment: async (token: string, commentId: string, text: string) => {
-    const res = await fetch(`${API_BASE_URL}/comments/${commentId}/reply`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify({ text }),
-    });
-    return parseJsonResponse(res);
-  },
+  updateComment: async (token: string, commentId: string, text: string) =>
+    put(`/comments/${commentId}`, { text }, token),
 
-  getAdminAnalyticsOverview: async (token: string) => {
-    const res = await fetch(`${API_BASE_URL}/admin/analytics/overview`, {
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  deleteComment: async (token: string, commentId: string) =>
+    del(`/comments/${commentId}`, token),
 
-  getAdminLeaderAnalytics: async (token: string, leaderId: string) => {
-    const res = await fetch(`${API_BASE_URL}/admin/analytics/leader/${leaderId}`, {
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  pinComment: async (token: string, commentId: string, isPinned: boolean) =>
+    patch(`/comments/${commentId}/pin`, { isPinned }, token),
+
+  moderateComment: async (
+    token: string,
+    commentId: string,
+    payload: {
+      status: "visible" | "hidden" | "flagged";
+      moderationReason?: string;
+    }
+  ) => patch(`/comments/${commentId}/moderate`, payload, token),
+
+  getAdminAnalyticsOverview: async (
+    token: string
+  ): Promise<AdminAnalyticsOverviewResponse> =>
+    get("/admin/analytics/overview", undefined, token),
+
+  getAdminLeaderAnalytics: async (token: string, leaderId: string) =>
+    get(`/admin/analytics/leader/${leaderId}`, undefined, token),
 
   submitRating: async (
     token: string,
     leaderId: string,
     value: number,
     action?: "like" | "dislike",
-    sourcePage?: string
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/ratings`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify({
+    sourcePage?: string,
+    comment?: string
+  ): Promise<RatingResponse> =>
+    post(
+      "/ratings",
+      {
         leaderId,
         value,
         reaction: action,
         sourcePage,
-      }),
-    });
-    return parseJsonResponse(res);
-  },
+        comment,
+      },
+      token
+    ),
 
-  getLeaderStats: async (leaderId: string) => {
-    const res = await fetch(`${API_BASE_URL}/ratings/${leaderId}/stats`);
-    return parseJsonResponse(res);
-  },
+  getLeaderStats: async (leaderId: string) =>
+    get(`/ratings/${leaderId}/stats`),
+
+  getMyRating: async (token: string, leaderId: string) =>
+    get(`/ratings/${leaderId}/my-rating`, undefined, token),
+
+  deleteMyRating: async (token: string, leaderId: string) =>
+    del(`/ratings/${leaderId}`, token),
+
+  moderateRating: async (
+    token: string,
+    ratingId: string,
+    payload: {
+      status: "visible" | "hidden" | "flagged";
+      moderationReason?: string;
+    }
+  ) => patch(`/ratings/${ratingId}/moderate`, payload, token),
 
   submitComplaint: async (
     token: string,
@@ -538,19 +858,17 @@ export const api = {
     text: string,
     complaintType: string,
     complaintPhoto?: string
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/complaints`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify({
+  ): Promise<ApiMessageResponse> =>
+    post(
+      "/complaints",
+      {
         leaderId,
         text,
         complaintType,
         complaintPhoto,
-      }),
-    });
-    return parseJsonResponse(res);
-  },
+      },
+      token
+    ),
 
   submitSupportIssue: async (payload: {
     issueCategory: string;
@@ -559,14 +877,7 @@ export const api = {
     screenshotUrl?: string;
     name?: string;
     email?: string;
-  }) => {
-    const res = await fetch(`${API_BASE_URL}/support/issues`, {
-      method: "POST",
-      headers: authHeaders(undefined, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  }) => post("/support/issues", payload),
 
   submitSupportCorrection: async (payload: {
     affectedEntity: string;
@@ -574,28 +885,14 @@ export const api = {
     suggestedCorrection: string;
     sourceLink?: string;
     notes?: string;
-  }) => {
-    const res = await fetch(`${API_BASE_URL}/support/corrections`, {
-      method: "POST",
-      headers: authHeaders(undefined, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  }) => post("/support/corrections", payload),
 
   submitSupportContact: async (payload: {
     name: string;
     email: string;
     subject: string;
     message: string;
-  }) => {
-    const res = await fetch(`${API_BASE_URL}/support/contact`, {
-      method: "POST",
-      headers: authHeaders(undefined, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  }) => post("/support/contact", payload),
 
   submitSupportVolunteer: async (payload: {
     name: string;
@@ -603,26 +900,16 @@ export const api = {
     interests: string;
     availability?: string;
     notes?: string;
-  }) => {
-    const res = await fetch(`${API_BASE_URL}/support/volunteer`, {
-      method: "POST",
-      headers: authHeaders(undefined, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  }) => post("/support/volunteer", payload),
 
-  getMyComplaintsByLeader: async (token: string, leaderId: string) => {
-    const res = await fetch(
-      buildUrl("/complaints/my", {
-        leaderId,
-      }),
+  getMyComplaintsByLeader: async (token: string, leaderId: string) =>
+    get(
+      "/complaints/my",
       {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+        leaderId,
+      },
+      token
+    ),
 
   getAdminProjects: async (
     token: string,
@@ -631,111 +918,92 @@ export const api = {
       status?: string;
       district?: string;
       province?: string;
+      page?: string | number;
+      limit?: string | number;
     }
-  ) => {
-    const res = await fetch(
-      buildUrl("/admin/projects", {
+  ): Promise<ProjectItem[] | GenericListResponse<ProjectItem>> =>
+    get(
+      "/admin/projects",
+      {
         search: params?.search,
         status: params?.status,
         district: params?.district,
         province: params?.province,
-      }),
+        page: params?.page,
+        limit: params?.limit,
+      },
+      token
+    ),
+
+  createAdminProject: async (
+    token: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse> =>
+    post("/admin/projects", payload, token),
+
+  updateAdminProject: async (
+    token: string,
+    projectId: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse> =>
+    put(`/admin/projects/${projectId}`, payload, token),
+
+  deleteAdminProject: async (
+    token: string,
+    projectId: string
+  ): Promise<ApiMessageResponse> =>
+    del(`/admin/projects/${projectId}`, token),
+
+  getAdminUsers: async (
+    token: string,
+    params?: { search?: string; page?: string | number; limit?: string | number }
+  ): Promise<AuthUser[] | GenericListResponse<AuthUser>> =>
+    get(
+      "/auth/users",
       {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
-
-  createAdminProject: async (token: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/admin/projects`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
-
-  updateAdminProject: async (token: string, projectId: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/admin/projects/${projectId}`, {
-      method: "PUT",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
-
-  deleteAdminProject: async (token: string, projectId: string) => {
-    const res = await fetch(`${API_BASE_URL}/admin/projects/${projectId}`, {
-      method: "DELETE",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
-
-  getAdminUsers: async (token: string, params?: { search?: string }) => {
-    const res = await fetch(
-      buildUrl("/auth/users", {
         search: params?.search,
-      }),
-      {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+        page: params?.page,
+        limit: params?.limit,
+      },
+      token
+    ),
 
-  updateAdminUser: async (token: string, userId: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
-      method: "PUT",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  updateAdminUser: async (
+    token: string,
+    userId: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse> =>
+    put(`/auth/users/${userId}`, payload, token),
 
-  deleteAdminUser: async (token: string, userId: string) => {
-    const res = await fetch(`${API_BASE_URL}/auth/users/${userId}`, {
-      method: "DELETE",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  deleteAdminUser: async (
+    token: string,
+    userId: string
+  ): Promise<ApiMessageResponse> =>
+    del(`/auth/users/${userId}`, token),
 
-  createAdminUser: async (token: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/auth/users`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  createAdminUser: async (
+    token: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse> =>
+    post("/auth/users", payload, token),
 
   checkLeaderDuplicate: async (params: {
     name: string;
     districtId?: string;
-  }) => {
-    const res = await fetch(
-      buildUrl("/leaders/check-duplicate", {
-        name: params.name,
-        districtId: params.districtId,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+  }): Promise<DuplicateCheckResponse<LeaderItem>> =>
+    get("/leaders/check-duplicate", {
+      name: params.name,
+      districtId: params.districtId,
+    }),
 
   checkDistrictDuplicate: async (params: {
     name: string;
     province?: string;
-  }) => {
-    const res = await fetch(
-      buildUrl("/districts/check-duplicate", {
-        name: params.name,
-        province: params.province,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+  }): Promise<DuplicateCheckResponse<DistrictInfo>> =>
+    get("/districts/check-duplicate", {
+      name: params.name,
+      province: params.province,
+    }),
 
   checkProjectDuplicate: async (
     token: string,
@@ -744,43 +1012,34 @@ export const api = {
       district?: string;
       province?: string;
     }
-  ) => {
-    const res = await fetch(
-      buildUrl("/admin/projects/check-duplicate", {
+  ): Promise<DuplicateCheckResponse<ProjectItem>> =>
+    get(
+      "/admin/projects/check-duplicate",
+      {
         title: params.title,
         district: params.district,
         province: params.province,
-      }),
-      {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+      },
+      token
+    ),
 
-  checkUserDuplicate: async (params: { email: string }) => {
-    const res = await fetch(
-      buildUrl("/auth/users/check-duplicate", {
-        email: params.email,
-      })
-    );
-    return parseJsonResponse(res);
-  },
+  checkUserDuplicate: async (
+    params: { email: string }
+  ): Promise<DuplicateCheckResponse<AuthUser>> =>
+    get("/auth/users/check-duplicate", {
+      email: params.email,
+    }),
 
-  getDistrictFeedbackSummary: async (districtId: string) => {
-    const res = await fetch(`${API_BASE_URL}/district-feedback/${districtId}/summary`);
-    return parseJsonResponse(res);
-  },
+  getDistrictFeedbackSummary: async (
+    districtId: string
+  ): Promise<DistrictFeedbackResponse> =>
+    get(`/district-feedback/${districtId}/summary`),
 
-  getMyDistrictFeedback: async (token: string, districtId: string) => {
-    const res = await fetch(
-      `${API_BASE_URL}/district-feedback/${districtId}/my-feedback`,
-      {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+  getMyDistrictFeedback: async (
+    token: string,
+    districtId: string
+  ): Promise<DistrictFeedbackResponse> =>
+    get(`/district-feedback/${districtId}/my-feedback`, undefined, token),
 
   submitDistrictFeedback: async (
     token: string,
@@ -793,14 +1052,8 @@ export const api = {
       publicServices: number;
       scenery: number;
     }
-  ) => {
-    const res = await fetch(`${API_BASE_URL}/district-feedback/${districtId}`, {
-      method: "POST",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  ): Promise<DistrictFeedbackResponse> =>
+    post(`/district-feedback/${districtId}`, payload, token),
 
   getAdminComplaints: async (
     token: string,
@@ -808,35 +1061,34 @@ export const api = {
       search?: string;
       status?: string;
       complaintType?: string;
+      page?: string | number;
+      limit?: string | number;
     }
-  ) => {
-    const res = await fetch(
-      buildUrl("/admin/complaints", {
+  ): Promise<ComplaintItem[] | GenericListResponse<ComplaintItem>> =>
+    get(
+      "/admin/complaints",
+      {
         search: params?.search,
         status: params?.status,
         complaintType: params?.complaintType,
-      }),
-      {
-        headers: authHeaders(token),
-      }
-    );
-    return parseJsonResponse(res);
-  },
+        page: params?.page,
+        limit: params?.limit,
+      },
+      token
+    ),
 
-  updateAdminComplaint: async (token: string, complaintId: string, payload: any) => {
-    const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
-      method: "PUT",
-      headers: authHeaders(token, true),
-      body: JSON.stringify(payload),
-    });
-    return parseJsonResponse(res);
-  },
+  updateAdminComplaint: async (
+    token: string,
+    complaintId: string,
+    payload: unknown
+  ): Promise<ApiMessageResponse> =>
+    put(`/admin/complaints/${complaintId}`, payload, token),
 
-  deleteAdminComplaint: async (token: string, complaintId: string) => {
-    const res = await fetch(`${API_BASE_URL}/admin/complaints/${complaintId}`, {
-      method: "DELETE",
-      headers: authHeaders(token),
-    });
-    return parseJsonResponse(res);
-  },
+  deleteAdminComplaint: async (
+    token: string,
+    complaintId: string
+  ): Promise<ApiMessageResponse> =>
+    del(`/admin/complaints/${complaintId}`, token),
 };
+
+export { API_BASE_URL, buildUrl, request };

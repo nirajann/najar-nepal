@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { DistrictInfo } from "../../types/home";
-import { useLanguage } from "../../context/LanguageContext";
-import { useAuth } from "../../context/AuthContext";
+import { useLanguage } from "../../context/useLanguage";
+import { useAuth } from "../../context/useAuth";
 import { api } from "../../services/api";
 
 type Props = {
@@ -292,8 +292,10 @@ function DistrictFeedbackSection({ district, onScoreSaved }: Props) {
   const summaryRequestIdRef = useRef(0);
   const myFeedbackRequestIdRef = useRef(0);
 
+  const verificationUser = user as { verificationStatus?: string; isVerified?: boolean } | null;
   const isVerifiedUser =
-    user?.verificationStatus === "verified" || (user as any)?.isVerified === true;
+    verificationUser?.verificationStatus === "verified" ||
+    verificationUser?.isVerified === true;
   const districtId = district?.districtId || "";
   const districtName = district?.name || "";
 

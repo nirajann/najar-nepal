@@ -3,8 +3,21 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Eye, EyeOff, ShieldCheck, MessageSquareText, Star } from "lucide-react";
 import Navbar from "../components/Navbar";
 import { api } from "../services/api";
-import { useAuth } from "../context/AuthContext";
-import { useLanguage } from "../context/LanguageContext";
+import { useAuth } from "../context/useAuth";
+import { useLanguage } from "../context/useLanguage";
+
+function getErrorMessage(error: unknown, fallback: string) {
+  return error instanceof Error ? error.message : fallback;
+}
+
+type AuthResult = {
+  message?: string;
+  user?: {
+    role?: string;
+  };
+  token?: string;
+};
+
 
 function Login() {
   const navigate = useNavigate();
@@ -69,7 +82,8 @@ function Login() {
         setName("");
         setPassword("");
       } else {
-        const result = await loginUser(email.trim(), password);
+        const result = (await loginUser(email.trim(), password)) as AuthResult;
+
         setMessage(result.message || text.loginSuccess);
         setMessageType("success");
 
@@ -79,8 +93,8 @@ function Login() {
           navigate(from || "/", { replace: true });
         }
       }
-    } catch (error: any) {
-      setMessage(error.message || text.genericError);
+    } catch (error: unknown) {
+      setMessage(getErrorMessage(error, text.genericError));
       setMessageType("error");
     } finally {
       setLoading(false);
