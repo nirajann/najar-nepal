@@ -1,4 +1,4 @@
-# Najar Nepal
+<img width="1909" height="877" alt="image" src="https://github.com/user-attachments/assets/d078ffa9-fbd6-4bea-92a8-c4a5bf09f6dc" /># Najar Nepal
 
 **Public Voice. Public Trust. Public Accountability.**
 
@@ -8,7 +8,8 @@ Najar Nepal is a modern civic-tech platform built for Nepal to improve transpare
 
 ## Preview
 
-<img width="1914" height="875" alt="Najar Nepal Preview" src="https://github.com/user-attachments/assets/9eeabc50-a883-42c4-b892-da8f1716ade1" />
+<img width="1916" height="885" alt="image" src="https://github.com/user-attachments/assets/8c3a1702-92c0-45ed-a60d-b1edbff634b0" />
+
 
 ---
 
