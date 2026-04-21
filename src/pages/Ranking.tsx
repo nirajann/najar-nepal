@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { NepalActionButton, NepalActionLink } from "../components/NepalDesignSystem";
-import { api } from "../services/api";
+import { api, type GenericListResponse } from "../services/api";
 import { useLanguage } from "../context/useLanguage";
 
 type LeaderDistrict =
@@ -592,27 +592,37 @@ export default function Ranking() {
       try {
         setLoading(true);
         setError("");
+     const res = await api.getLeadersRankingSummary({ limit: "250" });
 
-        const res = await api.getLeadersRankingSummary({ limit: "250" });
-        const payload = res as Leader[] | { leaders?: Leader[]; generatedAt?: string };
-        const leaderItems = Array.isArray(payload) ? payload : payload?.leaders || [];
+console.log("ranking-summary raw response:", res);
 
-        setLeaders(leaderItems);
-        setStatsMap(
-          Object.fromEntries(
-            leaderItems.map((leader: Leader & { stats?: LeaderStats }) => [
-              leader.leaderId,
-              leader.stats || {},
-            ])
-          )
-        );
-        setLastUpdated(
-          !Array.isArray(payload) && payload?.generatedAt
-            ? new Date(payload.generatedAt).toLocaleString()
-            : new Date().toLocaleString()
-        );
-      } catch (err: any) {
-        setError(err.message || "Failed to load ranking data");
+const payload = res as
+  | any[]
+  | {
+      leaders?: any[];
+      rows?: any[];
+      data?: any[];
+      generatedAt?: string;
+    };
+
+const leaderItems = Array.isArray(payload)
+  ? payload
+  : payload.leaders || payload.rows || payload.data || [];
+
+setLeaders(leaderItems);
+setStatsMap(
+  Object.fromEntries(
+    leaderItems.map((leader: any) => [leader.leaderId, leader.stats || {}])
+  )
+);
+
+setLastUpdated(
+  !Array.isArray(payload) && payload?.generatedAt
+    ? new Date(payload.generatedAt).toLocaleString()
+    : new Date().toLocaleString()
+);
+      } catch (err: unknown) {
+        setError(err instanceof Error ? err.message : "Failed to load ranking data");
       } finally {
         setLoading(false);
       }

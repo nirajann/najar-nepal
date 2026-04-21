@@ -178,6 +178,7 @@ type LoginResponse = {
 
 export type GenericListResponse<T> = {
   rows?: T[];
+  data?: T[];
   leaders?: T[];
   districts?: T[];
   projects?: T[];
@@ -613,7 +614,7 @@ export const api = {
     currentStatus?: string;
     verified?: string;
     limit?: string | number;
-  }): Promise<LeaderItem[] | { leaders?: LeaderItem[]; generatedAt?: string }> =>
+  }): Promise<LeaderItem[] | GenericListResponse<LeaderItem> | { data?: LeaderItem[]; generatedAt?: string }> =>
     get("/leaders/ranking-summary", {
       role: params?.role,
       districtId: params?.districtId,
@@ -731,7 +732,7 @@ export const api = {
       metadata?: AnalyticsMetadata;
     },
     token?: string
-  ) => {
+  ): Promise<ApiMessageResponse | null> => {
     try {
       const { visitorKey, sessionId } = getAnalyticsIdentity();
 
@@ -745,7 +746,9 @@ export const api = {
         token
       );
     } catch (error) {
-      console.error("Analytics tracking failed:", error);
+      if (!import.meta.env.DEV) {
+        console.warn("Analytics tracking failed:", error);
+      }
       return null;
     }
   },

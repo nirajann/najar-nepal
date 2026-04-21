@@ -153,6 +153,8 @@ async function importLeaders() {
       }
 
       let districtId = null;
+      let districtName = item.districtName || "";
+      let province = item.province || "";
 
       if (item.districtName) {
         const districtDoc = await District.findOne({
@@ -161,6 +163,8 @@ async function importLeaders() {
 
         if (districtDoc) {
           districtId = districtDoc._id;
+          districtName = districtDoc.name;
+          province = districtDoc.province;
         }
       }
 
@@ -177,7 +181,8 @@ async function importLeaders() {
         portfolio: item.portfolio || "",
         party: item.party || "",
         district: districtId,
-        province: item.province || "",
+        districtName,
+        province,
         localLevel: item.localLevel || "",
         ward: item.ward || "",
         currentStatus: item.currentStatus || "Current",
@@ -190,6 +195,7 @@ async function importLeaders() {
         electionSourceUrl: item.electionSourceUrl || "",
         badge: item.badge || "",
         verified: item.verified ?? false,
+        isDeleted: false,
         startYear: item.startYear || "",
         endYear: item.endYear || "Present",
       };

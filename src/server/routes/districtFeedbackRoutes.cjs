@@ -27,6 +27,60 @@ function computeOverallScore(payload) {
   return roundScore(average(values));
 }
 
+function normalizeDistrictKey(value = "") {
+  return String(value)
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/\(.*?\)/g, "");
+}
+
+function slugifyDistrictKey(value = "") {
+  return normalizeDistrictKey(value).replace(/\s+/g, "-");
+}
+
+async function findDistrictByAnyKey(rawDistrictId) {
+  const districtKey = String(rawDistrictId || "").trim();
+  const normalizedKey = normalizeDistrictKey(districtKey);
+  const slugKey = slugifyDistrictKey(districtKey);
+
+  console.log("district lookup input:", {
+    rawDistrictId,
+    districtKey,
+    normalizedKey,
+    slugKey,
+  });
+
+  const districtSamples = await District.find({})
+    .select("districtId slug name normalizedName province provinceSlug")
+    .limit(20)
+    .lean();
+
+  console.log("district samples:", districtSamples);
+
+  const districts = await District.find({})
+    .select("districtId slug name normalizedName province provinceSlug")
+    .lean();
+
+  return (
+    districts.find((district) => {
+      const candidates = [
+        district?.districtId,
+        district?.slug,
+        district?.name,
+        district?.normalizedName,
+      ]
+        .filter(Boolean)
+        .map((value) => normalizeDistrictKey(value));
+
+      return (
+        candidates.includes(normalizedKey) ||
+        candidates.includes(normalizeDistrictKey(slugKey))
+      );
+    }) || null
+  );
+}
+
 function formatSummaryResponse(districtId, districtName, summary) {
   const verifiedContributors = Number(summary?.verifiedRatingsCount) || 0;
   const hasVerifiedFeedback = verifiedContributors > 0;
@@ -125,14 +179,14 @@ async function recalculateDistrictAggregate(districtId) {
 // Get aggregate district feedback summary
 router.get("/:districtId/summary", async (req, res) => {
   try {
-    const district = await District.findOne({ districtId: req.params.districtId });
+    const district = await findDistrictByAnyKey(req.params.districtId);
 
     if (!district) {
       return res.status(404).json({ message: "District not found" });
     }
 
-    const summary = await recalculateDistrictAggregate(req.params.districtId);
-    res.json(formatSummaryResponse(req.params.districtId, district.name, summary));
+    const summary = await recalculateDistrictAggregate(district.districtId);
+    res.json(formatSummaryResponse(district.districtId, district.name, summary));
   } catch (error) {
     res.status(500).json({
       message: "Failed to fetch district feedback summary",
@@ -144,7 +198,7 @@ router.get("/:districtId/summary", async (req, res) => {
 // Submit or update feedback for one district by one verified user
 router.post("/:districtId", authMiddleware, async (req, res) => {
   try {
-    const district = await District.findOne({ districtId: req.params.districtId });
+    const district = await findDistrictByAnyKey(req.params.districtId);
 
     if (!district) {
       return res.status(404).json({ message: "District not found" });
@@ -185,12 +239,12 @@ router.post("/:districtId", authMiddleware, async (req, res) => {
 
     const feedback = await DistrictFeedback.findOneAndUpdate(
       {
-        districtId: req.params.districtId,
+        districtId: district.districtId,
         userId: req.user.id,
       },
       {
         $set: {
-          districtId: req.params.districtId,
+          districtId: district.districtId,
           userId: req.user.id,
           isVerifiedSnapshot: true,
           ...payload,
@@ -205,12 +259,12 @@ router.post("/:districtId", authMiddleware, async (req, res) => {
       }
     );
 
-    const summary = await recalculateDistrictAggregate(req.params.districtId);
+    const summary = await recalculateDistrictAggregate(district.districtId);
 
     res.status(201).json({
       message: "District feedback saved successfully",
       feedback,
-      summary: formatSummaryResponse(req.params.districtId, district.name, summary),
+      summary: formatSummaryResponse(district.districtId, district.name, summary),
     });
   } catch (error) {
     res.status(500).json({
@@ -223,13 +277,19 @@ router.post("/:districtId", authMiddleware, async (req, res) => {
 // Get current user's feedback for one district
 router.get("/:districtId/my-feedback", authMiddleware, async (req, res) => {
   try {
+    const district = await findDistrictByAnyKey(req.params.districtId);
+
+    if (!district) {
+      return res.status(404).json({ message: "District not found" });
+    }
+
     const feedback = await DistrictFeedback.findOne({
-      districtId: req.params.districtId,
+      districtId: district.districtId,
       userId: req.user.id,
     });
 
     res.json({
-      districtId: req.params.districtId,
+      districtId: district.districtId,
       hasFeedback: Boolean(feedback),
       feedback: feedback || null,
     });

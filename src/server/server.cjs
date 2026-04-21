@@ -182,12 +182,12 @@ async function startServer() {
     app.set("trust proxy", 1);
     app.disable("x-powered-by");
 
-    app.use(
-      helmet({
-        contentSecurityPolicy: false,
-        crossOriginEmbedderPolicy: false,
-      })
-    );
+ app.use(
+  cors({
+    origin: ["http://localhost:5173", "http://127.0.0.1:5173"],
+    credentials: true,
+  })
+);
 
     app.use(compression());
     app.use(requestLogger);

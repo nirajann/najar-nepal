@@ -113,8 +113,13 @@ function DistrictDetailsSection({ district }: Props) {
   const mpLabel = language === "ne" ? "सांसद" : "MP";
   const ministerLabel = language === "ne" ? "मन्त्री" : "Minister";
 
+  const districtMpLeader = district?.mpLeader || district?.mpLeaders?.[0] || null;
+  const districtMinisterLeader =
+    district?.ministerLeader || district?.ministerLeaders?.[0] || null;
+  const districtMayorLeader = district?.mayorLeader || null;
+
   const linkedLeaderCount = district
-    ? [district.mayorLeader, district.mpLeader, district.ministerLeader].filter(
+    ? [districtMayorLeader, districtMpLeader, districtMinisterLeader].filter(
         (leader) => leader?.leaderId
       ).length
     : 0;
@@ -130,26 +135,29 @@ const alerts: { text: string; tone: "default" | "blue" | "red" }[] = useMemo(() 
   return [
     { text: `${text.provinceStatus}: ${district.province}`, tone: "blue" },
     {
-      text: district.mayorLeader?.name
-        ? `${mayorLabel}: ${district.mayorLeader.name}`
+      text: districtMayorLeader?.name
+        ? `${mayorLabel}: ${districtMayorLeader.name}`
         : text.mayorMissing,
-      tone: district.mayorLeader?.name ? "default" : "red",
+      tone: districtMayorLeader?.name ? "default" : "red",
     },
     {
-      text: district.mpLeader?.name
-        ? `${mpLabel}: ${district.mpLeader.name}`
+      text: districtMpLeader?.name
+        ? `${mpLabel}: ${districtMpLeader.name}`
         : text.mpMissing,
-      tone: district.mpLeader?.name ? "default" : "red",
+      tone: districtMpLeader?.name ? "default" : "red",
     },
     {
-      text: district.ministerLeader?.name
-        ? `${ministerLabel}: ${district.ministerLeader.name}`
+      text: districtMinisterLeader?.name
+        ? `${ministerLabel}: ${districtMinisterLeader.name}`
         : text.ministerMissing,
-      tone: district.ministerLeader?.name ? "default" : "red",
+      tone: districtMinisterLeader?.name ? "default" : "red",
     },
   ];
 }, [
   district,
+  districtMayorLeader,
+  districtMpLeader,
+  districtMinisterLeader,
   mayorLabel,
   ministerLabel,
   mpLabel,

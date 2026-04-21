@@ -178,6 +178,11 @@ function SelectedDistrictPanel({ district, embedded = false }: Props) {
   const { section } = useLanguage();
   const text = section("selectedDistrictPanel");
 
+  const districtMpLeader = district?.mpLeader || district?.mpLeaders?.[0] || null;
+  const districtMinisterLeader =
+    district?.ministerLeader || district?.ministerLeaders?.[0] || null;
+  const districtMayorLeader = district?.mayorLeader || null;
+
   const [pmLeader, setPmLeader] = useState<LeaderCardRef>(null);
   const [leaderCount, setLeaderCount] = useState<number>(0);
 
@@ -206,7 +211,7 @@ function SelectedDistrictPanel({ district, embedded = false }: Props) {
   }, []);
 
   const linkedRepresentativeCount = district
-    ? [district.mayorLeader, district.mpLeader, district.ministerLeader].filter(
+    ? [districtMayorLeader, districtMpLeader, districtMinisterLeader].filter(
         (leader) => leader?.leaderId
       ).length
     : 0;
@@ -215,12 +220,12 @@ function SelectedDistrictPanel({ district, embedded = false }: Props) {
     () =>
       district
         ? [
-            { label: text.mayor, leader: district.mayorLeader },
-            { label: text.mp, leader: district.mpLeader },
-            { label: text.minister, leader: district.ministerLeader },
+            { label: text.mayor, leader: districtMayorLeader },
+            { label: text.mp, leader: districtMpLeader },
+            { label: text.minister, leader: districtMinisterLeader },
           ].filter((item) => item.leader?.leaderId)
         : [],
-    [district, text.mayor, text.mp, text.minister]
+    [district, districtMayorLeader, districtMpLeader, districtMinisterLeader, text.mayor, text.mp, text.minister]
   );
 
   const publicScoreTone = getScoreTone(district?.satisfactionScore);

@@ -119,8 +119,10 @@ async function run() {
           name: districtName,
           normalizedName,
           province: provinceName,
+          provinceSlug: slugify(provinceName),
           localLevels,
           satisfactionScore: 0,
+          isDeleted: false,
         };
 
         const existing = await District.findOne({
@@ -138,7 +140,9 @@ async function run() {
                 slug: payload.slug,
                 districtId: payload.districtId,
                 province: payload.province,
+                provinceSlug: payload.provinceSlug,
                 localLevels: payload.localLevels,
+                isDeleted: false,
               },
             }
           );

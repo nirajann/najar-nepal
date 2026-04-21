@@ -9,6 +9,7 @@ const Comment = require("../models/Comment.cjs");
 const authMiddleware = require("../middleware/authMiddleware.cjs");
 const adminMiddleware = require("../middleware/adminMiddleware.cjs");
 
+
 const router = express.Router();
 
 function normalizeText(v = "") {
@@ -285,6 +286,12 @@ router.get("/:leaderId/public-profile", async (req, res) => {
     );
 
     if (!leader) {
+      console.log("District count:", await District.countDocuments());
+console.log(
+  "Sample districts:",
+  await District.find().select("districtId slug name normalizedName").limit(5).lean()
+);
+console.log("Lookup key:", req.params.districtId);
       return res.status(404).json({ message: "Leader not found" });
     }
 
@@ -522,4 +529,7 @@ router.delete("/:leaderId", authMiddleware, adminMiddleware, async (req, res) =>
   }
 });
 
+
+
 module.exports = router;
+

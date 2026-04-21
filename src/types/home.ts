@@ -22,7 +22,9 @@ export type DistrictInfo = {
   province: string;
   localLevels: LocalLevel[];
   mpLeader?: LeaderRef | null;
+  mpLeaders?: LeaderRef[];
   ministerLeader?: LeaderRef | null;
+  ministerLeaders?: LeaderRef[];
   mayorLeader?: LeaderRef | null;
   naLeaders?: LeaderRef[];
   satisfactionScore?: number;

@@ -328,7 +328,12 @@ leaderSchema.pre("validate", function () {
 /* FILTER SOFT DELETED BY DEFAULT */
 leaderSchema.pre(/^find/, function () {
   if (!this.getQuery().includeDeleted) {
-    this.where({ isDeleted: false });
+    this.where({
+      $or: [
+        { isDeleted: false },
+        { isDeleted: { $exists: false } },
+      ],
+    });
   }
 });
 
