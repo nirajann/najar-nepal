@@ -1,4 +1,4 @@
-<img width="1909" height="877" alt="image" src="https://github.com/user-attachments/assets/d078ffa9-fbd6-4bea-92a8-c4a5bf09f6dc" /># Najar Nepal
+# Najar Nepal
 
 **Public Voice. Public Trust. Public Accountability.**
 
